@@ -162,7 +162,7 @@ pub fn shorten_path(path: &Path, prefix: &Path) -> String {
 
 /// Truncate text at word boundary with ellipsis, respecting terminal width
 pub fn truncate_at_word_boundary(text: &str, max_width: usize) -> String {
-    use unicode_width::UnicodeWidthStr;
+    use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
     if text.width() <= max_width {
         return text.to_string();
@@ -175,7 +175,7 @@ pub fn truncate_at_word_boundary(text: &str, max_width: usize) -> String {
     let mut last_idx = 0;
 
     for (idx, ch) in text.char_indices() {
-        let char_width = UnicodeWidthStr::width(ch.to_string().as_str());
+        let char_width = ch.width().unwrap_or(0);
         if current_width + char_width > target_width {
             break;
         }

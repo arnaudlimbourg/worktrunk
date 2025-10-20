@@ -203,7 +203,7 @@ impl Repository {
     pub fn changed_files(&self, base: &str, head: &str) -> Result<Vec<String>, GitError> {
         let range = format!("{}..{}", base, head);
         let stdout = run_git_command(&["diff", "--name-only", &range], Some(&self.path))?;
-        Ok(stdout.lines().map(|s| s.to_string()).collect())
+        Ok(stdout.lines().map(str::to_owned).collect())
     }
 
     /// Get commit timestamp in seconds since epoch.
@@ -334,7 +334,7 @@ impl Repository {
     /// Get commit subjects (first line of commit message) from a range.
     pub fn commit_subjects(&self, range: &str) -> Result<Vec<String>, GitError> {
         let output = run_git_command(&["log", "--format=%s", range], Some(&self.path))?;
-        Ok(output.lines().map(|s| s.to_string()).collect())
+        Ok(output.lines().map(str::to_owned).collect())
     }
 
     /// Check if there are staged changes.
