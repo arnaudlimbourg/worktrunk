@@ -173,8 +173,6 @@ Current implementation:
 - ⏳ Worktree operations (coming next)
 - ⏳ Advanced features (push, merge, etc.)
 
-See [TODO.md](TODO.md) for detailed roadmap.
-
 ## Architecture
 
 ```
