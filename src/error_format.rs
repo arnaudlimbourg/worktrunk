@@ -1,4 +1,4 @@
-use anstyle::{AnsiColor, Color, Style};
+use crate::theme::Theme;
 use std::io::IsTerminal;
 
 /// Determines if colored output should be used based on environment
@@ -24,12 +24,12 @@ fn should_use_color() -> bool {
 /// Format an error message with red color and ❌ emoji
 pub fn format_error(msg: &str) -> String {
     if should_use_color() {
-        let error_style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Red)));
+        let theme = Theme::new();
         format!(
             "{}❌ {}{}",
-            error_style.render(),
+            theme.error.render(),
             msg,
-            error_style.render_reset()
+            theme.error.render_reset()
         )
     } else {
         format!("❌ {}", msg)
@@ -39,12 +39,12 @@ pub fn format_error(msg: &str) -> String {
 /// Format a warning message with yellow color and 🟡 emoji
 pub fn format_warning(msg: &str) -> String {
     if should_use_color() {
-        let warning_style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Yellow)));
+        let theme = Theme::new();
         format!(
             "{}🟡 {}{}",
-            warning_style.render(),
+            theme.warning.render(),
             msg,
-            warning_style.render_reset()
+            theme.warning.render_reset()
         )
     } else {
         format!("🟡 {}", msg)
@@ -54,12 +54,12 @@ pub fn format_warning(msg: &str) -> String {
 /// Format a hint message with dim color and 💡 emoji
 pub fn format_hint(msg: &str) -> String {
     if should_use_color() {
-        let hint_style = Style::new().dimmed();
+        let theme = Theme::new();
         format!(
             "{}💡 {}{}",
-            hint_style.render(),
+            theme.hint.render(),
             msg,
-            hint_style.render_reset()
+            theme.hint.render_reset()
         )
     } else {
         format!("💡 {}", msg)
@@ -69,12 +69,12 @@ pub fn format_hint(msg: &str) -> String {
 /// Format text with bold styling
 pub fn bold(text: &str) -> String {
     if should_use_color() {
-        let bold_style = Style::new().bold();
+        let theme = Theme::new();
         format!(
             "{}{}{}",
-            bold_style.render(),
+            theme.bold.render(),
             text,
-            bold_style.render_reset()
+            theme.bold.render_reset()
         )
     } else {
         text.to_string()
@@ -86,19 +86,16 @@ pub fn bold(text: &str) -> String {
 /// Example: `format_error_with_bold("Branch '", "feature-x", "' already exists")`
 pub fn format_error_with_bold(prefix: &str, emphasized: &str, suffix: &str) -> String {
     if should_use_color() {
-        let error_style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Red)));
-        let bold_style = Style::new()
-            .fg_color(Some(Color::Ansi(AnsiColor::Red)))
-            .bold();
+        let theme = Theme::new();
         format!(
             "{}❌ {}{}{}{}{}{}",
-            error_style.render(),
+            theme.error.render(),
             prefix,
-            bold_style.render(),
+            theme.error_bold.render(),
             emphasized,
-            error_style.render(), // Back to regular red
+            theme.error.render(), // Back to regular red
             suffix,
-            error_style.render_reset()
+            theme.error.render_reset()
         )
     } else {
         format!("❌ {}{}{}", prefix, emphasized, suffix)

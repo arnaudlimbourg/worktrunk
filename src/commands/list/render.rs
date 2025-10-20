@@ -1,5 +1,5 @@
 use crate::display::{StyledLine, format_relative_time, shorten_path, truncate_at_word_boundary};
-use anstyle::{AnsiColor, Color, Style};
+use worktrunk::theme::Theme;
 
 use super::WorktreeInfo;
 use super::layout::LayoutConfig;
@@ -39,7 +39,8 @@ pub fn format_all_states(info: &WorktreeInfo) -> String {
 
 pub fn format_header_line(layout: &LayoutConfig) {
     let widths = &layout.widths;
-    let dim_style = Style::new().dimmed();
+    let theme = Theme::new();
+    let dim_style = theme.dim;
 
     let mut line = StyledLine::new();
 
@@ -121,14 +122,13 @@ pub fn format_header_line(layout: &LayoutConfig) {
 
 pub fn format_worktree_line(info: &WorktreeInfo, layout: &LayoutConfig) {
     let widths = &layout.widths;
-    let primary_style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Cyan)));
-    let current_style = Style::new()
-        .bold()
-        .fg_color(Some(Color::Ansi(AnsiColor::Magenta)));
-    let green_style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Green)));
-    let red_style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Red)));
-    let yellow_style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Yellow)));
-    let dim_style = Style::new().dimmed();
+    let theme = Theme::new();
+    let primary_style = theme.primary;
+    let current_style = theme.current;
+    let green_style = theme.addition;
+    let red_style = theme.deletion;
+    let yellow_style = theme.neutral;
+    let dim_style = theme.dim;
 
     let branch_display = info.branch.as_deref().unwrap_or("(detached)");
     let short_head = &info.head[..8.min(info.head.len())];
