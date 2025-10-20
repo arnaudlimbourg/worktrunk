@@ -29,10 +29,6 @@ _wt_exec() {
     _wt_exec finish --internal "$@"
 }
 
-# Convenience aliases
-alias {{ cmd_prefix }}-sw='{{ cmd_prefix }}-switch'
-alias {{ cmd_prefix }}-fin='{{ cmd_prefix }}-finish'
-
 {% if hook.to_string() == "prompt" %}
 # Prompt hook for tracking current worktree
 _wt_prompt_hook() {

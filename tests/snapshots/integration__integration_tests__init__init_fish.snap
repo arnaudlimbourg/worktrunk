@@ -48,10 +48,6 @@ function wt-finish
     _wt_exec finish --internal $argv
 end
 
-# Convenience aliases
-alias wt-sw='wt-switch'
-alias wt-fin='wt-finish'
-
 
 
 ----- stderr -----

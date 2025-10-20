@@ -79,12 +79,6 @@ eval "$(wt init bash --cmd myprefix)"
 eval "$(wt init bash --hook prompt)"
 ```
 
-**Disable aliases:**
-```bash
-# Don't create short aliases like wt-sw, wt-fin
-eval "$(wt init bash --no-alias)"
-```
-
 ## How It Works
 
 Worktrunk uses a **directive protocol** to communicate with shell wrappers:

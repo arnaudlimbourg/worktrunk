@@ -51,10 +51,6 @@ wt-finish() {
     _wt_exec finish --internal "$@"
 }
 
-# Convenience aliases
-alias wt-sw='wt-switch'
-alias wt-fin='wt-finish'
-
 
 # Prompt hook for tracking current worktree
 _wt_prompt_hook() {

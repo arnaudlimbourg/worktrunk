@@ -1,6 +1,5 @@
 use crate::common::{TestRepo, make_snapshot_cmd, setup_snapshot_settings};
 use insta_cmd::assert_cmd_snapshot;
-use std::process::Command;
 
 /// Helper to create snapshot with normalized paths and SHAs
 fn snapshot_switch(test_name: &str, repo: &TestRepo, args: &[&str]) {
