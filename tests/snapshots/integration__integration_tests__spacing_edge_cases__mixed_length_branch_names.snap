@@ -24,4 +24,6 @@ long    [2mb834638e[0m  ./extremely-long-branch-name-that-might-cause-layout-i
 medium  [2mb834638e[0m  ./medium-length-name
 x       [2mb834638e[0m  ./x
 
+[2mShowing 4 worktrees[0m
+
 ----- stderr -----

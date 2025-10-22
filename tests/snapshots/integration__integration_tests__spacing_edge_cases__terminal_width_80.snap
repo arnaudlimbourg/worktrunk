@@ -24,4 +24,6 @@ exit_code: 0
 feature-a  [2m9 months ago[0m  [2ma7bc47ca[0m  [2mInitial commit with a...[0m          ./feature-a
 feature-b  [2m9 months ago[0m  [2ma7bc47ca[0m  [2mInitial commit with a...[0m          ./feature-b
 
+[2mShowing 3 worktrees[0m
+
 ----- stderr -----

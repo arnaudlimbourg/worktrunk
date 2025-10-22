@@ -10,8 +10,8 @@ mod display;
 mod llm;
 
 use commands::{
-    Shell, handle_complete, handle_completion, handle_configure_shell, handle_init, handle_list,
-    handle_merge, handle_push, handle_remove, handle_switch,
+    ConfigAction, Shell, handle_complete, handle_completion, handle_configure_shell, handle_init,
+    handle_list, handle_merge, handle_push, handle_remove, handle_switch,
 };
 
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
@@ -160,13 +160,12 @@ fn main() {
                     // Count actual changes (not AlreadyExists)
                     let changes_count = results
                         .iter()
-                        .filter(|r| !matches!(r.action, crate::ConfigAction::AlreadyExists))
+                        .filter(|r| !matches!(r.action, ConfigAction::AlreadyExists))
                         .count();
 
                     if changes_count == 0 {
                         // All shells already configured
                         let green = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Green)));
-                        let green_bold = green.bold();
                         println!("✅ {green}All shells already configured{green:#}");
                         return;
                     }

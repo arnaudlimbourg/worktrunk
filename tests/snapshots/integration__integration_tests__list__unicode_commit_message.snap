@@ -22,4 +22,6 @@ exit_code: 0
 [1m[35mmain        [0m  [2m9 months ago[0m  [1m[35me4614cb7[0m  [2mFix bug with café ☕...[0m   [1m[35m./main[0m
 feature-test  [2m9 months ago[0m  [2m0c53695b[0m  [2mAdd support for...[0m        ./feature-test
 
+[2mShowing 2 worktrees, 1 behind[0m
+
 ----- stderr -----

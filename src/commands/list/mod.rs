@@ -331,13 +331,19 @@ fn display_summary(items: &[ListItem], include_branches: bool) {
         return;
     }
 
-    let worktree_count = items.iter().filter(|i| i.worktree_info().is_some()).count();
+    let worktree_count = items
+        .iter()
+        .filter(|i| matches!(i, ListItem::Worktree(_)))
+        .count();
     let branch_count = items.len() - worktree_count;
 
     // Count worktrees with changes
     let dirty_count = items
         .iter()
-        .filter_map(|i| i.worktree_info())
+        .filter_map(|i| match i {
+            ListItem::Worktree(wt) => Some(wt),
+            _ => None,
+        })
         .filter(|wt| {
             let (added, deleted) = wt.working_tree_diff;
             added > 0 || deleted > 0
@@ -345,8 +351,21 @@ fn display_summary(items: &[ListItem], include_branches: bool) {
         .count();
 
     // Count items ahead/behind
-    let ahead_count = items.iter().filter(|i| i.ahead() > 0).count();
-    let behind_count = items.iter().filter(|i| i.behind() > 0).count();
+    let ahead_count = items
+        .iter()
+        .filter(|i| match i {
+            ListItem::Worktree(wt) => wt.counts.ahead > 0,
+            ListItem::Branch(br) => br.counts.ahead > 0,
+        })
+        .count();
+
+    let behind_count = items
+        .iter()
+        .filter(|i| match i {
+            ListItem::Worktree(wt) => wt.counts.behind > 0,
+            ListItem::Branch(br) => br.counts.behind > 0,
+        })
+        .count();
 
     println!();
     let dim = Style::new().dimmed();

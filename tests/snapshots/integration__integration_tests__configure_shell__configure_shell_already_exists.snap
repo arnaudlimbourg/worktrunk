@@ -14,7 +14,7 @@ info:
     GIT_CONFIG_GLOBAL: /dev/null
     GIT_CONFIG_SYSTEM: /dev/null
     GIT_EDITOR: ""
-    HOME: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmpERU3Zo
+    HOME: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmpeWdD3U
     LANG: C
     LC_ALL: C
     SOURCE_DATE_EPOCH: "1704067200"
@@ -22,7 +22,6 @@ info:
 success: true
 exit_code: 0
 ----- stdout -----
-Already configured [1mzsh[0m [TEMP_HOME]/.zshrc
-  [2mif command -v wt >/dev/null 2>&1; then eval "$(wt init zsh)"; fi[0m
+✅ [32mAll shells already configured[0m
 
 ----- stderr -----

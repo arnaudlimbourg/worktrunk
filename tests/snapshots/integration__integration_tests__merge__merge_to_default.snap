@@ -23,11 +23,20 @@ exit_code: 0
 
 * [SHA] (HEAD -> feature) Add feature file
 
-✅ [32mPushed to [1m[32mmain[0m[0m
+[2mfeature.txt | 1 +
+ 1 file changed, 1 insertion(+)[0m
+
+✅ [32mPushed to [1m[32mmain[0m (1 commit, 1 file, [32m+1[0m)  [0m
 🔄 [36mCleaning up worktree...[0m
 ✅ [32mRemoved worktree and returned to primary[0m
   [2mPath: [REPO][0m
 
 To enable automatic cd, run: wt configure-shell
+
+✅ [32mMerge complete[0m
+
+  [2m1. Rebased [1m[32mfeature[0m onto [1m[32mmain[0m[0m
+  [2m2. Pushed to [1m[32mmain[0m[0m
+  [2m3. Cleaned up worktree[0m
 
 ----- stderr -----

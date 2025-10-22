@@ -38,9 +38,12 @@ pub fn handle_merge(
     // Check for uncommitted changes
     repo.ensure_clean_working_tree()?;
 
+    // Track operations for summary
+    let mut squashed_count: Option<usize> = None;
+
     // Squash commits if requested
     if squash {
-        handle_squash(&target_branch)?;
+        squashed_count = handle_squash(&target_branch)?;
     }
 
     // Rebase onto target
@@ -90,18 +93,58 @@ pub fn handle_merge(
                     ))
                 })?;
         }
+
+        // Print comprehensive summary
+        println!();
+        print_merge_summary(&current_branch, &target_branch, squashed_count, true);
     } else {
-        let green = AnstyleStyle::new().fg_color(Some(Color::Ansi(AnsiColor::Green)));
-        let green_bold = green.bold();
-        println!(
-            "✅ {green}Successfully merged to {green_bold}{target_branch}{green_bold:#} (worktree preserved){green:#}"
-        );
+        // Print comprehensive summary (worktree preserved)
+        println!();
+        print_merge_summary(&current_branch, &target_branch, squashed_count, false);
     }
 
     Ok(())
 }
 
-fn handle_squash(target_branch: &str) -> Result<(), GitError> {
+/// Print a comprehensive summary of the merge operation
+fn print_merge_summary(
+    from_branch: &str,
+    to_branch: &str,
+    squashed_count: Option<usize>,
+    cleaned_up: bool,
+) {
+    let green = AnstyleStyle::new().fg_color(Some(Color::Ansi(AnsiColor::Green)));
+    let green_bold = green.bold();
+    let dim = AnstyleStyle::new().dimmed();
+
+    println!("✅ {green}Merge complete{green:#}");
+    println!();
+
+    // Summary of operations
+    let mut operations = Vec::new();
+
+    if let Some(count) = squashed_count {
+        operations.push(format!("Squashed {count} commits into 1"));
+    }
+
+    operations.push(format!(
+        "Rebased {green_bold}{from_branch}{green_bold:#} onto {green_bold}{to_branch}{green_bold:#}"
+    ));
+
+    operations.push(format!("Pushed to {green_bold}{to_branch}{green_bold:#}"));
+
+    if cleaned_up {
+        operations.push("Cleaned up worktree".to_string());
+    } else {
+        operations.push("Preserved worktree".to_string());
+    }
+
+    for (i, op) in operations.iter().enumerate() {
+        println!("  {dim}{}. {}{dim:#}", i + 1, op);
+    }
+}
+
+fn handle_squash(target_branch: &str) -> Result<Option<usize>, GitError> {
     let repo = Repository::current();
 
     // Get merge base with target branch
@@ -118,7 +161,7 @@ fn handle_squash(target_branch: &str) -> Result<(), GitError> {
         // No commits and no staged changes - nothing to squash
         let dim = AnstyleStyle::new().dimmed();
         println!("{dim}No commits to squash - already at merge base{dim:#}");
-        return Ok(());
+        return Ok(None);
     }
 
     if commit_count == 0 && has_staged {
@@ -138,7 +181,7 @@ fn handle_squash(target_branch: &str) -> Result<(), GitError> {
         println!(
             "{dim}Only 1 commit since {cyan_bold}{target_branch}{cyan_bold:#} - no squashing needed{dim:#}"
         );
-        return Ok(());
+        return Ok(None);
     }
 
     // One or more commits (possibly with staged changes) - squash them
@@ -164,5 +207,5 @@ fn handle_squash(target_branch: &str) -> Result<(), GitError> {
 
     let green = AnstyleStyle::new().fg_color(Some(Color::Ansi(AnsiColor::Green)));
     println!("✅ {green}Squashed {commit_count} commits into one{green:#}");
-    Ok(())
+    Ok(Some(commit_count))
 }

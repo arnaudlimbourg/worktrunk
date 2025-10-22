@@ -22,4 +22,6 @@ exit_code: 0
 [1m[35mmain                                                                     [0m  [1m[35mb834638e[0m  [1m[35m./main[0m
 feature-this-is-a-very-long-branch-name-that-should-test-column-alignment  [2mb834638e[0m  ./feature-this-is-a-very-long-branch-name-that-should-test-column-alignment
 
+[2mShowing 2 worktrees[0m
+
 ----- stderr -----

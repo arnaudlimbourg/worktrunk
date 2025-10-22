@@ -648,6 +648,14 @@ pub fn handle_push(target: Option<&str>, allow_merge_commits: bool) -> Result<()
 
     // Count commits and show what will be pushed
     let commit_count = repo.count_commits(&target_branch, "HEAD")?;
+
+    // Get diff statistics early so we can use them in the summary
+    let diff_shortstat = if commit_count > 0 {
+        repo.run_command(&["diff", "--shortstat", &format!("{}..HEAD", target_branch)])?
+    } else {
+        String::new()
+    };
+
     if commit_count > 0 {
         let commit_text = if commit_count == 1 {
             "commit"
@@ -675,6 +683,16 @@ pub fn handle_push(target: Option<&str>, allow_merge_commits: bool) -> Result<()
         ])?;
         println!("{}", log_output.trim());
         println!();
+
+        // Show diff statistics
+        let diff_stat =
+            repo.run_command(&["diff", "--stat", &format!("{}..HEAD", target_branch)])?;
+
+        if !diff_stat.trim().is_empty() {
+            let dim = AnstyleStyle::new().dimmed();
+            println!("{dim}{}{dim:#}", diff_stat.trim());
+            println!();
+        }
     }
 
     // Get git common dir for the push
@@ -687,8 +705,82 @@ pub fn handle_push(target: Option<&str>, allow_merge_commits: bool) -> Result<()
             GitError::CommandFailed(format!("{ERROR_EMOJI} {ERROR}Push failed: {e}{ERROR:#}"))
         })?;
 
+    // Build success message with statistics
     let green = AnstyleStyle::new().fg_color(Some(Color::Ansi(AnsiColor::Green)));
     let green_bold = green.bold();
-    println!("✅ {green}Pushed to {green_bold}{target_branch}{green_bold:#}{green:#}");
+
+    if commit_count > 0 {
+        // Parse shortstat to extract files/insertions/deletions
+        // Example: " 3 files changed, 45 insertions(+), 12 deletions(-)"
+        let stats = parse_diff_shortstat(&diff_shortstat);
+
+        let mut summary_parts = vec![format!(
+            "{} commit{}",
+            commit_count,
+            if commit_count == 1 { "" } else { "s" }
+        )];
+
+        if let Some(files) = stats.files {
+            summary_parts.push(format!(
+                "{} file{}",
+                files,
+                if files == 1 { "" } else { "s" }
+            ));
+        }
+        if let Some(insertions) = stats.insertions {
+            let addition = AnstyleStyle::new().fg_color(Some(Color::Ansi(AnsiColor::Green)));
+            summary_parts.push(format!("{addition}+{insertions}{addition:#}"));
+        }
+        if let Some(deletions) = stats.deletions {
+            let deletion = AnstyleStyle::new().fg_color(Some(Color::Ansi(AnsiColor::Red)));
+            summary_parts.push(format!("{deletion}-{deletions}{deletion:#}"));
+        }
+
+        println!(
+            "✅ {green}Pushed to {green_bold}{target_branch}{green_bold:#} ({})  {green:#}",
+            summary_parts.join(", ")
+        );
+    } else {
+        println!("✅ {green}Pushed to {green_bold}{target_branch}{green_bold:#}{green:#}");
+    }
+
     Ok(())
+}
+
+/// Parse git diff --shortstat output
+struct DiffStats {
+    files: Option<usize>,
+    insertions: Option<usize>,
+    deletions: Option<usize>,
+}
+
+fn parse_diff_shortstat(output: &str) -> DiffStats {
+    let mut stats = DiffStats {
+        files: None,
+        insertions: None,
+        deletions: None,
+    };
+
+    // Example: " 3 files changed, 45 insertions(+), 12 deletions(-)"
+    let parts: Vec<&str> = output.split(',').collect();
+
+    for part in parts {
+        let part = part.trim();
+
+        if part.contains("file") {
+            if let Some(num_str) = part.split_whitespace().next() {
+                stats.files = num_str.parse().ok();
+            }
+        } else if part.contains("insertion") {
+            if let Some(num_str) = part.split_whitespace().next() {
+                stats.insertions = num_str.parse().ok();
+            }
+        } else if part.contains("deletion") {
+            if let Some(num_str) = part.split_whitespace().next() {
+                stats.deletions = num_str.parse().ok();
+            }
+        }
+    }
+
+    stats
 }

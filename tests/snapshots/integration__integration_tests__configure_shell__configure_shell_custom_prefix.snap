@@ -16,7 +16,7 @@ info:
     GIT_CONFIG_GLOBAL: /dev/null
     GIT_CONFIG_SYSTEM: /dev/null
     GIT_EDITOR: ""
-    HOME: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmp2TPYeW
+    HOME: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmpuzP9Nf
     LANG: C
     LC_ALL: C
     SOURCE_DATE_EPOCH: "1704067200"
@@ -26,5 +26,9 @@ exit_code: 0
 ----- stdout -----
 Added [1mbash[0m [TEMP_HOME]/.bash_profile
   [2mif command -v worktree >/dev/null 2>&1; then eval "$(worktree init bash)"; fi[0m
+
+✅ [32mConfigured 1 shell[0m
+
+💡 [2mRestart your shell or run: source <config-file>[0m
 
 ----- stderr -----
