@@ -1,4 +1,4 @@
-use directories::ProjectDirs;
+use etcetera::base_strategy::{BaseStrategy, choose_base_strategy};
 use std::path::PathBuf;
 use worktrunk::git::{GitError, Repository};
 use worktrunk::styling::{AnstyleStyle, HINT, HINT_EMOJI, println};
@@ -62,7 +62,7 @@ fn display_project_config() -> Result<(), GitError> {
 
     // Try to get current repository root
     let repo = Repository::current();
-    let repo_root = match repo.main_worktree_root() {
+    let repo_root = match repo.worktree_root() {
         Ok(root) => root,
         Err(_) => {
             println!("Project Config: {dim}Not in a git repository{dim:#}");
@@ -101,5 +101,6 @@ fn display_project_config() -> Result<(), GitError> {
 }
 
 fn get_global_config_path() -> Option<PathBuf> {
-    ProjectDirs::from("", "", "worktrunk").map(|dirs| dirs.config_dir().join("config.toml"))
+    let strategy = choose_base_strategy().ok()?;
+    Some(strategy.config_dir().join("worktrunk").join("config.toml"))
 }

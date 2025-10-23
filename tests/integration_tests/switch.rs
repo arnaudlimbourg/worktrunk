@@ -274,9 +274,7 @@ fn test_switch_no_config_commands_skips_post_start_commands() {
     repo.commit("Add config");
 
     // Pre-approve the command
-    let user_config_dir = temp_home
-        .path()
-        .join("Library/Application Support/worktrunk");
+    let user_config_dir = temp_home.path().join(".config/worktrunk");
     fs::create_dir_all(&user_config_dir).expect("Failed to create user config dir");
     fs::write(
         user_config_dir.join("config.toml"),

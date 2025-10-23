@@ -2,6 +2,30 @@
 
 > **Note**: This CLAUDE.md is just getting started. More guidelines will be added as patterns emerge.
 
+## Project Status
+
+**This project has no users yet and zero backward compatibility concerns.**
+
+We are in **pre-release development** mode:
+- Breaking changes are acceptable and expected
+- No migration paths needed for config changes, API changes, or behavior changes
+- Optimize for the best solution, not compatibility with previous versions
+- Move fast and make bold improvements
+
+When making decisions, prioritize:
+1. **Best technical solution** over backward compatibility
+2. **Clean design** over maintaining old patterns
+3. **Modern conventions** over legacy approaches
+
+Examples of acceptable breaking changes:
+- Changing config file locations (e.g., moving from `~/Library/Application Support` to `~/.config`)
+- Renaming commands or flags for clarity
+- Changing output formats
+- Replacing dependencies with better alternatives
+- Restructuring the codebase
+
+When the project reaches v1.0 or gains users, we'll adopt stability commitments. Until then, we're free to iterate rapidly.
+
 ## CLI Output Formatting Standards
 
 ### The anstyle Ecosystem

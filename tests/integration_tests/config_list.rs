@@ -11,16 +11,8 @@ fn test_config_list_with_project_config() {
     let repo = TestRepo::new();
     let temp_home = TempDir::new().unwrap();
 
-    // Create fake global config (platform-specific path)
-    let global_config_dir = if cfg!(target_os = "macos") {
-        temp_home
-            .path()
-            .join("Library")
-            .join("Application Support")
-            .join("worktrunk")
-    } else {
-        temp_home.path().join(".config").join("worktrunk")
-    };
+    // Create fake global config at XDG path (used on all platforms with etcetera)
+    let global_config_dir = temp_home.path().join(".config").join("worktrunk");
     fs::create_dir_all(&global_config_dir).unwrap();
     fs::write(
         global_config_dir.join("config.toml"),
@@ -73,16 +65,8 @@ fn test_config_list_no_project_config() {
     let repo = TestRepo::new();
     let temp_home = TempDir::new().unwrap();
 
-    // Create fake global config (but no project config) - platform-specific path
-    let global_config_dir = if cfg!(target_os = "macos") {
-        temp_home
-            .path()
-            .join("Library")
-            .join("Application Support")
-            .join("worktrunk")
-    } else {
-        temp_home.path().join(".config").join("worktrunk")
-    };
+    // Create fake global config (but no project config) at XDG path
+    let global_config_dir = temp_home.path().join(".config").join("worktrunk");
     fs::create_dir_all(&global_config_dir).unwrap();
     fs::write(
         global_config_dir.join("config.toml"),
@@ -117,16 +101,8 @@ fn test_config_list_outside_git_repo() {
     let temp_dir = tempfile::tempdir().unwrap();
     let temp_home = TempDir::new().unwrap();
 
-    // Create fake global config - platform-specific path
-    let global_config_dir = if cfg!(target_os = "macos") {
-        temp_home
-            .path()
-            .join("Library")
-            .join("Application Support")
-            .join("worktrunk")
-    } else {
-        temp_home.path().join(".config").join("worktrunk")
-    };
+    // Create fake global config at XDG path
+    let global_config_dir = temp_home.path().join(".config").join("worktrunk");
     fs::create_dir_all(&global_config_dir).unwrap();
     fs::write(
         global_config_dir.join("config.toml"),

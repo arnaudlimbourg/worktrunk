@@ -1,5 +1,5 @@
 use config::{Config, ConfigError, File};
-use directories::ProjectDirs;
+use etcetera::base_strategy::{BaseStrategy, choose_base_strategy};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use toml;
@@ -32,8 +32,8 @@ use toml;
 /// ```
 ///
 /// Config file location:
-/// - Linux: `~/.config/worktrunk/config.toml`
-/// - macOS: `~/Library/Application Support/worktrunk/config.toml`
+/// - Linux: `$XDG_CONFIG_HOME/worktrunk/config.toml` or `~/.config/worktrunk/config.toml`
+/// - macOS: `$XDG_CONFIG_HOME/worktrunk/config.toml` or `~/.config/worktrunk/config.toml`
 /// - Windows: `%APPDATA%\worktrunk\config.toml`
 ///
 /// Environment variable: `WORKTRUNK_WORKTREE_PATH`
@@ -112,7 +112,7 @@ impl WorktrunkConfig {
     ///
     /// Configuration is loaded in the following order (later sources override earlier ones):
     /// 1. Default values
-    /// 2. Config file (~/.config/worktrunk/config.toml on Linux/macOS)
+    /// 2. Config file (see struct documentation for platform-specific paths)
     /// 3. Environment variables (WORKTRUNK_*)
     pub fn load() -> Result<Self, ConfigError> {
         let defaults = Self::default();
@@ -162,7 +162,12 @@ impl WorktrunkConfig {
 }
 
 fn get_config_path() -> Option<PathBuf> {
-    ProjectDirs::from("", "", "worktrunk").map(|dirs| dirs.config_dir().join("config.toml"))
+    // choose_base_strategy uses:
+    // - XDG on Linux (respects XDG_CONFIG_HOME, falls back to ~/.config)
+    // - XDG on macOS (~/.config instead of ~/Library/Application Support)
+    // - Windows conventions on Windows (%APPDATA%)
+    let strategy = choose_base_strategy().ok()?;
+    Some(strategy.config_dir().join("worktrunk").join("config.toml"))
 }
 
 /// Expand template variables in a string

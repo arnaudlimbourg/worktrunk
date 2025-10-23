@@ -152,9 +152,7 @@ fn test_e2e_post_start_background_command(#[case] shell: &str) {
     repo.commit("Add post-start config");
 
     // Pre-approve the command
-    let user_config_dir = temp_home
-        .path()
-        .join("Library/Application Support/worktrunk");
+    let user_config_dir = temp_home.path().join(".config/worktrunk");
     fs::create_dir_all(&user_config_dir).expect("Failed to create user config dir");
     fs::write(
         user_config_dir.join("config.toml"),
@@ -280,9 +278,7 @@ task2 = "sleep 0.5 && echo 'Task 2' > task2.txt"
     repo.commit("Add multiple post-start commands");
 
     // Pre-approve commands
-    let user_config_dir = temp_home
-        .path()
-        .join("Library/Application Support/worktrunk");
+    let user_config_dir = temp_home.path().join(".config/worktrunk");
     fs::create_dir_all(&user_config_dir).expect("Failed to create user config dir");
     fs::write(
         user_config_dir.join("config.toml"),
@@ -368,9 +364,7 @@ fn test_bash_post_create_blocks() {
     repo.commit("Add post-create command");
 
     // Pre-approve command
-    let user_config_dir = temp_home
-        .path()
-        .join("Library/Application Support/worktrunk");
+    let user_config_dir = temp_home.path().join(".config/worktrunk");
     fs::create_dir_all(&user_config_dir).expect("Failed to create user config dir");
     fs::write(
         user_config_dir.join("config.toml"),
@@ -456,9 +450,7 @@ fish_bg = "sleep 0.5 && echo 'Fish background done' > fish_bg.txt"
     repo.commit("Add fish background command");
 
     // Pre-approve command
-    let user_config_dir = temp_home
-        .path()
-        .join("Library/Application Support/worktrunk");
+    let user_config_dir = temp_home.path().join(".config/worktrunk");
     fs::create_dir_all(&user_config_dir).expect("Failed to create user config dir");
     fs::write(
         user_config_dir.join("config.toml"),

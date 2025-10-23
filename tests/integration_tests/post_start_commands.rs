@@ -67,9 +67,7 @@ fn test_post_create_single_command() {
     repo.commit("Add config");
 
     // Pre-approve the command by setting up the user config in temp HOME
-    let user_config_dir = temp_home
-        .path()
-        .join("Library/Application Support/worktrunk");
+    let user_config_dir = temp_home.path().join(".config/worktrunk");
     fs::create_dir_all(&user_config_dir).expect("Failed to create user config dir");
     fs::write(
         user_config_dir.join("config.toml"),
@@ -109,9 +107,7 @@ fn test_post_create_multiple_commands_array() {
     repo.commit("Add config with multiple commands");
 
     // Pre-approve both commands in temp HOME
-    let user_config_dir = temp_home
-        .path()
-        .join("Library/Application Support/worktrunk");
+    let user_config_dir = temp_home.path().join(".config/worktrunk");
     fs::create_dir_all(&user_config_dir).expect("Failed to create user config dir");
     fs::write(
         user_config_dir.join("config.toml"),
@@ -158,9 +154,7 @@ setup = "echo 'Running setup'"
     repo.commit("Add config with named commands");
 
     // Pre-approve both commands in temp HOME
-    let user_config_dir = temp_home
-        .path()
-        .join("Library/Application Support/worktrunk");
+    let user_config_dir = temp_home.path().join(".config/worktrunk");
     fs::create_dir_all(&user_config_dir).expect("Failed to create user config dir");
     fs::write(
         user_config_dir.join("config.toml"),
@@ -204,9 +198,7 @@ fn test_post_create_failing_command() {
     repo.commit("Add config with failing command");
 
     // Pre-approve the command in temp HOME
-    let user_config_dir = temp_home
-        .path()
-        .join("Library/Application Support/worktrunk");
+    let user_config_dir = temp_home.path().join(".config/worktrunk");
     fs::create_dir_all(&user_config_dir).expect("Failed to create user config dir");
     fs::write(
         user_config_dir.join("config.toml"),
@@ -251,9 +243,7 @@ fn test_post_create_template_expansion() {
     repo.commit("Add config with templates");
 
     // Pre-approve all commands in temp HOME
-    let user_config_dir = temp_home
-        .path()
-        .join("Library/Application Support/worktrunk");
+    let user_config_dir = temp_home.path().join(".config/worktrunk");
     fs::create_dir_all(&user_config_dir).expect("Failed to create user config dir");
     let repo_name = "main";
     fs::write(
@@ -337,9 +327,7 @@ fn test_post_start_single_background_command() {
     repo.commit("Add background command");
 
     // Pre-approve the command
-    let user_config_dir = temp_home
-        .path()
-        .join("Library/Application Support/worktrunk");
+    let user_config_dir = temp_home.path().join(".config/worktrunk");
     fs::create_dir_all(&user_config_dir).expect("Failed to create user config dir");
     fs::write(
         user_config_dir.join("config.toml"),
@@ -398,9 +386,7 @@ task2 = "echo 'Task 2 running' > task2.txt"
     repo.commit("Add multiple background commands");
 
     // Pre-approve both commands
-    let user_config_dir = temp_home
-        .path()
-        .join("Library/Application Support/worktrunk");
+    let user_config_dir = temp_home.path().join(".config/worktrunk");
     fs::create_dir_all(&user_config_dir).expect("Failed to create user config dir");
     fs::write(
         user_config_dir.join("config.toml"),
@@ -456,9 +442,7 @@ server = "sleep 0.5 && echo 'Server running' > server.txt"
     repo.commit("Add both command types");
 
     // Pre-approve all commands
-    let user_config_dir = temp_home
-        .path()
-        .join("Library/Application Support/worktrunk");
+    let user_config_dir = temp_home.path().join(".config/worktrunk");
     fs::create_dir_all(&user_config_dir).expect("Failed to create user config dir");
     fs::write(
         user_config_dir.join("config.toml"),
@@ -542,9 +526,7 @@ fn test_post_start_log_file_captures_output() {
     repo.commit("Add command with stdout/stderr");
 
     // Pre-approve the command
-    let user_config_dir = temp_home
-        .path()
-        .join("Library/Application Support/worktrunk");
+    let user_config_dir = temp_home.path().join(".config/worktrunk");
     fs::create_dir_all(&user_config_dir).expect("Failed to create user config dir");
     fs::write(
         user_config_dir.join("config.toml"),
@@ -621,9 +603,7 @@ fn test_post_start_invalid_command_handling() {
     repo.commit("Add invalid command");
 
     // Pre-approve the command
-    let user_config_dir = temp_home
-        .path()
-        .join("Library/Application Support/worktrunk");
+    let user_config_dir = temp_home.path().join(".config/worktrunk");
     fs::create_dir_all(&user_config_dir).expect("Failed to create user config dir");
     fs::write(
         user_config_dir.join("config.toml"),
@@ -674,9 +654,7 @@ task3 = "echo 'TASK3_OUTPUT'"
     repo.commit("Add three background commands");
 
     // Pre-approve all commands
-    let user_config_dir = temp_home
-        .path()
-        .join("Library/Application Support/worktrunk");
+    let user_config_dir = temp_home.path().join(".config/worktrunk");
     fs::create_dir_all(&user_config_dir).expect("Failed to create user config dir");
     fs::write(
         user_config_dir.join("config.toml"),
@@ -778,9 +756,7 @@ fn test_execute_flag_with_post_start_commands() {
     repo.commit("Add background command");
 
     // Pre-approve the command
-    let user_config_dir = temp_home
-        .path()
-        .join("Library/Application Support/worktrunk");
+    let user_config_dir = temp_home.path().join(".config/worktrunk");
     fs::create_dir_all(&user_config_dir).expect("Failed to create user config dir");
     fs::write(
         user_config_dir.join("config.toml"),
@@ -842,9 +818,7 @@ fn test_post_start_complex_shell_commands() {
     repo.commit("Add complex shell command");
 
     // Pre-approve the command
-    let user_config_dir = temp_home
-        .path()
-        .join("Library/Application Support/worktrunk");
+    let user_config_dir = temp_home.path().join(".config/worktrunk");
     fs::create_dir_all(&user_config_dir).expect("Failed to create user config dir");
     fs::write(
         user_config_dir.join("config.toml"),
