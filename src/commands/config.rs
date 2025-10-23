@@ -62,7 +62,7 @@ fn display_project_config() -> Result<(), GitError> {
 
     // Try to get current repository root
     let repo = Repository::current();
-    let repo_root = match repo.repo_root() {
+    let repo_root = match repo.main_worktree_root() {
         Ok(root) => root,
         Err(_) => {
             println!("Project Config: {dim}Not in a git repository{dim:#}");

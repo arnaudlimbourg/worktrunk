@@ -101,7 +101,7 @@
 //! See also: DEMO.md for detailed architecture explanation.
 
 use std::collections::HashMap;
-use std::io::{self, Write};
+use std::io;
 use std::path::PathBuf;
 use worktrunk::config::{ProjectConfig, WorktrunkConfig, expand_template};
 use worktrunk::git::{GitError, Repository};
