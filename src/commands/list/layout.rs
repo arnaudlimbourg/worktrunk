@@ -2,7 +2,7 @@ use crate::display::{find_common_prefix, get_terminal_width};
 use std::path::{Path, PathBuf};
 use unicode_width::UnicodeWidthStr;
 
-use super::ListItem;
+use super::model::ListItem;
 
 /// Helper: Try to allocate space for a column. Returns the allocated width if successful.
 /// Updates `remaining` by subtracting the allocated width + spacing.
@@ -310,7 +310,7 @@ mod tests {
 
     #[test]
     fn test_column_width_calculation_with_unicode() {
-        use crate::commands::list::{
+        use crate::commands::list::model::{
             AheadBehind, BranchDiffTotals, CommitDetails, UpstreamStatus, WorktreeInfo,
         };
 
@@ -335,11 +335,7 @@ mod tests {
             working_tree_diff: (100, 50),
             branch_diff: BranchDiffTotals { diff: (200, 30) },
             is_primary: false,
-            upstream: UpstreamStatus {
-                remote: Some("origin".to_string()),
-                ahead: 4,
-                behind: 0,
-            },
+            upstream: UpstreamStatus::from_parts(Some("origin".to_string()), 4, 0),
             worktree_state: None,
         };
 

@@ -3,7 +3,7 @@ use anstyle::{AnsiColor, Color, Style};
 use worktrunk::styling::{ADDITION, CURRENT, DELETION, StyledLine};
 
 use super::layout::{DiffWidths, LayoutConfig};
-use super::{ListItem, WorktreeInfo};
+use super::model::{ListItem, WorktreeInfo};
 
 /// Format diff values as styled segments (right-aligned with attached signs)
 fn format_diff_column(
@@ -293,11 +293,11 @@ pub fn format_list_item_line(
 
 #[cfg(test)]
 mod tests {
-    use super::super::{
-        AheadBehind, BranchDiffTotals, CommitDetails, UpstreamStatus, WorktreeInfo,
-    };
     use super::*;
     use crate::commands::list::layout::{ColumnWidths, LayoutConfig};
+    use crate::commands::list::model::{
+        AheadBehind, BranchDiffTotals, CommitDetails, UpstreamStatus, WorktreeInfo,
+    };
     use crate::display::shorten_path;
     use std::path::PathBuf;
     use worktrunk::styling::StyledLine;
@@ -326,11 +326,7 @@ mod tests {
             working_tree_diff: (100, 50),
             branch_diff: BranchDiffTotals { diff: (200, 30) },
             is_primary: false,
-            upstream: UpstreamStatus {
-                remote: Some("origin".to_string()),
-                ahead: 4,
-                behind: 0,
-            },
+            upstream: UpstreamStatus::from_parts(Some("origin".to_string()), 4, 0),
             worktree_state: None,
         };
 

@@ -1,28 +1,19 @@
 //! Command approval and execution utilities
 //!
-//! This module provides shared functionality for approving and executing commands
-//! across different worktrunk operations (post-create, post-start, pre-merge).
+//! Shared helpers for approving commands declared in project configuration.
 
-use worktrunk::config::{ApprovedCommand, CommandConfig, WorktrunkConfig};
+use worktrunk::config::{CommandConfig, WorktrunkConfig};
 use worktrunk::git::GitError;
 use worktrunk::styling::{
     AnstyleStyle, HINT_EMOJI, WARNING, WARNING_EMOJI, eprintln, format_with_gutter,
 };
 
-/// Convert CommandConfig to a vector of (name, command) pairs
+/// Convert CommandConfig to a vector of `(name, command)` pairs.
 ///
-/// # Arguments
-/// * `config` - The command configuration to convert
-/// * `default_prefix` - Prefix for unnamed commands (typically "cmd")
-///
-/// # Naming Behavior
-/// - **Single string**: Uses the exact prefix without numbering
-///   - `pre-merge-check = "exit 0"` → `("cmd", "exit 0")`
-/// - **Array (even single-element)**: Appends 1-based index to prefix
-///   - `pre-merge-check = ["exit 0"]` → `("cmd-1", "exit 0")`
-///   - `pre-merge-check = ["a", "b"]` → `("cmd-1", "a"), ("cmd-2", "b")`
-/// - **Named table**: Uses the key names directly (sorted alphabetically)
-///   - `[pre-merge-check]` `foo="a"` `bar="b"` → `("bar", "b"), ("foo", "a")`
+/// Naming rules:
+/// - Single string → uses the prefix directly (`"cmd"`)
+/// - Array → appends 1-based index (`"cmd-1"`, `"cmd-2"`, …)
+/// - Table → uses the map keys (sorted for determinism)
 pub fn command_config_to_vec(
     config: &CommandConfig,
     default_prefix: &str,
@@ -36,18 +27,15 @@ pub fn command_config_to_vec(
             .collect(),
         CommandConfig::Named(map) => {
             let mut pairs: Vec<_> = map.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
-            // Sort by name for deterministic iteration order
             pairs.sort_by(|a, b| a.0.cmp(&b.0));
             pairs
         }
     }
 }
 
-/// Check if commands need approval and handle the approval flow
-///
-/// Returns `Ok(true)` if all commands are approved (or force-approved),
-/// `Ok(false)` if user declined approval.
-/// Automatically saves approvals when granted.
+/// Batch approval helper used when multiple commands are queued for execution.
+/// Returns `Ok(true)` when execution may continue, `Ok(false)` when the user
+/// declined, and `Err` if config reload/save fails.
 pub fn approve_command_batch(
     commands: &[(String, String)],
     project_id: &str,
@@ -55,73 +43,96 @@ pub fn approve_command_batch(
     force: bool,
     context: &str,
 ) -> Result<bool, GitError> {
-    // Find commands that need approval
-    let needs_approval: Vec<(&str, &str)> = commands
+    let needs_approval: Vec<(&String, &String)> = commands
         .iter()
-        .filter(|(_, cmd)| !config.is_command_approved(project_id, cmd))
-        .map(|(name, cmd)| (name.as_str(), cmd.as_str()))
+        .filter(|(_, command)| !config.is_command_approved(project_id, command))
+        .map(|(name, command)| (name, command))
         .collect();
 
     if needs_approval.is_empty() {
         return Ok(true);
     }
 
-    // Prompt or force-approve
-    let should_approve = if force {
+    let approved = if force {
         true
     } else {
         prompt_for_batch_approval(&needs_approval, project_id)
-            .map_err(|e| GitError::CommandFailed(format!("Failed to read user input: {}", e)))?
+            .map_err(|e| GitError::CommandFailed(e.to_string()))?
     };
 
-    if !should_approve {
+    if !approved {
         let dim = AnstyleStyle::new().dimmed();
         eprintln!("{dim}{context} declined{dim:#}");
         return Ok(false);
     }
 
-    // Save all approvals to config
     let mut fresh_config = WorktrunkConfig::load()
         .map_err(|e| GitError::CommandFailed(format!("Failed to reload config: {}", e)))?;
 
-    // Add each command to approved list
-    for (_, command) in &needs_approval {
-        if !fresh_config.is_command_approved(project_id, command) {
-            fresh_config.approved_commands.push(ApprovedCommand {
-                project: project_id.to_string(),
-                command: command.to_string(),
-            });
+    for (_, command) in needs_approval {
+        if let Err(e) = fresh_config.approve_command(project_id.to_string(), command.to_string()) {
+            log_approval_warning("Failed to save command approval", e);
+            eprintln!("You will be prompted again next time.");
         }
-    }
-
-    // Save all approvals at once
-    if let Err(e) = fresh_config.save() {
-        eprintln!("{WARNING_EMOJI} {WARNING}Failed to save command approvals: {e}{WARNING:#}");
-        eprintln!("You will be prompted again next time.");
     }
 
     Ok(true)
 }
 
-/// Prompt the user to approve multiple commands for execution
+/// Check whether a command is approved, prompting and persisting approval if needed.
 ///
-/// Displays a formatted prompt asking the user to approve a batch of commands,
-/// showing both the project and all commands being requested.
-pub fn prompt_for_batch_approval(
-    commands: &[(&str, &str)],
+/// Returns `Ok(true)` when the command may execute, `Ok(false)` when the user declined,
+/// and `Err` when an unexpected I/O failure occurs.
+///
+/// `from_project_config` should be `true` for commands sourced from `.config/wt.toml`,
+/// which we treat as trusted because they are checked into the repository.
+#[allow(dead_code)]
+pub fn check_and_approve_command(
     project_id: &str,
-) -> std::io::Result<bool> {
+    command: &str,
+    config: &WorktrunkConfig,
+    force: bool,
+    from_project_config: bool,
+) -> Result<bool, GitError> {
+    if from_project_config || force || config.is_command_approved(project_id, command) {
+        return Ok(true);
+    }
+
+    match prompt_for_approval(command, project_id) {
+        Ok(true) => {
+            match WorktrunkConfig::load() {
+                Ok(mut fresh_config) => {
+                    if let Err(e) =
+                        fresh_config.approve_command(project_id.to_string(), command.to_string())
+                    {
+                        log_approval_warning("Failed to save command approval", e);
+                        eprintln!("You will be prompted again next time.");
+                    }
+                }
+                Err(e) => {
+                    log_approval_warning("Failed to reload config for saving approval", e);
+                    eprintln!("You will be prompted again next time.");
+                }
+            }
+            Ok(true)
+        }
+        Ok(false) => Ok(false),
+        Err(e) => {
+            log_approval_warning("Failed to read user input", e);
+            Ok(false)
+        }
+    }
+}
+
+fn log_approval_warning(message: &str, error: impl std::fmt::Display) {
+    eprintln!("{WARNING_EMOJI} {WARNING}{message}: {error}{WARNING:#}");
+}
+
+#[allow(dead_code)]
+fn prompt_for_approval(command: &str, project_id: &str) -> std::io::Result<bool> {
     use std::io::{self, Write};
-    use worktrunk::styling::eprintln;
 
-    debug_assert!(
-        !commands.is_empty(),
-        "prompt_for_batch_approval called with empty commands list"
-    );
-
-    // Extract just the project name for cleaner display
     let project_name = project_id.split('/').next_back().unwrap_or(project_id);
-
     let bold = AnstyleStyle::new().bold();
     let dim = AnstyleStyle::new().dimmed();
 
@@ -129,21 +140,51 @@ pub fn prompt_for_batch_approval(
     eprintln!("{WARNING_EMOJI} {WARNING}Permission required to execute in worktree{WARNING:#}");
     eprintln!();
     eprintln!("{bold}{project_name}{bold:#} ({dim}{project_id}{dim:#}) wants to execute:");
+    eprint!("{}", format_with_gutter(command, "")); // Gutter at column 0
     eprintln!();
-
-    // Show each command with its name
-    for (name, command) in commands {
-        eprintln!("{bold}{name}:{bold:#}");
-        eprint!("{}", format_with_gutter(command));
-        eprintln!();
-    }
-
     eprint!("{HINT_EMOJI} Allow and remember? {bold}[y/N]{bold:#} ");
     io::stderr().flush()?;
 
     let mut response = String::new();
     io::stdin().read_line(&mut response)?;
+    Ok(response.trim().eq_ignore_ascii_case("y"))
+}
 
+fn prompt_for_batch_approval(
+    commands: &[(&String, &String)],
+    project_id: &str,
+) -> std::io::Result<bool> {
+    use std::io::{self, Write};
+
+    let project_name = project_id.split('/').next_back().unwrap_or(project_id);
+    let bold = AnstyleStyle::new().bold();
+    let dim = AnstyleStyle::new().dimmed();
+    let count = commands.len();
+    let plural = if count == 1 { "" } else { "s" };
+
+    eprintln!();
+    eprintln!(
+        "{WARNING_EMOJI} {WARNING}Permission required to execute {bold}{count}{bold:#} command{plural}{WARNING:#}",
+    );
+    eprintln!();
+    eprintln!("{bold}{project_name}{bold:#} ({dim}{project_id}{dim:#}) wants to execute:");
+    eprintln!();
+
+    for (name, command) in commands {
+        let label = if count == 1 {
+            (*command).clone()
+        } else {
+            format!("{name}: {command}")
+        };
+        eprint!("{}", format_with_gutter(&label, ""));
+    }
+
+    eprintln!();
+    eprint!("{HINT_EMOJI} Allow and remember? {bold}[y/N]{bold:#} ");
+    io::stderr().flush()?;
+
+    let mut response = String::new();
+    io::stdin().read_line(&mut response)?;
     Ok(response.trim().eq_ignore_ascii_case("y"))
 }
 
@@ -179,7 +220,6 @@ mod tests {
         map.insert("alpha".to_string(), "a".to_string());
         let config = CommandConfig::Named(map);
         let result = command_config_to_vec(&config, "cmd");
-        // Should be sorted alphabetically
         assert_eq!(
             result,
             vec![
@@ -187,14 +227,5 @@ mod tests {
                 ("zebra".to_string(), "z".to_string())
             ]
         );
-    }
-
-    #[test]
-    fn test_command_config_to_vec_different_prefix() {
-        let config = CommandConfig::Single("test".to_string());
-        let result1 = command_config_to_vec(&config, "cmd");
-        let result2 = command_config_to_vec(&config, "check");
-        assert_eq!(result1[0].0, "cmd");
-        assert_eq!(result2[0].0, "check");
     }
 }

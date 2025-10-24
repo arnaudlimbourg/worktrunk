@@ -1,4 +1,5 @@
 pub mod command_approval;
+mod command_executor;
 pub mod completion;
 pub mod config;
 pub mod configure_shell;

@@ -1,11 +1,12 @@
-use worktrunk::config::{ProjectConfig, WorktrunkConfig, expand_command_template};
+use anstyle::{AnsiColor, Color};
+use worktrunk::config::{ProjectConfig, WorktrunkConfig};
 use worktrunk::git::{GitError, Repository};
 use worktrunk::styling::{
     AnstyleStyle, CYAN, CYAN_BOLD, ERROR, ERROR_EMOJI, GREEN, GREEN_BOLD, HINT, HINT_EMOJI,
     eprintln, println,
 };
 
-use super::command_approval::{approve_command_batch, command_config_to_vec};
+use super::command_executor::{CommandContext, prepare_project_commands};
 use super::worktree::handle_push;
 use super::worktree::handle_remove;
 use crate::output::{execute_command_in_worktree, handle_remove_output};
@@ -306,45 +307,36 @@ fn run_pre_merge_checks(
         return Ok(());
     };
 
-    let commands = command_config_to_vec(pre_merge_config, "cmd");
-    if commands.is_empty() {
-        return Ok(());
-    }
-
-    let project_id = repo.project_identifier()?;
-    let repo_root = repo.main_worktree_root()?;
-    let repo_name = repo_root
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("unknown");
-
-    // Approve commands (prompt if needed, save approvals)
-    if !approve_command_batch(&commands, &project_id, config, force, "Pre-merge checks")? {
-        return Err(GitError::CommandFailed(String::new()));
-    }
-
-    // Execute each command sequentially, fail-fast on errors
-    for (name, command) in commands {
-        let expanded_command = expand_command_template(
-            &command,
-            repo_name,
-            current_branch,
-            worktree_path,
-            &repo_root,
-            Some(target_branch),
-        );
-
+    let ctx = CommandContext::new(repo, config, current_branch, worktree_path, force);
+    let commands = prepare_project_commands(
+        pre_merge_config,
+        "cmd",
+        &ctx,
+        false,
+        &[("target", target_branch)],
+        "Pre-merge checks",
+        |_, command| {
+            let dim = AnstyleStyle::new().dimmed();
+            eprintln!("{dim}Skipping pre-merge check: {command}{dim:#}");
+        },
+    )?;
+    for prepared in commands {
         if !internal {
             use std::io::Write;
-            println!("🔄 {CYAN}Running pre-merge check '{name}'...{CYAN:#}");
+            let cyan = AnstyleStyle::new().fg_color(Some(Color::Ansi(AnsiColor::Cyan)));
+            println!(
+                "🔄 {cyan}Running pre-merge check '{name}'...{cyan:#}",
+                name = prepared.name
+            );
             let _ = std::io::stdout().flush();
         }
 
-        if let Err(e) = execute_command_in_worktree(worktree_path, &expanded_command) {
+        if let Err(e) = execute_command_in_worktree(worktree_path, &prepared.expanded) {
             eprintln!();
             let error_bold = ERROR.bold();
             eprintln!(
-                "{ERROR_EMOJI} {ERROR}Pre-merge check failed: {error_bold}{name}{error_bold:#}{ERROR:#}"
+                "{ERROR_EMOJI} {ERROR}Pre-merge check failed: {error_bold}{name}{error_bold:#}{ERROR:#}",
+                name = prepared.name,
             );
             eprintln!();
             eprintln!("  {e}");

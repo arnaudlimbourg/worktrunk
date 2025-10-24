@@ -101,14 +101,14 @@
 //! See also: DEMO.md for detailed architecture explanation.
 
 use std::path::PathBuf;
-use worktrunk::config::{ProjectConfig, WorktrunkConfig, expand_command_template};
+use worktrunk::config::{ProjectConfig, WorktrunkConfig};
 use worktrunk::git::{GitError, Repository};
 use worktrunk::styling::{
     ADDITION, AnstyleStyle, CYAN, CYAN_BOLD, DELETION, ERROR, ERROR_EMOJI, GREEN, GREEN_BOLD, HINT,
     HINT_EMOJI, WARNING, WARNING_EMOJI, eprint, eprintln, format_with_gutter, println,
 };
 
-use crate::commands::command_approval::{approve_command_batch, command_config_to_vec};
+use super::command_executor::{CommandContext, prepare_project_commands};
 use crate::commands::process::spawn_detached;
 use crate::output::execute_command_in_worktree;
 
@@ -173,7 +173,9 @@ pub fn handle_switch(
     // Check if worktree already exists for this branch
     match repo.worktree_for_branch(branch)? {
         Some(existing_path) if existing_path.exists() => {
-            return Ok(SwitchResult::ExistingWorktree(existing_path));
+            // Canonicalize the path for cleaner display
+            let canonical_existing_path = existing_path.canonicalize().unwrap_or(existing_path);
+            return Ok(SwitchResult::ExistingWorktree(canonical_existing_path));
         }
         Some(_) => {
             let error_bold = ERROR.bold();
@@ -216,12 +218,12 @@ pub fn handle_switch(
 
     // Execute post-create commands (sequential, blocking)
     if !no_config_commands {
-        execute_post_create_commands(&worktree_path, &repo, config, branch, repo_name, force)?;
+        execute_post_create_commands(&worktree_path, &repo, config, branch, force)?;
     }
 
     // Spawn post-start commands (parallel, background)
     if !no_config_commands {
-        spawn_post_start_commands(&worktree_path, &repo, config, branch, repo_name, force)?;
+        spawn_post_start_commands(&worktree_path, &repo, config, branch, force)?;
     }
 
     Ok(SwitchResult::CreatedWorktree {
@@ -400,19 +402,22 @@ fn check_worktree_conflicts(
     Ok(())
 }
 
+/// Helper to load project config with error handling
+fn load_project_config(repo: &Repository) -> Result<Option<ProjectConfig>, GitError> {
+    let repo_root = repo.worktree_root()?;
+    ProjectConfig::load(&repo_root)
+        .map_err(|e| GitError::CommandFailed(format!("Failed to load project config: {}", e)))
+}
+
 /// Execute post-create commands sequentially (blocking)
 fn execute_post_create_commands(
     worktree_path: &std::path::Path,
     repo: &Repository,
     config: &WorktrunkConfig,
     branch: &str,
-    repo_name: &str,
     force: bool,
 ) -> Result<(), GitError> {
-    let repo_root = repo.worktree_root()?;
-    let project_config = match ProjectConfig::load(&repo_root)
-        .map_err(|e| GitError::CommandFailed(format!("Failed to load project config: {}", e)))?
-    {
+    let project_config = match load_project_config(repo)? {
         Some(cfg) => cfg,
         None => return Ok(()),
     };
@@ -421,39 +426,36 @@ fn execute_post_create_commands(
         return Ok(());
     };
 
-    let commands = command_config_to_vec(post_create_config, "cmd");
+    let ctx = CommandContext::new(repo, config, branch, worktree_path, force);
+    let commands = prepare_project_commands(
+        post_create_config,
+        "cmd",
+        &ctx,
+        false,
+        &[],
+        "Post-create commands",
+        |_, command| {
+            let dim = AnstyleStyle::new().dimmed();
+            eprintln!("{dim}Skipping command: {command}{dim:#}");
+        },
+    )?;
+
     if commands.is_empty() {
         return Ok(());
     }
 
-    let project_id = repo.project_identifier()?;
-    let repo_root = repo.main_worktree_root()?;
-
-    // Approve commands (prompt if needed, save approvals)
-    if !approve_command_batch(
-        &commands,
-        &project_id,
-        config,
-        force,
-        "Post-create commands",
-    )? {
-        return Ok(());
-    }
-
     // Execute each command sequentially
-    for (name, command) in commands {
-        let expanded_command =
-            expand_command_template(&command, repo_name, branch, worktree_path, &repo_root, None);
-
+    for prepared in commands {
         use std::io::Write;
         eprintln!("🔄 {CYAN}Executing (post-create):{CYAN:#}");
-        eprint!("{}", format_with_gutter(&expanded_command));
+        eprint!("{}", format_with_gutter(&prepared.expanded, "")); // Gutter at column 0
         let _ = std::io::stderr().flush();
 
-        if let Err(e) = execute_command_in_worktree(worktree_path, &expanded_command) {
+        if let Err(e) = execute_command_in_worktree(worktree_path, &prepared.expanded) {
             let warning_bold = WARNING.bold();
             eprintln!(
-                "{WARNING_EMOJI} {WARNING}Command {warning_bold}{name}{warning_bold:#} failed: {e}{WARNING:#}"
+                "{WARNING_EMOJI} {WARNING}Command {warning_bold}{name}{warning_bold:#} failed: {e}{WARNING:#}",
+                name = prepared.name,
             );
             // Continue with other commands even if one fails
         }
@@ -472,13 +474,9 @@ fn spawn_post_start_commands(
     repo: &Repository,
     config: &WorktrunkConfig,
     branch: &str,
-    repo_name: &str,
     force: bool,
 ) -> Result<(), GitError> {
-    let repo_root = repo.worktree_root()?;
-    let project_config = match ProjectConfig::load(&repo_root)
-        .map_err(|e| GitError::CommandFailed(format!("Failed to load project config: {}", e)))?
-    {
+    let project_config = match load_project_config(repo)? {
         Some(cfg) => cfg,
         None => return Ok(()),
     };
@@ -487,30 +485,32 @@ fn spawn_post_start_commands(
         return Ok(());
     };
 
-    let commands = command_config_to_vec(post_start_config, "cmd");
+    let ctx = CommandContext::new(repo, config, branch, worktree_path, force);
+    let commands = prepare_project_commands(
+        post_start_config,
+        "cmd",
+        &ctx,
+        false,
+        &[],
+        "Post-start commands",
+        |_, command| {
+            let dim = AnstyleStyle::new().dimmed();
+            eprintln!("{dim}Skipping command: {command}{dim:#}");
+        },
+    )?;
+
     if commands.is_empty() {
         return Ok(());
     }
 
-    let project_id = repo.project_identifier()?;
-    let repo_root = repo.main_worktree_root()?;
-
-    // Approve commands (prompt if needed, save approvals)
-    if !approve_command_batch(&commands, &project_id, config, force, "Post-start commands")? {
-        return Ok(());
-    }
-
     // Spawn each command as a detached background process
-    for (name, command) in commands {
-        let expanded_command =
-            expand_command_template(&command, repo_name, branch, worktree_path, &repo_root, None);
-
+    for prepared in commands {
         use std::io::Write;
         eprintln!("🔄 {CYAN}Starting (background):{CYAN:#}");
-        eprint!("{}", format_with_gutter(&expanded_command));
+        eprint!("{}", format_with_gutter(&prepared.expanded, ""));
         let _ = std::io::stderr().flush();
 
-        match spawn_detached(worktree_path, &expanded_command, &name) {
+        match spawn_detached(worktree_path, &prepared.expanded, &prepared.name) {
             Ok(log_path) => {
                 let dim = AnstyleStyle::new().dimmed();
                 // Show relative path from worktree/.git/wt-logs/
@@ -522,7 +522,10 @@ fn spawn_post_start_commands(
                 eprintln!("{dim}Logs: {}{dim:#}", display_path);
             }
             Err(e) => {
-                eprintln!("{WARNING_EMOJI} {WARNING}Failed to spawn '{name}': {e}{WARNING:#}");
+                eprintln!(
+                    "{WARNING_EMOJI} {WARNING}Failed to spawn '{name}': {e}{WARNING:#}",
+                    name = prepared.name,
+                );
             }
         }
     }
@@ -652,18 +655,18 @@ pub fn handle_push(
                 if commit_count == 1 { "" } else { "s" }
             )];
 
-            if stats.files > 0 {
+            if let Some(files) = stats.files {
                 summary_parts.push(format!(
                     "{} file{}",
-                    stats.files,
-                    if stats.files == 1 { "" } else { "s" }
+                    files,
+                    if files == 1 { "" } else { "s" }
                 ));
             }
-            if stats.insertions > 0 {
-                summary_parts.push(format!("{ADDITION}+{}{ADDITION:#}", stats.insertions));
+            if let Some(insertions) = stats.insertions {
+                summary_parts.push(format!("{ADDITION}+{insertions}{ADDITION:#}"));
             }
-            if stats.deletions > 0 {
-                summary_parts.push(format!("{DELETION}-{}{DELETION:#}", stats.deletions));
+            if let Some(deletions) = stats.deletions {
+                summary_parts.push(format!("{DELETION}-{deletions}{DELETION:#}"));
             }
 
             println!(
@@ -680,33 +683,36 @@ pub fn handle_push(
 
 /// Parse git diff --shortstat output
 struct DiffStats {
-    files: usize,
-    insertions: usize,
-    deletions: usize,
+    files: Option<usize>,
+    insertions: Option<usize>,
+    deletions: Option<usize>,
 }
 
 fn parse_diff_shortstat(output: &str) -> DiffStats {
     let mut stats = DiffStats {
-        files: 0,
-        insertions: 0,
-        deletions: 0,
+        files: None,
+        insertions: None,
+        deletions: None,
     };
 
     // Example: " 3 files changed, 45 insertions(+), 12 deletions(-)"
-    for part in output.split(',') {
-        let tokens: Vec<&str> = part.trim().split_whitespace().collect();
-        if tokens.len() < 2 {
-            continue;
-        }
+    let parts: Vec<&str> = output.split(',').collect();
 
-        if let Ok(n) = tokens[0].parse::<usize>() {
-            if tokens[1].starts_with("file") {
-                stats.files = n;
-            } else if tokens[1].starts_with("insertion") {
-                stats.insertions = n;
-            } else if tokens[1].starts_with("deletion") {
-                stats.deletions = n;
+    for part in parts {
+        let part = part.trim();
+
+        if part.contains("file") {
+            if let Some(num_str) = part.split_whitespace().next() {
+                stats.files = num_str.parse().ok();
             }
+        } else if part.contains("insertion") {
+            if let Some(num_str) = part.split_whitespace().next() {
+                stats.insertions = num_str.parse().ok();
+            }
+        } else if part.contains("deletion")
+            && let Some(num_str) = part.split_whitespace().next()
+        {
+            stats.deletions = num_str.parse().ok();
         }
     }
 
