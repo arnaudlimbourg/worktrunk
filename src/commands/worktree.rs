@@ -104,8 +104,8 @@ use std::path::PathBuf;
 use worktrunk::config::{ProjectConfig, WorktrunkConfig};
 use worktrunk::git::{GitError, Repository};
 use worktrunk::styling::{
-    ADDITION, AnstyleStyle, CYAN, CYAN_BOLD, DELETION, ERROR, ERROR_EMOJI, GREEN, GREEN_BOLD, HINT,
-    HINT_EMOJI, SUCCESS_EMOJI, WARNING, WARNING_EMOJI, eprint, eprintln, format_with_gutter,
+    ADDITION, AnstyleStyle, CYAN, CYAN_BOLD, DELETION, GREEN, GREEN_BOLD, SUCCESS_EMOJI, WARNING,
+    WARNING_EMOJI, eprint, eprintln, format_with_gutter,
 };
 
 use super::command_executor::{CommandContext, prepare_project_commands};
@@ -154,13 +154,9 @@ pub fn handle_switch(
 
     // Check for conflicting conditions
     if create && repo.branch_exists(branch)? {
-        let error_bold = ERROR.bold();
-        eprintln!(
-            "{ERROR_EMOJI} {ERROR}Branch {error_bold}{branch}{error_bold:#} already exists{ERROR:#}"
-        );
-        eprintln!();
-        eprintln!("{HINT_EMOJI} {HINT}Remove --create flag to switch to it{HINT:#}");
-        return Err(GitError::CommandFailed(String::new()));
+        return Err(GitError::BranchAlreadyExists {
+            branch: branch.to_string(),
+        });
     }
 
     // Check if base flag was provided without create flag
@@ -178,13 +174,9 @@ pub fn handle_switch(
             return Ok(SwitchResult::ExistingWorktree(canonical_existing_path));
         }
         Some(_) => {
-            let error_bold = ERROR.bold();
-            eprintln!(
-                "{ERROR_EMOJI} {ERROR}Worktree directory missing for {error_bold}{branch}{error_bold:#}{ERROR:#}"
-            );
-            eprintln!();
-            eprintln!("{HINT_EMOJI} {HINT}Run 'git worktree prune' to clean up{HINT:#}");
-            return Err(GitError::CommandFailed(String::new()));
+            return Err(GitError::WorktreeMissing {
+                branch: branch.to_string(),
+            });
         }
         None => {}
     }
@@ -298,23 +290,17 @@ fn remove_worktree_by_name(repo: &Repository, branch_name: &str) -> Result<Remov
     let worktree_path = match worktree_path {
         Some(path) => path,
         None => {
-            let error_bold = ERROR.bold();
-            eprintln!(
-                "{ERROR_EMOJI} {ERROR}No worktree found for branch {error_bold}{branch_name}{error_bold:#}{ERROR:#}"
-            );
-            return Err(GitError::CommandFailed(String::new()));
+            return Err(GitError::NoWorktreeFound {
+                branch: branch_name.to_string(),
+            });
         }
     };
 
     // Check if the target worktree exists on disk
     if !worktree_path.exists() {
-        let error_bold = ERROR.bold();
-        eprintln!(
-            "{ERROR_EMOJI} {ERROR}Worktree directory missing for {error_bold}{branch_name}{error_bold:#}{ERROR:#}"
-        );
-        eprintln!();
-        eprintln!("{HINT_EMOJI} {HINT}Run 'git worktree prune' to clean up{HINT:#}");
-        return Err(GitError::CommandFailed(String::new()));
+        return Err(GitError::WorktreeMissing {
+            branch: branch_name.to_string(),
+        });
     }
 
     // Check if the target worktree is clean (no uncommitted changes)
@@ -390,18 +376,10 @@ fn check_worktree_conflicts(
         .collect();
 
     if !overlapping.is_empty() {
-        eprintln!("{ERROR_EMOJI} {ERROR}Cannot push: conflicting uncommitted changes in:{ERROR:#}");
-        eprintln!();
-        let dim = AnstyleStyle::new().dimmed();
-        for file in &overlapping {
-            eprintln!("{dim}•{dim:#} {}", file);
-        }
-        eprintln!();
-        eprintln!(
-            "{HINT_EMOJI} {HINT}Commit or stash these changes in {} first{HINT:#}",
-            wt_path.display()
-        );
-        return Err(GitError::CommandFailed(String::new()));
+        return Err(GitError::ConflictingChanges {
+            files: overlapping,
+            worktree_path: wt_path.to_path_buf(),
+        });
     }
 
     Ok(())
@@ -544,26 +522,14 @@ pub fn handle_push(target: Option<&str>, allow_merge_commits: bool) -> Result<()
 
     // Check if it's a fast-forward
     if !repo.is_ancestor(&target_branch, "HEAD")? {
-        let error_bold = ERROR.bold();
-        eprintln!(
-            "{ERROR_EMOJI} {ERROR}Not a fast-forward from {error_bold}{target_branch}{error_bold:#} to HEAD{ERROR:#}"
-        );
-        eprintln!();
-        eprintln!(
-            "{HINT_EMOJI} {HINT}The target branch has commits not in your current branch{HINT:#}"
-        );
-        eprintln!("{HINT_EMOJI} {HINT}Consider: git pull or git rebase{HINT:#}");
-        return Err(GitError::CommandFailed(String::new()));
+        return Err(GitError::NotFastForward {
+            target_branch: target_branch.to_string(),
+        });
     }
 
     // Check for merge commits unless allowed
     if !allow_merge_commits && repo.has_merge_commits(&target_branch, "HEAD")? {
-        eprintln!("{ERROR_EMOJI} {ERROR}Found merge commits in push range{ERROR:#}");
-        eprintln!();
-        eprintln!(
-            "{HINT_EMOJI} {HINT}Use --allow-merge-commits to push non-linear history{HINT:#}"
-        );
-        return Err(GitError::CommandFailed(String::new()));
+        return Err(GitError::MergeCommitsFound);
     }
 
     // Configure receive.denyCurrentBranch if needed
@@ -633,8 +599,8 @@ pub fn handle_push(target: Option<&str>, allow_merge_commits: bool) -> Result<()
     // Perform the push
     let push_target = format!("HEAD:{}", target_branch);
     repo.run_command(&["push", git_common_dir.to_str().unwrap(), &push_target])
-        .map_err(|e| {
-            GitError::CommandFailed(format!("{ERROR_EMOJI} {ERROR}Push failed: {e}{ERROR:#}"))
+        .map_err(|e| GitError::PushFailed {
+            error: e.to_string(),
         })?;
 
     // Build success message with statistics

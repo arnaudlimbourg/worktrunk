@@ -88,7 +88,7 @@ where
         for (name, command) in &commands {
             on_skip(name, command);
         }
-        return Err(GitError::CommandFailed(String::new()));
+        return Err(GitError::CommandNotApproved);
     }
 
     for (name, command) in commands {

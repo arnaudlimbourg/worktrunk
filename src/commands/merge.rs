@@ -1,8 +1,8 @@
 use worktrunk::config::{ProjectConfig, WorktrunkConfig};
 use worktrunk::git::{GitError, Repository};
 use worktrunk::styling::{
-    AnstyleStyle, CYAN, CYAN_BOLD, ERROR, ERROR_EMOJI, GREEN, HINT, HINT_EMOJI, SUCCESS_EMOJI,
-    eprint, eprintln, format_with_gutter, println,
+    AnstyleStyle, CYAN, CYAN_BOLD, GREEN, SUCCESS_EMOJI, eprint, eprintln, format_with_gutter,
+    println,
 };
 
 use super::command_executor::{CommandContext, prepare_project_commands};
@@ -21,12 +21,7 @@ pub fn handle_merge(
     let repo = Repository::current();
 
     // Get current branch
-    let current_branch = repo.current_branch()?.ok_or_else(|| {
-        eprintln!("{ERROR_EMOJI} {ERROR}Not on a branch (detached HEAD){ERROR:#}");
-        eprintln!();
-        eprintln!("{HINT_EMOJI} {HINT}You are in detached HEAD state{HINT:#}");
-        GitError::CommandFailed(String::new())
-    })?;
+    let current_branch = repo.current_branch()?.ok_or(GitError::DetachedHead)?;
 
     // Get target branch (default to default branch if not provided)
     let target_branch = target.map_or_else(|| repo.default_branch(), |b| Ok(b.to_string()))?;
@@ -226,10 +221,7 @@ fn handle_commit_changes(
     // Check if there are staged changes after staging
     if !repo.has_staged_changes()? {
         // No staged changes means only untracked files exist
-        eprintln!("{ERROR_EMOJI} {ERROR}Working tree has untracked files{ERROR:#}");
-        eprintln!();
-        eprintln!("{HINT_EMOJI} {HINT}Add them with 'git add' and try again{HINT:#}");
-        return Err(GitError::CommandFailed(String::new()));
+        return Err(GitError::UntrackedFiles);
     }
 
     // Generate commit message
@@ -278,10 +270,7 @@ fn handle_squash(target_branch: &str) -> Result<Option<usize>, GitError> {
 
     if commit_count == 0 && has_staged {
         // Just staged changes, no commits - would need to commit but this shouldn't happen in merge flow
-        eprintln!("{ERROR_EMOJI} {ERROR}Staged changes without commits{ERROR:#}");
-        eprintln!();
-        eprintln!("{HINT_EMOJI} {HINT}Please commit them first{HINT:#}");
-        return Err(GitError::CommandFailed(String::new()));
+        return Err(GitError::StagedChangesWithoutCommits);
     }
 
     if commit_count == 1 && !has_staged {
@@ -374,17 +363,10 @@ fn run_pre_merge_checks(
         let _ = std::io::stderr().flush();
 
         if let Err(e) = execute_command_in_worktree(worktree_path, &prepared.expanded) {
-            eprintln!();
-            let error_bold = ERROR.bold();
-            eprintln!(
-                "{ERROR_EMOJI} {ERROR}Pre-merge check failed: {error_bold}{name}{error_bold:#}{ERROR:#}",
-                name = prepared.name,
-            );
-            eprintln!();
-            eprintln!("{e}");
-            eprintln!();
-            eprintln!("{HINT_EMOJI} {HINT}Use --no-verify to skip pre-merge checks{HINT:#}");
-            return Err(GitError::CommandFailed(String::new()));
+            return Err(GitError::PreMergeCheckFailed {
+                check_name: prepared.name.clone(),
+                error: e.to_string(),
+            });
         }
     }
 

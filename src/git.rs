@@ -14,19 +14,169 @@ pub struct Worktree {
 
 #[derive(Debug)]
 pub enum GitError {
+    /// Generic error with a message
     CommandFailed(String),
+    /// Error for parsing failures
     ParseError(String),
+    /// Repository is in detached HEAD state
+    DetachedHead,
+    /// Working tree has untracked files
+    UntrackedFiles,
+    /// Working tree has staged changes but no commits
+    StagedChangesWithoutCommits,
+    /// Pre-merge check failed
+    PreMergeCheckFailed { check_name: String, error: String },
+    /// Working tree has uncommitted changes
+    UncommittedChanges,
+    /// Branch already exists (when trying to create)
+    BranchAlreadyExists { branch: String },
+    /// Worktree directory is missing
+    WorktreeMissing { branch: String },
+    /// No worktree found for branch
+    NoWorktreeFound { branch: String },
+    /// Cannot push due to conflicting uncommitted changes
+    ConflictingChanges {
+        files: Vec<String>,
+        worktree_path: PathBuf,
+    },
+    /// Push is not a fast-forward
+    NotFastForward { target_branch: String },
+    /// Found merge commits in push range
+    MergeCommitsFound,
+    /// Command was not approved by user
+    CommandNotApproved,
+    /// Push operation failed
+    PushFailed { error: String },
 }
 
 impl std::fmt::Display for GitError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use crate::styling::{ERROR, ERROR_EMOJI, HINT, HINT_EMOJI};
+
         match self {
-            // CommandFailed messages are already formatted with emoji and colors
+            // Plain message that will be displayed by main.rs
             GitError::CommandFailed(msg) => write!(f, "{}", msg),
+
             // ParseError messages need formatting
             GitError::ParseError(msg) => {
-                use crate::styling::{ERROR, ERROR_EMOJI};
                 write!(f, "{ERROR_EMOJI} {ERROR}{msg}{ERROR:#}")
+            }
+
+            // Detached HEAD error
+            GitError::DetachedHead => {
+                write!(
+                    f,
+                    "{ERROR_EMOJI} {ERROR}Not on a branch (detached HEAD){ERROR:#}\n\n{HINT_EMOJI} {HINT}You are in detached HEAD state{HINT:#}"
+                )
+            }
+
+            // Untracked files error
+            GitError::UntrackedFiles => {
+                write!(
+                    f,
+                    "{ERROR_EMOJI} {ERROR}Working tree has untracked files{ERROR:#}\n\n{HINT_EMOJI} {HINT}Add them with 'git add' and try again{HINT:#}"
+                )
+            }
+
+            // Staged changes without commits
+            GitError::StagedChangesWithoutCommits => {
+                write!(
+                    f,
+                    "{ERROR_EMOJI} {ERROR}Staged changes without commits{ERROR:#}\n\n{HINT_EMOJI} {HINT}Please commit them first{HINT:#}"
+                )
+            }
+
+            // Pre-merge check failed
+            GitError::PreMergeCheckFailed { check_name, error } => {
+                let error_bold = ERROR.bold();
+                write!(
+                    f,
+                    "{ERROR_EMOJI} {ERROR}Pre-merge check failed: {error_bold}{check_name}{error_bold:#}{ERROR:#}\n\n{error}\n\n{HINT_EMOJI} {HINT}Use --no-verify to skip pre-merge checks{HINT:#}"
+                )
+            }
+
+            // Uncommitted changes
+            GitError::UncommittedChanges => {
+                write!(
+                    f,
+                    "{ERROR_EMOJI} {ERROR}Working tree has uncommitted changes{ERROR:#}\n\n{HINT_EMOJI} {HINT}Commit or stash them first{HINT:#}"
+                )
+            }
+
+            // Branch already exists
+            GitError::BranchAlreadyExists { branch } => {
+                let error_bold = ERROR.bold();
+                write!(
+                    f,
+                    "{ERROR_EMOJI} {ERROR}Branch {error_bold}{branch}{error_bold:#} already exists{ERROR:#}\n\n{HINT_EMOJI} {HINT}Remove --create flag to switch to it{HINT:#}"
+                )
+            }
+
+            // Worktree missing
+            GitError::WorktreeMissing { branch } => {
+                let error_bold = ERROR.bold();
+                write!(
+                    f,
+                    "{ERROR_EMOJI} {ERROR}Worktree directory missing for {error_bold}{branch}{error_bold:#}{ERROR:#}\n\n{HINT_EMOJI} {HINT}Run 'git worktree prune' to clean up{HINT:#}"
+                )
+            }
+
+            // No worktree found
+            GitError::NoWorktreeFound { branch } => {
+                let error_bold = ERROR.bold();
+                write!(
+                    f,
+                    "{ERROR_EMOJI} {ERROR}No worktree found for branch {error_bold}{branch}{error_bold:#}{ERROR:#}"
+                )
+            }
+
+            // Conflicting changes
+            GitError::ConflictingChanges {
+                files,
+                worktree_path,
+            } => {
+                use crate::styling::AnstyleStyle;
+                let dim = AnstyleStyle::new().dimmed();
+
+                write!(
+                    f,
+                    "{ERROR_EMOJI} {ERROR}Cannot push: conflicting uncommitted changes in:{ERROR:#}\n\n"
+                )?;
+                for file in files {
+                    writeln!(f, "{dim}•{dim:#} {file}")?;
+                }
+                write!(
+                    f,
+                    "\n{HINT_EMOJI} {HINT}Commit or stash these changes in {} first{HINT:#}",
+                    worktree_path.display()
+                )
+            }
+
+            // Not fast-forward
+            GitError::NotFastForward { target_branch } => {
+                let error_bold = ERROR.bold();
+                write!(
+                    f,
+                    "{ERROR_EMOJI} {ERROR}Not a fast-forward from {error_bold}{target_branch}{error_bold:#} to HEAD{ERROR:#}\n\n{HINT_EMOJI} {HINT}The target branch has commits not in your current branch{HINT:#}\n{HINT_EMOJI} {HINT}Consider: git pull or git rebase{HINT:#}"
+                )
+            }
+
+            // Merge commits found
+            GitError::MergeCommitsFound => {
+                write!(
+                    f,
+                    "{ERROR_EMOJI} {ERROR}Found merge commits in push range{ERROR:#}\n\n{HINT_EMOJI} {HINT}Use --allow-merge-commits to push non-linear history{HINT:#}"
+                )
+            }
+
+            // Command not approved
+            GitError::CommandNotApproved => {
+                Ok(()) // on_skip callback handles the printing
+            }
+
+            // Push failed
+            GitError::PushFailed { error } => {
+                write!(f, "{ERROR_EMOJI} {ERROR}Push failed: {error}{ERROR:#}")
             }
         }
     }
@@ -184,11 +334,7 @@ impl Repository {
     /// Returns an error if there are uncommitted changes.
     pub fn ensure_clean_working_tree(&self) -> Result<(), GitError> {
         if self.is_dirty()? {
-            use crate::styling::{ERROR, ERROR_EMOJI, HINT, HINT_EMOJI, eprintln};
-            eprintln!("{ERROR_EMOJI} {ERROR}Working tree has uncommitted changes{ERROR:#}");
-            eprintln!();
-            eprintln!("{HINT_EMOJI} {HINT}Commit or stash them first{HINT:#}");
-            return Err(GitError::CommandFailed(String::new()));
+            return Err(GitError::UncommittedChanges);
         }
         Ok(())
     }
