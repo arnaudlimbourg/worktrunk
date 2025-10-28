@@ -218,15 +218,9 @@ fn handle_commit_changes(
     ))
     .map_err(|e| GitError::CommandFailed(e.to_string()))?;
 
-    // Stage all tracked changes (excludes untracked files)
-    repo.run_command(&["add", "-u"])
+    // Stage all changes including untracked files
+    repo.run_command(&["add", "-A"])
         .map_err(|e| GitError::CommandFailed(format!("Failed to stage changes: {}", e)))?;
-
-    // Check if there are staged changes after staging
-    if !repo.has_staged_changes()? {
-        // No staged changes means only untracked files exist
-        return Err(GitError::UntrackedFiles);
-    }
 
     // Generate commit message
     crate::output::progress(format!("🔄 {CYAN}Generating commit message...{CYAN:#}"))

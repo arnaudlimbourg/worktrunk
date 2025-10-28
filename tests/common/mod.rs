@@ -380,6 +380,15 @@ pub fn setup_snapshot_settings(repo: &TestRepo) -> insta::Settings {
     let mut settings = insta::Settings::clone_current();
     settings.set_snapshot_path("../snapshots");
 
+    // Normalize project root path (for test fixtures)
+    // This must come before repo path filter to avoid partial matches
+    let project_root = std::env::var("CARGO_MANIFEST_DIR")
+        .ok()
+        .and_then(|p| std::path::PathBuf::from(p).canonicalize().ok());
+    if let Some(root) = project_root {
+        settings.add_filter(root.to_str().unwrap(), "[PROJECT_ROOT]");
+    }
+
     // Normalize paths
     settings.add_filter(repo.root_path().to_str().unwrap(), "[REPO]");
     for (name, path) in &repo.worktrees {

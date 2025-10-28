@@ -143,46 +143,6 @@ fn test_merge_dirty_working_tree() {
 }
 
 #[test]
-fn test_merge_dirty_working_tree_error_message() {
-    let mut repo = TestRepo::new();
-    repo.commit("Initial commit");
-    repo.setup_remote("main");
-
-    // Create a feature worktree with uncommitted changes (untracked file)
-    let feature_wt = repo.add_worktree("feature", "feature");
-    std::fs::write(feature_wt.join("untracked.txt"), "uncommitted content")
-        .expect("Failed to write file");
-
-    // Run merge command and capture output
-    let mut cmd = make_snapshot_cmd(&repo, "merge", &["main"], Some(&feature_wt));
-    let output = cmd.output().expect("Failed to run command");
-
-    // Should fail with exit code 1
-    assert!(!output.status.success(), "Command should fail");
-
-    // Convert stderr to string
-    let stderr = String::from_utf8_lossy(&output.stderr);
-
-    // CRITICAL: Error message must appear (styled with emoji/color)
-    // Before the fix, this would fail silently with no error message
-    // After the fix, structured errors are formatted in ONE canonical location (GitError::Display)
-    // and printed by main.rs (the only place that prints errors)
-    assert!(
-        stderr.contains("Working tree has untracked files"),
-        "Error output must contain the error message. Got stderr:\n{}",
-        stderr
-    );
-
-    // Verify we see the error exactly once (not duplicated)
-    let error_count = stderr.matches("Working tree has untracked files").count();
-    assert_eq!(
-        error_count, 1,
-        "Should see error message exactly once from main.rs via GitError::Display. Got {} occurrences",
-        error_count
-    );
-}
-
-#[test]
 fn test_merge_not_fast_forward() {
     let mut repo = TestRepo::new();
     repo.commit("Initial commit");
