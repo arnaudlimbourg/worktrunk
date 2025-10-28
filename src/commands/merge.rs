@@ -14,7 +14,7 @@ pub fn handle_merge(
     squash: bool,
     keep: bool,
     message: Option<&str>,
-    no_verify: bool,
+    no_hooks: bool,
     force: bool,
 ) -> Result<(), GitError> {
     let repo = Repository::current();
@@ -43,9 +43,9 @@ pub fn handle_merge(
     let config = WorktrunkConfig::load()
         .map_err(|e| GitError::CommandFailed(format!("Failed to load config: {}", e)))?;
 
-    // Run pre-merge checks unless --no-verify was specified
+    // Run pre-merge checks unless --no-hooks was specified
     // Do this BEFORE committing so we fail fast if checks won't pass
-    if !no_verify && let Ok(Some(project_config)) = ProjectConfig::load(&repo.worktree_root()?) {
+    if !no_hooks && let Ok(Some(project_config)) = ProjectConfig::load(&repo.worktree_root()?) {
         let worktree_path = std::env::current_dir().map_err(|e| {
             GitError::CommandFailed(format!("Failed to get current directory: {}", e))
         })?;

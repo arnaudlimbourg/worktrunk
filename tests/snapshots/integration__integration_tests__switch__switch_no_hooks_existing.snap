@@ -4,25 +4,26 @@ info:
   program: wt
   args:
     - switch
-    - existing-no-config-commands
+    - existing-no-hooks
     - "--execute"
     - "echo 'execute still runs'"
-    - "--no-config-commands"
+    - "--no-hooks"
   env:
     CLICOLOR_FORCE: "1"
     GIT_AUTHOR_DATE: "2025-01-01T00:00:00Z"
     GIT_COMMITTER_DATE: "2025-01-01T00:00:00Z"
     GIT_CONFIG_GLOBAL: /dev/null
     GIT_CONFIG_SYSTEM: /dev/null
+    GIT_EDITOR: ""
     LANG: C
     LC_ALL: C
     SOURCE_DATE_EPOCH: "1761609600"
-    WORKTRUNK_CONFIG_PATH: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmpSCHl0U/test-config.toml
+    WORKTRUNK_CONFIG_PATH: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmpUzmGZI/test-config.toml
 ---
 success: true
 exit_code: 0
 ----- stdout -----
-✅ [32mSwitched to worktree for [1mexisting-no-config-commands[0m at [WORKTREE_EXISTING_NO_CONFIG_COMMANDS][0m
+✅ [32mSwitched to worktree for [1mexisting-no-hooks[0m at [WORKTREE_EXISTING_NO_HOOKS][0m
 execute still runs
 
 ----- stderr -----

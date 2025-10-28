@@ -11,10 +11,11 @@ info:
     GIT_COMMITTER_DATE: "2025-01-01T00:00:00Z"
     GIT_CONFIG_GLOBAL: /dev/null
     GIT_CONFIG_SYSTEM: /dev/null
+    GIT_EDITOR: ""
     LANG: C
     LC_ALL: C
     SOURCE_DATE_EPOCH: "1761609600"
-    WORKTRUNK_CONFIG_PATH: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmpiVd1K8/test-config.toml
+    WORKTRUNK_CONFIG_PATH: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmpWAueHV/test-config.toml
 ---
 success: true
 exit_code: 0
@@ -307,7 +308,7 @@ _wt() {
             return 0
             ;;
         wt__merge)
-            opts="-s -k -m -f -v -h --squash --keep --message --no-verify --force --verbose --help [TARGET]"
+            opts="-s -k -m -f -v -h --squash --keep --message --no-hooks --force --verbose --help [TARGET]"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -357,7 +358,7 @@ _wt() {
             return 0
             ;;
         wt__switch)
-            opts="-c -b -x -f -v -h --create --base --execute --force --no-config-commands --verbose --help <BRANCH>"
+            opts="-c -b -x -f -v -h --create --base --execute --force --no-hooks --verbose --help <BRANCH>"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0

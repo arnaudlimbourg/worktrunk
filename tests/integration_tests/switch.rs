@@ -243,14 +243,14 @@ fn test_switch_no_config_commands_execute_still_runs() {
     repo.commit("Initial commit");
 
     snapshot_switch(
-        "switch_no_config_commands_execute_still_runs",
+        "switch_no_hooks_execute_still_runs",
         &repo,
         &[
             "--create",
-            "no-config-commands-test",
+            "no-hooks-test",
             "--execute",
             "echo 'execute command runs'",
-            "--no-config-commands",
+            "--no-hooks",
         ],
     );
 }
@@ -298,11 +298,11 @@ command = "{}"
     )
     .expect("Failed to write user config");
 
-    // With --no-config-commands, the post-start command should be skipped
+    // With --no-hooks, the post-start command should be skipped
     snapshot_switch_with_home(
-        "switch_no_config_commands_skips_post_start",
+        "switch_no_hooks_skips_post_start",
         &repo,
-        &["--create", "no-post-start", "--no-config-commands"],
+        &["--create", "no-post-start", "--no-hooks"],
         Some(temp_home.path()),
         &[],
     );
@@ -314,17 +314,17 @@ fn test_switch_no_config_commands_with_existing_worktree() {
     repo.commit("Initial commit");
 
     // Create a worktree first
-    repo.add_worktree("existing-no-config-commands", "existing-no-config-commands");
+    repo.add_worktree("existing-no-hooks", "existing-no-hooks");
 
-    // With --no-config-commands, the --execute command should still run
+    // With --no-hooks, the --execute command should still run
     snapshot_switch(
-        "switch_no_config_commands_existing",
+        "switch_no_hooks_existing",
         &repo,
         &[
-            "existing-no-config-commands",
+            "existing-no-hooks",
             "--execute",
             "echo 'execute still runs'",
-            "--no-config-commands",
+            "--no-hooks",
         ],
     );
 }
@@ -349,16 +349,11 @@ fn test_switch_no_config_commands_with_force() {
 
     repo.commit("Add config");
 
-    // With --no-config-commands, even --force shouldn't execute config commands
+    // With --no-hooks, even --force shouldn't execute config commands
     snapshot_switch_with_home(
-        "switch_no_config_commands_with_force",
+        "switch_no_hooks_with_force",
         &repo,
-        &[
-            "--create",
-            "force-no-config-commands",
-            "--force",
-            "--no-config-commands",
-        ],
+        &["--create", "force-no-hooks", "--force", "--no-hooks"],
         Some(temp_home.path()),
         &[],
     );

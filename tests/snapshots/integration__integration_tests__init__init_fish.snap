@@ -15,7 +15,7 @@ info:
     LANG: C
     LC_ALL: C
     SOURCE_DATE_EPOCH: "1761609600"
-    WORKTRUNK_CONFIG_PATH: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmpebsQWN/test-config.toml
+    WORKTRUNK_CONFIG_PATH: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmpW2Kqyf/test-config.toml
 ---
 success: true
 exit_code: 0
@@ -209,7 +209,7 @@ complete -c wt -n "__fish_wt_using_subcommand switch" -s b -l base -d 'Base bran
 complete -c wt -n "__fish_wt_using_subcommand switch" -s x -l execute -d 'Execute command after switching' -r
 complete -c wt -n "__fish_wt_using_subcommand switch" -s c -l create -d 'Create a new branch'
 complete -c wt -n "__fish_wt_using_subcommand switch" -s f -l force -d 'Skip confirmation prompt'
-complete -c wt -n "__fish_wt_using_subcommand switch" -l no-config-commands -d 'Skip executing post-start commands from project config'
+complete -c wt -n "__fish_wt_using_subcommand switch" -l no-hooks -d 'Skip all project hooks (post-create, post-start)'
 complete -c wt -n "__fish_wt_using_subcommand switch" -s v -l verbose -d 'Enable verbose output (show git commands and debug info)'
 complete -c wt -n "__fish_wt_using_subcommand switch" -s h -l help -d 'Print help'
 complete -c wt -n "__fish_wt_using_subcommand remove" -s v -l verbose -d 'Enable verbose output (show git commands and debug info)'
@@ -220,7 +220,7 @@ complete -c wt -n "__fish_wt_using_subcommand push" -s h -l help -d 'Print help'
 complete -c wt -n "__fish_wt_using_subcommand merge" -s m -l message -d 'Custom instruction for commit message generation' -r
 complete -c wt -n "__fish_wt_using_subcommand merge" -s s -l squash -d 'Squash all commits into one before merging'
 complete -c wt -n "__fish_wt_using_subcommand merge" -s k -l keep -d 'Keep worktree after merging (don\'t remove)'
-complete -c wt -n "__fish_wt_using_subcommand merge" -l no-verify -d 'Skip pre-merge checks'
+complete -c wt -n "__fish_wt_using_subcommand merge" -l no-hooks -d 'Skip all project hooks (pre-merge-check)'
 complete -c wt -n "__fish_wt_using_subcommand merge" -s f -l force -d 'Skip approval prompts for commands'
 complete -c wt -n "__fish_wt_using_subcommand merge" -s v -l verbose -d 'Enable verbose output (show git commands and debug info)'
 complete -c wt -n "__fish_wt_using_subcommand merge" -s h -l help -d 'Print help (see more with \'--help\')'

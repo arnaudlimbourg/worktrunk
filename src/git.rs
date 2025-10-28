@@ -96,7 +96,7 @@ impl std::fmt::Display for GitError {
                 let error_bold = ERROR.bold();
                 write!(
                     f,
-                    "{ERROR_EMOJI} {ERROR}Pre-merge check failed: {error_bold}{check_name}{error_bold:#}{ERROR:#}\n\n{error}\n\n{HINT_EMOJI} {HINT}Use --no-verify to skip pre-merge checks{HINT:#}"
+                    "{ERROR_EMOJI} {ERROR}Pre-merge check failed: {error_bold}{check_name}{error_bold:#}{ERROR:#}\n\n{error}\n\n{HINT_EMOJI} {HINT}Use --no-hooks to skip pre-merge checks{HINT:#}"
                 )
             }
 

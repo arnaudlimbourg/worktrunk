@@ -15,7 +15,7 @@ info:
     LANG: C
     LC_ALL: C
     SOURCE_DATE_EPOCH: "1761609600"
-    WORKTRUNK_CONFIG_PATH: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmpMPNR02/test-config.toml
+    WORKTRUNK_CONFIG_PATH: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmpX1Xmrk/test-config.toml
 ---
 success: true
 exit_code: 0
@@ -216,7 +216,7 @@ _arguments "${_arguments_options[@]}" : \
 '--create[Create a new branch]' \
 '-f[Skip confirmation prompt]' \
 '--force[Skip confirmation prompt]' \
-'--no-config-commands[Skip executing post-start commands from project config]' \
+'--no-hooks[Skip all project hooks (post-create, post-start)]' \
 '-v[Enable verbose output (show git commands and debug info)]' \
 '--verbose[Enable verbose output (show git commands and debug info)]' \
 '-h[Print help]' \
@@ -251,7 +251,7 @@ _arguments "${_arguments_options[@]}" : \
 '--squash[Squash all commits into one before merging]' \
 '-k[Keep worktree after merging (don'\''t remove)]' \
 '--keep[Keep worktree after merging (don'\''t remove)]' \
-'--no-verify[Skip pre-merge checks]' \
+'--no-hooks[Skip all project hooks (pre-merge-check)]' \
 '-f[Skip approval prompts for commands]' \
 '--force[Skip approval prompts for commands]' \
 '-v[Enable verbose output (show git commands and debug info)]' \

@@ -5,25 +5,26 @@ info:
   args:
     - switch
     - "--create"
-    - no-config-commands-test
+    - no-hooks-test
     - "--execute"
     - "echo 'execute command runs'"
-    - "--no-config-commands"
+    - "--no-hooks"
   env:
     CLICOLOR_FORCE: "1"
     GIT_AUTHOR_DATE: "2025-01-01T00:00:00Z"
     GIT_COMMITTER_DATE: "2025-01-01T00:00:00Z"
     GIT_CONFIG_GLOBAL: /dev/null
     GIT_CONFIG_SYSTEM: /dev/null
+    GIT_EDITOR: ""
     LANG: C
     LC_ALL: C
     SOURCE_DATE_EPOCH: "1761609600"
-    WORKTRUNK_CONFIG_PATH: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmpLp8aL0/test-config.toml
+    WORKTRUNK_CONFIG_PATH: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmpL6Tipj/test-config.toml
 ---
 success: true
 exit_code: 0
 ----- stdout -----
-✅ [32mCreated new worktree for [1mno-config-commands-test[0m at [REPO].no-config-commands-test[0m
+✅ [32mCreated new worktree for [1mno-hooks-test[0m at [REPO].no-hooks-test[0m
 execute command runs
 
 ----- stderr -----

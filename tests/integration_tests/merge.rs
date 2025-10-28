@@ -901,7 +901,7 @@ fn test_merge_pre_merge_check_failure() {
 }
 
 #[test]
-fn test_merge_pre_merge_check_no_verify() {
+fn test_merge_pre_merge_check_no_hooks() {
     let mut repo = TestRepo::new();
     repo.commit("Initial commit");
     repo.setup_remote("main");
@@ -941,11 +941,11 @@ fn test_merge_pre_merge_check_no_verify() {
         .output()
         .expect("Failed to commit");
 
-    // Merge with --no-verify - should skip pre-merge checks and succeed
+    // Merge with --no-hooks - should skip pre-merge checks and succeed
     snapshot_merge(
-        "merge_pre_merge_check_no_verify",
+        "merge_pre_merge_check_no_hooks",
         &repo,
-        &["main", "--no-verify"],
+        &["main", "--no-hooks"],
         Some(&feature_wt),
     );
 }

@@ -147,7 +147,7 @@ pub fn handle_switch(
     create: bool,
     base: Option<&str>,
     force: bool,
-    no_config_commands: bool,
+    no_hooks: bool,
     config: &WorktrunkConfig,
 ) -> Result<SwitchResult, GitError> {
     let repo = Repository::current();
@@ -214,12 +214,12 @@ pub fn handle_switch(
     })?;
 
     // Execute post-create commands (sequential, blocking)
-    if !no_config_commands {
+    if !no_hooks {
         execute_post_create_commands(&worktree_path, &repo, config, branch, force)?;
     }
 
     // Spawn post-start commands (parallel, background)
-    if !no_config_commands {
+    if !no_hooks {
         spawn_post_start_commands(&worktree_path, &repo, config, branch, force)?;
     }
 

@@ -116,9 +116,9 @@ enum Commands {
         #[arg(short = 'f', long)]
         force: bool,
 
-        /// Skip executing post-start commands from project config
+        /// Skip all project hooks (post-create, post-start)
         #[arg(long)]
-        no_config_commands: bool,
+        no_hooks: bool,
     },
 
     /// Finish current worktree, returning to primary if current
@@ -201,9 +201,9 @@ Skip pre-merge checks:
         #[arg(short = 'm', long)]
         message: Option<String>,
 
-        /// Skip pre-merge checks
+        /// Skip all project hooks (pre-merge-check)
         #[arg(long)]
-        no_verify: bool,
+        no_hooks: bool,
 
         /// Skip approval prompts for commands
         #[arg(short, long)]
@@ -359,19 +359,12 @@ fn main() {
             base,
             execute,
             force,
-            no_config_commands,
+            no_hooks,
         } => WorktrunkConfig::load()
             .map_err(|e| GitError::CommandFailed(format!("Failed to load config: {}", e)))
             .and_then(|config| {
-                handle_switch(
-                    &branch,
-                    create,
-                    base.as_deref(),
-                    force,
-                    no_config_commands,
-                    &config,
-                )
-                .and_then(|result| handle_switch_output(&result, &branch, execute.as_deref()))
+                handle_switch(&branch, create, base.as_deref(), force, no_hooks, &config)
+                    .and_then(|result| handle_switch_output(&result, &branch, execute.as_deref()))
             }),
         Commands::Remove { worktree } => {
             handle_remove(worktree.as_deref()).and_then(|result| handle_remove_output(&result))
@@ -385,14 +378,14 @@ fn main() {
             squash,
             keep,
             message,
-            no_verify,
+            no_hooks,
             force,
         } => handle_merge(
             target.as_deref(),
             squash,
             keep,
             message.as_deref(),
-            no_verify,
+            no_hooks,
             force,
         ),
         Commands::Completion { shell } => {

@@ -137,6 +137,24 @@ Template variables expand at runtime:
 - `{repo_root}` - Absolute path to repository root
 - `{target}` - Target branch (pre-merge-check only)
 
+### Available Hooks
+
+Worktrunk provides three lifecycle hooks for project automation:
+
+| Hook | When It Runs | Execution | Failure Behavior |
+|------|--------------|-----------|------------------|
+| **post-create-command** | After `git worktree add` completes | Sequential, blocking | Logs warning, continues with remaining commands |
+| **post-start-command** | After post-create completes | Parallel, non-blocking (background processes) | Logs warning, doesn't affect switch result |
+| **pre-merge-check** | Before committing/rebasing during `wt merge` | Sequential, blocking, fail-fast | Terminates merge immediately |
+
+**Skipping hooks:**
+- Use `--no-hooks` to skip all project hooks
+- `wt switch --no-hooks` skips post-create and post-start
+- `wt merge --no-hooks` skips pre-merge-check
+
+**Security:**
+Commands require approval on first run. Approved commands are saved globally per project. Use `--force` to bypass approval prompts.
+
 ## Customization
 
 ### Worktree Paths
@@ -196,6 +214,7 @@ wt list --branches  # also show branches without worktrees
 wt switch feature-branch
 wt switch --create new-feature
 wt switch --create new-feature --base develop
+wt switch feature-branch --no-hooks  # skip post-create and post-start hooks
 ```
 
 **Run command after switching:**
@@ -219,6 +238,7 @@ wt merge main                # merge commits as-is
 wt merge main --squash       # squash all commits
 wt merge main --keep         # keep worktree after merging
 wt merge main -m "Custom message instruction"
+wt merge main --no-hooks     # skip pre-merge-check hook
 ```
 
 ## Configuration
@@ -252,5 +272,3 @@ This project is pre-release. Breaking changes are expected and acceptable. The b
 ## License
 
 MIT
-test
-test
