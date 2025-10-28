@@ -1,5 +1,7 @@
 use crate::common::TestRepo;
 use assert_cmd::Command;
+use insta::Settings;
+use insta_cmd::{assert_cmd_snapshot, get_cargo_bin};
 use std::process::Command as StdCommand;
 
 #[test]
@@ -169,50 +171,89 @@ fn test_complete_base_flag_shows_all_branches() {
 }
 
 #[test]
-fn test_complete_edge_cases_return_empty() {
-    // Test 1: Outside git repo
+fn test_complete_outside_git_repo() {
     let temp = tempfile::tempdir().unwrap();
-    let mut cmd = Command::cargo_bin("wt").unwrap();
-    let output = cmd
-        .current_dir(temp.path())
-        .args(["complete", "wt", "switch", ""])
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "");
+    let mut settings = Settings::clone_current();
+    settings.set_snapshot_path("../snapshots");
 
-    // Test 2: Empty repo (no commits)
+    settings.bind(|| {
+        let mut cmd = StdCommand::new(get_cargo_bin("wt"));
+        cmd.current_dir(temp.path())
+            .args(["complete", "wt", "switch", ""]);
+
+        assert_cmd_snapshot!(cmd, @r"
+        success: true
+        exit_code: 0
+        ----- stdout -----
+
+        ----- stderr -----
+        ");
+    });
+}
+
+#[test]
+fn test_complete_empty_repo() {
     let repo = TestRepo::new();
-    let mut cmd = Command::cargo_bin("wt").unwrap();
-    let output = cmd
-        .current_dir(repo.root_path())
-        .args(["complete", "wt", "switch", ""])
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "");
+    let mut settings = Settings::clone_current();
+    settings.set_snapshot_path("../snapshots");
 
-    // Test 3: Unknown command
+    settings.bind(|| {
+        let mut cmd = StdCommand::new(get_cargo_bin("wt"));
+        cmd.current_dir(repo.root_path())
+            .args(["complete", "wt", "switch", ""]);
+
+        assert_cmd_snapshot!(cmd, @r"
+        success: true
+        exit_code: 0
+        ----- stdout -----
+
+        ----- stderr -----
+        ");
+    });
+}
+
+#[test]
+fn test_complete_unknown_command() {
     let repo = TestRepo::new();
     repo.commit("initial");
-    let mut cmd = Command::cargo_bin("wt").unwrap();
-    let output = cmd
-        .current_dir(repo.root_path())
-        .args(["complete", "wt", "unknown-command", ""])
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "");
+    let mut settings = Settings::clone_current();
+    settings.set_snapshot_path("../snapshots");
 
-    // Test 4: Commands that don't take branch arguments (list)
-    let mut cmd = Command::cargo_bin("wt").unwrap();
-    let output = cmd
-        .current_dir(repo.root_path())
-        .args(["complete", "wt", "list", ""])
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "");
+    settings.bind(|| {
+        let mut cmd = StdCommand::new(get_cargo_bin("wt"));
+        cmd.current_dir(repo.root_path())
+            .args(["complete", "wt", "unknown-command", ""]);
+
+        assert_cmd_snapshot!(cmd, @r"
+        success: true
+        exit_code: 0
+        ----- stdout -----
+
+        ----- stderr -----
+        ");
+    });
+}
+
+#[test]
+fn test_complete_list_command() {
+    let repo = TestRepo::new();
+    repo.commit("initial");
+    let mut settings = Settings::clone_current();
+    settings.set_snapshot_path("../snapshots");
+
+    settings.bind(|| {
+        let mut cmd = StdCommand::new(get_cargo_bin("wt"));
+        cmd.current_dir(repo.root_path())
+            .args(["complete", "wt", "list", ""]);
+
+        assert_cmd_snapshot!(cmd, @r"
+        success: true
+        exit_code: 0
+        ----- stdout -----
+
+        ----- stderr -----
+        ");
+    });
 }
 
 #[test]

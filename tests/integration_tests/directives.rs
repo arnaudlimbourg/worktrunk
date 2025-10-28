@@ -23,7 +23,14 @@ fn test_switch_internal_directive() {
             .arg("my-feature")
             .current_dir(repo.root_path());
 
-        assert_cmd_snapshot!("switch_internal_directive", cmd);
+        assert_cmd_snapshot!(cmd, @r"
+        success: false
+        exit_code: 1
+        ----- stdout -----
+
+        ----- stderr -----
+        Failed to create worktree: fatal: invalid reference: my-feature
+        ");
     });
 }
 
@@ -43,7 +50,14 @@ fn test_switch_without_internal() {
             .arg("my-feature")
             .current_dir(repo.root_path());
 
-        assert_cmd_snapshot!("switch_without_internal", cmd);
+        assert_cmd_snapshot!(cmd, @r"
+        success: false
+        exit_code: 1
+        ----- stdout -----
+
+        ----- stderr -----
+        Failed to create worktree: fatal: invalid reference: my-feature
+        ");
     });
 }
 
@@ -66,7 +80,18 @@ fn test_remove_internal_directive() {
             .arg("remove")
             .current_dir(repo.root_path());
 
-        assert_cmd_snapshot!("remove_internal_directive", cmd);
+        assert_cmd_snapshot!(cmd, @r"
+        success: false
+        exit_code: 1
+        ----- stdout -----
+
+        ----- stderr -----
+        fatal: 'origin' does not appear to be a git repository
+        fatal: Could not read from remote repository.
+
+        Please make sure you have the correct access rights
+        and the repository exists.
+        ");
     });
 }
 
@@ -84,7 +109,18 @@ fn test_remove_without_internal() {
         repo.clean_cli_env(&mut cmd);
         cmd.arg("remove").current_dir(repo.root_path());
 
-        assert_cmd_snapshot!("remove_without_internal", cmd);
+        assert_cmd_snapshot!(cmd, @r"
+        success: false
+        exit_code: 1
+        ----- stdout -----
+
+        ----- stderr -----
+        fatal: 'origin' does not appear to be a git repository
+        fatal: Could not read from remote repository.
+
+        Please make sure you have the correct access rights
+        and the repository exists.
+        ");
     });
 }
 
@@ -137,7 +173,7 @@ fn test_merge_internal_keep() {
             .arg("--keep")
             .current_dir(&feature_wt);
 
-        assert_cmd_snapshot!("merge_internal_keep", cmd);
+        assert_cmd_snapshot!(cmd, @"success: true\nexit_code: 0\n----- stdout -----\n\nMerge complete\n\nMerged: feature → main\nWorktree: Kept (use 'wt remove' to clean up)\0\n\n----- stderr -----\n\0");
     });
 }
 
@@ -193,6 +229,6 @@ fn test_merge_internal_remove() {
             .arg("main")
             .current_dir(&feature_wt);
 
-        assert_cmd_snapshot!("merge_internal_remove", cmd);
+        assert_cmd_snapshot!(cmd, @"success: true\nexit_code: 0\n----- stdout -----\n__WORKTRUNK_CD__[PATH]\0Removed worktree, returned to primary at [REPO]\0\n\nMerge complete\n\nMerged: feature → main\nWorktree: Removed\0\n\n----- stderr -----\n\0\0\0");
     });
 }

@@ -58,7 +58,14 @@ fn test_init_invalid_shell() {
             .arg("invalid-shell")
             .current_dir(repo.root_path());
 
-        assert_cmd_snapshot!("init_invalid_shell", cmd);
+        assert_cmd_snapshot!(cmd, @r"
+        success: false
+        exit_code: 1
+        ----- stdout -----
+
+        ----- stderr -----
+        Unsupported shell: invalid-shell
+        ");
     });
 }
 

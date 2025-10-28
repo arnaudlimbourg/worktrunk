@@ -55,7 +55,25 @@ server = "npm run dev"
             .env("HOME", temp_home.path())
             .current_dir(repo.root_path());
 
-        assert_cmd_snapshot!("config_list_with_project", cmd);
+        assert_cmd_snapshot!(cmd, @r#"
+        success: true
+        exit_code: 0
+        ----- stdout -----
+        Global Config: [1m[TEMP_HOME]/.config/worktrunk/config.toml[0m
+        [40m [0m worktree-path = [32m"../{main-worktree}.{branch}"[0m
+        [40m [0m 
+        [40m [0m [1m[36m[[approved-commands]][0m
+        [40m [0m project = [32m"test-project"[0m
+        [40m [0m command = [32m"npm install"[0m
+
+        Project Config: [1m[REPO]/.config/wt.toml[0m
+        [40m [0m post-create-command = [32m"npm install"[0m
+        [40m [0m 
+        [40m [0m [1m[36m[post-start-command][0m
+        [40m [0m server = [32m"npm run dev"[0m
+
+        ----- stderr -----
+        "#);
     });
 }
 
@@ -91,7 +109,18 @@ fn test_config_list_no_project_config() {
             .env("HOME", temp_home.path())
             .current_dir(repo.root_path());
 
-        assert_cmd_snapshot!("config_list_no_project", cmd);
+        assert_cmd_snapshot!(cmd, @r#"
+        success: true
+        exit_code: 0
+        ----- stdout -----
+        Global Config: [1m[TEMP_HOME]/.config/worktrunk/config.toml[0m
+        [40m [0m worktree-path = [32m"../{main-worktree}.{branch}"[0m
+
+        Project Config: [1m[REPO]/.config/wt.toml[0m
+        💡 [2mNot found[0m
+
+        ----- stderr -----
+        "#);
     });
 }
 
@@ -125,6 +154,16 @@ fn test_config_list_outside_git_repo() {
             .env("HOME", temp_home.path())
             .current_dir(temp_dir.path());
 
-        assert_cmd_snapshot!("config_list_outside_repo", cmd);
+        assert_cmd_snapshot!(cmd, @r#"
+        success: true
+        exit_code: 0
+        ----- stdout -----
+        Global Config: [TEMP_HOME]/.config/worktrunk/config.toml
+          worktree-path = "../{main-worktree}.{branch}"
+
+        Project Config: Not in a git repository
+
+        ----- stderr -----
+        "#);
     });
 }

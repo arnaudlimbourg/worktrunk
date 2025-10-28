@@ -27,7 +27,19 @@ fn test_configure_shell_with_yes() {
             .env("HOME", temp_home.path())
             .current_dir(repo.root_path());
 
-        assert_cmd_snapshot!("configure_shell_with_yes", cmd);
+        assert_cmd_snapshot!(cmd, @r#"
+        success: true
+        exit_code: 0
+        ----- stdout -----
+        Added [1mzsh[0m [TEMP_HOME]/.zshrc
+        [40m [0m if command -v wt >/dev/null 2>&1; then eval "$(wt init zsh)"; fi
+
+        ✅ [32mConfigured 1 shell[0m
+
+        💡 [2mRestart your shell or run: source <config-file>[0m
+
+        ----- stderr -----
+        "#);
     });
 
     // Verify the file was modified
@@ -59,7 +71,19 @@ fn test_configure_shell_specific_shell() {
             .env("HOME", temp_home.path())
             .current_dir(repo.root_path());
 
-        assert_cmd_snapshot!("configure_shell_zsh", cmd);
+        assert_cmd_snapshot!(cmd, @r#"
+        success: true
+        exit_code: 0
+        ----- stdout -----
+        Added [1mzsh[0m [TEMP_HOME]/.zshrc
+        [40m [0m if command -v wt >/dev/null 2>&1; then eval "$(wt init zsh)"; fi
+
+        ✅ [32mConfigured 1 shell[0m
+
+        💡 [2mRestart your shell or run: source <config-file>[0m
+
+        ----- stderr -----
+        "#);
     });
 
     // Verify the file was modified
@@ -95,7 +119,14 @@ fn test_configure_shell_already_exists() {
             .env("HOME", temp_home.path())
             .current_dir(repo.root_path());
 
-        assert_cmd_snapshot!("configure_shell_already_exists", cmd);
+        assert_cmd_snapshot!(cmd, @r"
+        success: true
+        exit_code: 0
+        ----- stdout -----
+        ✅ [32mAll shells already configured[0m
+
+        ----- stderr -----
+        ");
     });
 
     // Verify the file was not modified (no duplicate)
@@ -134,7 +165,19 @@ fn test_configure_shell_custom_prefix() {
             .env("HOME", temp_home.path())
             .current_dir(repo.root_path());
 
-        assert_cmd_snapshot!("configure_shell_custom_prefix", cmd);
+        assert_cmd_snapshot!(cmd, @r#"
+        success: true
+        exit_code: 0
+        ----- stdout -----
+        Added [1mbash[0m [TEMP_HOME]/.bash_profile
+        [40m [0m if command -v worktree >/dev/null 2>&1; then eval "$(worktree init bash)"; fi
+
+        ✅ [32mConfigured 1 shell[0m
+
+        💡 [2mRestart your shell or run: source <config-file>[0m
+
+        ----- stderr -----
+        "#);
     });
 
     // Verify the file has the custom prefix
@@ -162,7 +205,19 @@ fn test_configure_shell_fish() {
             .env("HOME", temp_home.path())
             .current_dir(repo.root_path());
 
-        assert_cmd_snapshot!("configure_shell_fish", cmd);
+        assert_cmd_snapshot!(cmd, @r"
+        success: true
+        exit_code: 0
+        ----- stdout -----
+        Created [1mfish[0m [TEMP_HOME]/.config/fish/conf.d/wt.fish
+        [40m [0m if type -q wt; wt init fish | source; end
+
+        ✅ [32mConfigured 1 shell[0m
+
+        💡 [2mRestart your shell or run: source <config-file>[0m
+
+        ----- stderr -----
+        ");
     });
 
     // Verify the fish conf.d file was created
@@ -195,7 +250,14 @@ fn test_configure_shell_no_files() {
             .env("HOME", temp_home.path())
             .current_dir(repo.root_path());
 
-        assert_cmd_snapshot!("configure_shell_no_files", cmd);
+        assert_cmd_snapshot!(cmd, @r"
+        success: false
+        exit_code: 1
+        ----- stdout -----
+
+        ----- stderr -----
+        No shell config files found in $HOME. Checked: [TEMP_HOME]/.bash_profile, [TEMP_HOME]/.profile, [TEMP_HOME]/.zshrc, and more. Create a config file or use --shell to specify a shell.
+        ");
     });
 }
 
@@ -221,7 +283,19 @@ fn test_configure_shell_fish_custom_prefix() {
             .env("HOME", temp_home.path())
             .current_dir(repo.root_path());
 
-        assert_cmd_snapshot!("configure_shell_fish_custom_prefix", cmd);
+        assert_cmd_snapshot!(cmd, @r"
+        success: true
+        exit_code: 0
+        ----- stdout -----
+        Created [1mfish[0m [TEMP_HOME]/.config/fish/conf.d/worktree.fish
+        [40m [0m if type -q worktree; worktree init fish | source; end
+
+        ✅ [32mConfigured 1 shell[0m
+
+        💡 [2mRestart your shell or run: source <config-file>[0m
+
+        ----- stderr -----
+        ");
     });
 
     // Verify the fish conf.d file was created with correct prefix in filename
@@ -267,7 +341,21 @@ fn test_configure_shell_multiple_configs() {
             .env("HOME", temp_home.path())
             .current_dir(repo.root_path());
 
-        assert_cmd_snapshot!("configure_shell_multiple_configs", cmd);
+        assert_cmd_snapshot!(cmd, @r#"
+        success: true
+        exit_code: 0
+        ----- stdout -----
+        Added [1mbash[0m [TEMP_HOME]/.bash_profile
+        [40m [0m if command -v wt >/dev/null 2>&1; then eval "$(wt init bash)"; fi
+        Added [1mzsh[0m [TEMP_HOME]/.zshrc
+        [40m [0m if command -v wt >/dev/null 2>&1; then eval "$(wt init zsh)"; fi
+
+        ✅ [32mConfigured 2 shells[0m
+
+        💡 [2mRestart your shell or run: source <config-file>[0m
+
+        ----- stderr -----
+        "#);
     });
 
     // Verify both files were modified
@@ -318,7 +406,21 @@ fn test_configure_shell_mixed_states() {
             .env("HOME", temp_home.path())
             .current_dir(repo.root_path());
 
-        assert_cmd_snapshot!("configure_shell_mixed_states", cmd);
+        assert_cmd_snapshot!(cmd, @r#"
+        success: true
+        exit_code: 0
+        ----- stdout -----
+        Already configured [1mbash[0m [TEMP_HOME]/.bash_profile
+        [40m [0m if command -v wt >/dev/null 2>&1; then eval "$(wt init bash)"; fi
+        Added [1mzsh[0m [TEMP_HOME]/.zshrc
+        [40m [0m if command -v wt >/dev/null 2>&1; then eval "$(wt init zsh)"; fi
+
+        ✅ [32mConfigured 1 shell[0m
+
+        💡 [2mRestart your shell or run: source <config-file>[0m
+
+        ----- stderr -----
+        "#);
     });
 
     // Verify bash was not modified (already configured)
