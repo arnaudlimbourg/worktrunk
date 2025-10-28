@@ -182,28 +182,113 @@ impl StyledLine {
 // Gutter Formatting
 // ============================================================================
 
+/// Default terminal width fallback if detection fails
+const DEFAULT_TERMINAL_WIDTH: usize = 80;
+
+/// Wraps text at word boundaries to fit within the specified width
+///
+/// # Arguments
+/// * `text` - The text to wrap
+/// * `max_width` - Maximum width for each line
+///
+/// # Returns
+/// A vector of wrapped lines
+fn wrap_text_at_width(text: &str, max_width: usize) -> Vec<String> {
+    if max_width == 0 {
+        return vec![text.to_string()];
+    }
+
+    let text_width = text.width();
+
+    // If the line fits, return it as-is
+    if text_width <= max_width {
+        return vec![text.to_string()];
+    }
+
+    let mut lines = Vec::new();
+    let mut current_line = String::new();
+    let mut current_width = 0;
+
+    for word in text.split_whitespace() {
+        let word_width = word.width();
+
+        // If this is the first word in the line
+        if current_line.is_empty() {
+            // If a single word is longer than max_width, we have to include it anyway
+            current_line = word.to_string();
+            current_width = word_width;
+        } else {
+            // Calculate width with space before the word
+            let new_width = current_width + 1 + word_width;
+
+            if new_width <= max_width {
+                // Word fits on current line
+                current_line.push(' ');
+                current_line.push_str(word);
+                current_width = new_width;
+            } else {
+                // Word doesn't fit, start a new line
+                lines.push(current_line);
+                current_line = word.to_string();
+                current_width = word_width;
+            }
+        }
+    }
+
+    // Add the last line if there's content
+    if !current_line.is_empty() {
+        lines.push(current_line);
+    }
+
+    // Handle empty input
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+
+    lines
+}
+
 /// Formats text with a gutter (single-space with background color) on each line
 ///
 /// This creates a subtle visual separator for quoted content like commands or configuration.
+/// Text is automatically word-wrapped at terminal width to prevent overflow.
 ///
 /// # Arguments
 /// * `content` - The text to format (preserves internal structure for multi-line)
 /// * `left_margin` - Should always be "" (gutter provides all visual separation)
+/// * `max_width` - Optional maximum width (for testing). If None, auto-detects terminal width.
 ///
 /// The gutter appears at column 0, followed by 1 space, then the content at column 1.
 ///
 /// # Example
 /// ```ignore
-/// // All contexts use empty left margin
-/// print!("{}", format_with_gutter(&config, ""));
-/// print!("{}", format_with_gutter(&command, ""));
+/// // All contexts use empty left margin and auto-detect width
+/// print!("{}", format_with_gutter(&config, "", None));
 /// ```
-pub fn format_with_gutter(content: &str, left_margin: &str) -> String {
+pub fn format_with_gutter(content: &str, left_margin: &str, max_width: Option<usize>) -> String {
     let gutter = Style::new().bg_color(Some(Color::Ansi(AnsiColor::Black)));
     let mut output = String::new();
 
+    // Use provided width or detect terminal width
+    let term_width = max_width.unwrap_or_else(|| {
+        terminal_size::terminal_size()
+            .map(|(w, _)| w.0 as usize)
+            .unwrap_or(DEFAULT_TERMINAL_WIDTH)
+    });
+
+    // Account for gutter (1) + space (1) + left_margin
+    let left_margin_width = left_margin.width();
+    let available_width = term_width.saturating_sub(2 + left_margin_width);
+
     for line in content.lines() {
-        output.push_str(&format!("{left_margin}{gutter} {gutter:#} {line}\n"));
+        // Wrap the line at word boundaries
+        let wrapped_lines = wrap_text_at_width(line, available_width);
+
+        for wrapped_line in wrapped_lines {
+            output.push_str(&format!(
+                "{left_margin}{gutter} {gutter:#} {wrapped_line}\n"
+            ));
+        }
     }
 
     output
@@ -433,5 +518,122 @@ command = "npm install"
             line2.width(),
             "Rows with and without sparse column data should have same width"
         );
+    }
+
+    // Word-wrapping tests
+    #[test]
+    fn test_wrap_text_no_wrapping_needed() {
+        let result = super::wrap_text_at_width("short line", 50);
+        assert_eq!(result, vec!["short line"]);
+    }
+
+    #[test]
+    fn test_wrap_text_at_word_boundary() {
+        let text = "This is a very long line that needs to be wrapped at word boundaries";
+        let result = super::wrap_text_at_width(text, 30);
+
+        // Should wrap at word boundaries
+        assert!(result.len() > 1, "Should wrap into multiple lines");
+
+        // Each line should be within the width limit (or be a single long word)
+        for line in &result {
+            assert!(
+                line.width() <= 30 || !line.contains(' '),
+                "Line '{}' has width {} which exceeds 30 and contains spaces",
+                line,
+                line.width()
+            );
+        }
+
+        // Joining should recover most of the original text (whitespace may differ)
+        let rejoined = result.join(" ");
+        assert_eq!(
+            rejoined.split_whitespace().collect::<Vec<_>>(),
+            text.split_whitespace().collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_wrap_text_single_long_word() {
+        // A single word longer than max_width should still be included
+        let result = super::wrap_text_at_width("verylongwordthatcannotbewrapped", 10);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], "verylongwordthatcannotbewrapped");
+    }
+
+    #[test]
+    fn test_wrap_text_empty_input() {
+        let result = super::wrap_text_at_width("", 50);
+        assert_eq!(result, vec![""]);
+    }
+
+    #[test]
+    fn test_wrap_text_unicode() {
+        // Unicode characters should be handled correctly by width
+        let text = "This line has emoji 🎉 and should wrap correctly when needed";
+        let result = super::wrap_text_at_width(text, 30);
+
+        // Should wrap
+        assert!(result.len() > 1);
+
+        // Should preserve the emoji
+        let rejoined = result.join(" ");
+        assert!(rejoined.contains("🎉"));
+    }
+
+    #[test]
+    fn test_format_with_gutter_wrapping() {
+        // Create a very long line that would overflow a narrow terminal
+        let long_text = "This is a very long commit message that would normally overflow the terminal width and break the gutter formatting, but now it should wrap nicely at word boundaries.";
+
+        // Use fixed width for consistent testing (80 columns)
+        let result = format_with_gutter(long_text, "", Some(80));
+
+        // Should contain multiple lines (wrapped)
+        let line_count = result.lines().count();
+        assert!(
+            line_count > 1,
+            "Long text should wrap to multiple lines, got {} lines",
+            line_count
+        );
+
+        // Each line should have the gutter
+        for line in result.lines() {
+            assert!(
+                line.contains("\x1b[40m"),
+                "Each line should contain gutter (Black background = 40)"
+            );
+        }
+    }
+
+    #[test]
+    fn test_format_with_gutter_preserves_newlines() {
+        let multi_line = "Line 1\nLine 2\nLine 3";
+        let result = format_with_gutter(multi_line, "", None);
+
+        // Should have at least 3 lines (one for each input line)
+        assert!(result.lines().count() >= 3);
+
+        // Each original line should be present
+        assert!(result.contains("Line 1"));
+        assert!(result.contains("Line 2"));
+        assert!(result.contains("Line 3"));
+    }
+
+    #[test]
+    fn test_format_with_gutter_long_paragraph() {
+        // Realistic commit message scenario - a long unbroken paragraph
+        let commit_msg = "This commit refactors the authentication system to use a more secure token-based approach instead of the previous session-based system which had several security vulnerabilities that were identified during the security audit last month. The new implementation follows industry best practices and includes proper token rotation and expiration handling.";
+
+        // Use fixed width for consistent testing (80 columns)
+        let result = format_with_gutter(commit_msg, "", Some(80));
+
+        insta::assert_snapshot!(result, @r"
+        [40m [0m This commit refactors the authentication system to use a more secure
+        [40m [0m token-based approach instead of the previous session-based system which had
+        [40m [0m several security vulnerabilities that were identified during the security
+        [40m [0m audit last month. The new implementation follows industry best practices and
+        [40m [0m includes proper token rotation and expiration handling.
+        ");
     }
 }

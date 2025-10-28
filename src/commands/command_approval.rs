@@ -118,7 +118,7 @@ fn prompt_for_batch_approval(
         } else {
             format!("{name}: {command}")
         };
-        eprint!("{}", format_with_gutter(&label, ""));
+        eprint!("{}", format_with_gutter(&label, "", None));
     }
 
     eprintln!();

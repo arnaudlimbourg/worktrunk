@@ -453,7 +453,7 @@ fn execute_post_create_commands(
     for prepared in commands {
         use std::io::Write;
         eprintln!("🔄 {CYAN}Executing (post-create):{CYAN:#}");
-        eprint!("{}", format_with_gutter(&prepared.expanded, "")); // Gutter at column 0
+        eprint!("{}", format_with_gutter(&prepared.expanded, "", None)); // Gutter at column 0
         let _ = std::io::stderr().flush();
 
         if let Err(e) = execute_command_in_worktree(worktree_path, &prepared.expanded) {
@@ -512,7 +512,7 @@ fn spawn_post_start_commands(
     for prepared in commands {
         use std::io::Write;
         eprintln!("🔄 {CYAN}Starting (background):{CYAN:#}");
-        eprint!("{}", format_with_gutter(&prepared.expanded, ""));
+        eprint!("{}", format_with_gutter(&prepared.expanded, "", None));
         let _ = std::io::stderr().flush();
 
         match spawn_detached(worktree_path, &prepared.expanded, &prepared.name) {

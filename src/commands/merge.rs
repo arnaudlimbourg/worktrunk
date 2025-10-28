@@ -239,7 +239,7 @@ fn handle_commit_changes(
 
     // Display the generated commit message
     let formatted_message = format_commit_message_for_display(&commit_message);
-    print!("{}", format_with_gutter(&formatted_message, ""));
+    print!("{}", format_with_gutter(&formatted_message, "", None));
 
     // Commit
     repo.run_command(&["commit", "-m", &commit_message])
@@ -317,7 +317,7 @@ fn handle_squash(target_branch: &str) -> Result<Option<usize>, GitError> {
 
     // Display the generated commit message
     let formatted_message = format_commit_message_for_display(&commit_message);
-    print!("{}", format_with_gutter(&formatted_message, ""));
+    print!("{}", format_with_gutter(&formatted_message, "", None));
 
     // Reset to merge base (soft reset stages all changes)
     repo.run_command(&["reset", "--soft", &merge_base])
@@ -367,7 +367,7 @@ fn run_pre_merge_checks(
             "🔄 {CYAN}Running pre-merge check '{name}':{CYAN:#}",
             name = prepared.name
         );
-        eprint!("{}", format_with_gutter(&prepared.expanded, "")); // Gutter at column 0
+        eprint!("{}", format_with_gutter(&prepared.expanded, "", None)); // Gutter at column 0
         let _ = std::io::stderr().flush();
 
         if let Err(e) = execute_command_in_worktree(worktree_path, &prepared.expanded) {
