@@ -361,3 +361,6 @@ fn main() {
     }
 }
 // test change
+fn main() {
+    unsafe { }
+}

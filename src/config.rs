@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use toml;
 
 #[cfg(not(test))]
-use etcetera::base_strategy::choose_base_strategy;
+use etcetera::base_strategy::{BaseStrategy, choose_base_strategy};
 
 /// Configuration for worktree path formatting and LLM integration.
 ///
