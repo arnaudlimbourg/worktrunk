@@ -17,10 +17,16 @@ pub fn format_relative_time(timestamp: i64) -> String {
     const MONTH: i64 = DAY * 30; // Approximate calendar month
     const YEAR: i64 = DAY * 365; // Approximate calendar year
 
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as i64;
+    // Respect SOURCE_DATE_EPOCH for reproducible builds/tests
+    let now = std::env::var("SOURCE_DATE_EPOCH")
+        .ok()
+        .and_then(|val| val.parse::<i64>().ok())
+        .unwrap_or_else(|| {
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64
+        });
 
     let seconds_ago = now - timestamp;
 

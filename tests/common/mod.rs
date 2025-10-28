@@ -90,7 +90,8 @@ impl TestRepo {
         cmd.env("GIT_COMMITTER_DATE", "2025-01-01T00:00:00Z");
         cmd.env("LC_ALL", "C");
         cmd.env("LANG", "C");
-        cmd.env("SOURCE_DATE_EPOCH", "1704067200");
+        // Oct 28, 2025 - exactly 300 days (10 months) after commit date for deterministic relative times
+        cmd.env("SOURCE_DATE_EPOCH", "1761609600");
     }
 
     /// Clean environment for worktrunk CLI commands
