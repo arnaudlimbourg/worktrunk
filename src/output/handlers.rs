@@ -1,7 +1,7 @@
 //! Output handlers for worktree operations using the global output context
 
 use crate::commands::worktree::{RemoveResult, SwitchResult};
-use worktrunk::git::{GitError, GitResultExt};
+use worktrunk::git::GitError;
 
 /// Format message for switch operation (includes emoji and color for consistency)
 fn format_switch_message(result: &SwitchResult, branch: &str) -> String {
@@ -118,15 +118,58 @@ pub fn handle_remove_output(result: &RemoveResult) -> Result<(), GitError> {
     Ok(())
 }
 
+/// Execute a command with streaming output
+///
+/// Uses Stdio::inherit to preserve TTY behavior - this ensures commands like cargo detect they're
+/// connected to a terminal and don't buffer their output.
+///
+/// If `redirect_stdout_to_stderr` is true, wraps the command in `{ command; } 1>&2` to merge
+/// stdout into stderr. This ensures deterministic output ordering (all output flows through stderr).
+/// Per CLAUDE.md: child process output goes to stderr, worktrunk output goes to stdout.
+///
+/// Returns error if command exits with non-zero status.
+pub(crate) fn execute_streaming(
+    command: &str,
+    working_dir: &std::path::Path,
+    redirect_stdout_to_stderr: bool,
+) -> std::io::Result<()> {
+    use std::io;
+    use std::process::Command;
+
+    let command_to_run = if redirect_stdout_to_stderr {
+        format!("{{ {}; }} 1>&2", command)
+    } else {
+        command.to_string()
+    };
+
+    let mut child = Command::new("sh")
+        .arg("-c")
+        .arg(&command_to_run)
+        .current_dir(working_dir)
+        // Use Stdio::inherit() to preserve TTY behavior
+        // This prevents commands like cargo from buffering output
+        .spawn()
+        .map_err(|e| io::Error::other(format!("Failed to execute command: {}", e)))?;
+
+    // Wait for command to complete
+    let status = child
+        .wait()
+        .map_err(|e| io::Error::other(format!("Failed to wait for command: {}", e)))?;
+
+    if !status.success() {
+        return Err(io::Error::other(format!(
+            "Command failed with exit code: {}",
+            status
+        )));
+    }
+
+    Ok(())
+}
+
 /// Execute a command in a worktree directory
 ///
 /// Merges stdout into stderr using shell redirection (1>&2) to ensure deterministic output ordering.
 /// Per CLAUDE.md guidelines: child process output goes to stderr, worktrunk output goes to stdout.
-/// Streams output line-by-line in real-time (no buffering) to provide immediate feedback for
-/// long-running commands.
-///
-/// The shell-level redirect ensures all output flows through a single pipe (stderr) in the order written,
-/// eliminating race conditions that would occur with separate stdout/stderr threads.
 ///
 /// Calls terminate_output() after completion to handle mode-specific cleanup
 /// (NUL terminator in directive mode, no-op in interactive mode).
@@ -134,46 +177,14 @@ pub fn execute_command_in_worktree(
     worktree_path: &std::path::Path,
     command: &str,
 ) -> Result<(), GitError> {
-    use std::io::{BufRead, BufReader, Write};
-    use std::process::{Command, Stdio};
-
     // Flush stdout before executing command to ensure all our messages appear
     // before the child process output
     super::flush()?;
 
-    // Redirect stdout to stderr in the shell command to merge streams
-    // This ensures deterministic ordering: all output flows through a single pipe (stderr)
-    // in the order it was written, with no race conditions between threads
-    // Per CLAUDE.md: child process output goes to stderr, worktrunk output goes to stdout
-    let merged_command = format!("{{ {}; }} 1>&2", command);
-
-    let mut child = Command::new("sh")
-        .arg("-c")
-        .arg(&merged_command)
-        .current_dir(worktree_path)
-        .stdout(Stdio::inherit()) // Inherit stdout for any shell errors (though redirected to stderr)
-        .stderr(Stdio::piped())
-        .spawn()
-        .git_context("Failed to execute command")?;
-
-    // Read and stream output line-by-line in real-time (no buffering)
-    let stderr = child.stderr.take().unwrap();
-    let reader = BufReader::new(stderr);
-
-    for line in reader.lines().map_while(Result::ok) {
-        eprintln!("{}", line);
-        let _ = std::io::stderr().flush();
-    }
-
-    // Wait for command to complete
-    let status = child.wait().git_context("Failed to wait for command")?;
-
-    if !status.success() {
-        return Err(GitError::CommandFailed(format!(
-            "Command failed with exit code: {}",
-            status
-        )));
-    }
+    // Execute with stdout→stderr redirect for deterministic ordering
+    // Convert io::Error to GitError::CommandFailed to preserve error message formatting
+    execute_streaming(command, worktree_path, true)
+        .map_err(|e| GitError::CommandFailed(e.to_string()))?;
 
     // Flush to ensure all output appears before we continue
     super::flush()?;

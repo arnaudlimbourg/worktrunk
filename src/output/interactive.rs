@@ -4,6 +4,8 @@ use std::io::{self, Write};
 use std::path::Path;
 use worktrunk::styling::{println, stderr, stdout};
 
+use super::handlers::execute_streaming;
+
 /// Interactive output mode for human users
 ///
 /// Formats messages with colors, emojis, and formatting.
@@ -46,34 +48,11 @@ impl InteractiveOutput {
     }
 
     pub fn execute(&mut self, command: String) -> io::Result<()> {
-        use std::process::Command;
-
-        // Execute command in the target directory
+        // Execute command in the target directory with streaming output
         let exec_dir = self.target_dir.as_deref().unwrap_or_else(|| Path::new("."));
 
-        let output = Command::new("sh")
-            .arg("-c")
-            .arg(&command)
-            .current_dir(exec_dir)
-            .output()
-            .map_err(|e| io::Error::other(format!("Failed to execute command: {}", e)))?;
-
-        if !output.status.success() {
-            return Err(io::Error::other(format!(
-                "Command failed with exit code: {}",
-                output.status
-            )));
-        }
-
-        // Print child command output to stderr (all child output goes to stderr)
-        if !output.stdout.is_empty() {
-            use worktrunk::styling::eprintln;
-            eprintln!("{}", String::from_utf8_lossy(&output.stdout).trim_end());
-        }
-        if !output.stderr.is_empty() {
-            use worktrunk::styling::eprintln;
-            eprintln!("{}", String::from_utf8_lossy(&output.stderr).trim_end());
-        }
+        // Use shared streaming execution (no stdout->stderr redirect for --execute)
+        execute_streaming(&command, exec_dir, false)?;
 
         Ok(())
     }
