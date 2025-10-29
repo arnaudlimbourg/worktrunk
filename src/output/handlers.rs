@@ -75,6 +75,8 @@ pub fn handle_switch_output(
     branch: &str,
     execute: Option<&str>,
 ) -> Result<(), GitError> {
+    use worktrunk::styling::{CYAN, format_with_gutter};
+
     // Set target directory for command execution
     super::change_directory(result.path())?;
 
@@ -83,6 +85,10 @@ pub fn handle_switch_output(
 
     // Execute command if provided
     if let Some(cmd) = execute {
+        // Show what command is being executed (matches post-create/post-start format)
+        super::progress(format!("🔄 {CYAN}Executing (--execute):{CYAN:#}"))?;
+        super::progress(format_with_gutter(cmd, "", None))?;
+
         super::execute(cmd)?;
     } else {
         // No execute command: show shell integration hint
