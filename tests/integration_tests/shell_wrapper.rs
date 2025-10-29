@@ -130,7 +130,22 @@ fn build_shell_script(shell: &str, repo: &TestRepo, subcommand: &str, args: &[&s
     }
     script.push('\n');
 
-    script
+    // Merge stderr to stdout to simulate real terminal behavior
+    // In a real terminal, both streams interleave naturally by the OS.
+    // The .output() method captures them separately, so we merge them here
+    // to preserve temporal locality (output appears when operations complete, not batched at the end)
+    match shell {
+        "fish" => {
+            // Fish uses begin...end for grouping
+            // Note: This exposes a Fish wrapper buffering bug where child output appears out of order
+            // (see templates/fish.fish - psub causes buffering). Tests document current behavior.
+            format!("begin\n{}\nend 2>&1", script)
+        }
+        _ => {
+            // bash/zsh use parentheses for subshell grouping
+            format!("( {} ) 2>&1", script)
+        }
+    }
 }
 
 /// Execute a command through a shell wrapper
@@ -170,11 +185,9 @@ fn exec_through_wrapper_from(
         .output()
         .unwrap_or_else(|_| panic!("Failed to execute {} wrapper", shell));
 
-    // Combine stdout and stderr as users would see in a terminal
-    let mut combined = String::from_utf8_lossy(&output.stdout).to_string();
-    if !output.stderr.is_empty() {
-        combined.push_str(&String::from_utf8_lossy(&output.stderr));
-    }
+    // With 2>&1 in the script, both streams are merged to stdout
+    // This preserves temporal locality (output appears when operations complete)
+    let combined = String::from_utf8_lossy(&output.stdout).to_string();
 
     ShellOutput {
         combined,

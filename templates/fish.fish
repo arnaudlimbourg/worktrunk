@@ -34,6 +34,8 @@ if type -q {{ cmd_prefix }}
 
         # Use psub (process substitution) to preserve NUL bytes
         # Command substitution $(...)  strips NUL bytes, but psub preserves them
+        # Redirect stderr to stdout (2>&1) to capture child process output
+        # (child output goes to stderr per output system architecture)
         # Redirect directly from psub output, and save exit code to temp file
         set -l chunk_count 0
         while read -z chunk
@@ -65,7 +67,7 @@ if type -q {{ cmd_prefix }}
                 end
                 printf '%s\n' $chunk
             end
-        end < (begin; command $_WORKTRUNK_CMD $argv; echo $status > $exit_code_file; end | psub)
+        end < (begin; command $_WORKTRUNK_CMD $argv 2>&1; echo $status > $exit_code_file; end | psub)
 
         if test $debug_mode -eq 1
             echo "[DEBUG] Finished reading, total chunks: $chunk_count" >&2
