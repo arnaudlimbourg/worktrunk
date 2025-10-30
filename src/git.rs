@@ -22,6 +22,16 @@ pub enum GitError {
     DetachedHead,
     /// Working tree has untracked files
     UntrackedFiles,
+    /// Pre-commit command failed
+    PreCommitCommandFailed {
+        command_name: Option<String>,
+        error: String,
+    },
+    /// Pre-squash command failed
+    PreSquashCommandFailed {
+        command_name: Option<String>,
+        error: String,
+    },
     /// Pre-merge command failed
     PreMergeCommandFailed {
         command_name: Option<String>,
@@ -82,6 +92,42 @@ impl std::fmt::Display for GitError {
                     f,
                     "{ERROR_EMOJI} {ERROR}Working tree has untracked files{ERROR:#}\n\n{HINT_EMOJI} {HINT}Add them with 'git add' and try again{HINT:#}"
                 )
+            }
+
+            // Pre-commit command failed
+            GitError::PreCommitCommandFailed {
+                command_name,
+                error,
+            } => {
+                let error_bold = ERROR.bold();
+                match command_name {
+                    Some(name) => write!(
+                        f,
+                        "{ERROR_EMOJI} {ERROR}Pre-commit command failed: {error_bold}{name}{error_bold:#}{ERROR:#}\n\n{error}\n\n{HINT_EMOJI} {HINT}Use --no-hooks to skip pre-commit commands{HINT:#}"
+                    ),
+                    None => write!(
+                        f,
+                        "{ERROR_EMOJI} {ERROR}Pre-commit command failed{ERROR:#}\n\n{error}\n\n{HINT_EMOJI} {HINT}Use --no-hooks to skip pre-commit commands{HINT:#}"
+                    ),
+                }
+            }
+
+            // Pre-squash command failed
+            GitError::PreSquashCommandFailed {
+                command_name,
+                error,
+            } => {
+                let error_bold = ERROR.bold();
+                match command_name {
+                    Some(name) => write!(
+                        f,
+                        "{ERROR_EMOJI} {ERROR}Pre-squash command failed: {error_bold}{name}{error_bold:#}{ERROR:#}\n\n{error}\n\n{HINT_EMOJI} {HINT}Use --no-hooks to skip pre-squash commands{HINT:#}"
+                    ),
+                    None => write!(
+                        f,
+                        "{ERROR_EMOJI} {ERROR}Pre-squash command failed{ERROR:#}\n\n{error}\n\n{HINT_EMOJI} {HINT}Use --no-hooks to skip pre-squash commands{HINT:#}"
+                    ),
+                }
             }
 
             // Pre-merge command failed

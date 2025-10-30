@@ -1282,3 +1282,187 @@ deploy = "echo 'Deploying branch {branch}' > deploy.txt"
         "Deploy command should have created marker file"
     );
 }
+
+#[test]
+fn test_merge_pre_commit_command_success() {
+    let mut repo = TestRepo::new();
+    repo.commit("Initial commit");
+    repo.setup_remote("main");
+
+    // Create project config with pre-commit command
+    let config_dir = repo.root_path().join(".config");
+    fs::create_dir_all(&config_dir).expect("Failed to create config dir");
+    fs::write(
+        config_dir.join("wt.toml"),
+        r#"pre-commit-command = "echo 'Pre-commit check passed'""#,
+    )
+    .expect("Failed to write config");
+
+    repo.commit("Add config");
+
+    // Create a worktree for main
+    let main_wt = repo.root_path().parent().unwrap().join("test-repo.main-wt");
+    let mut cmd = Command::new("git");
+    repo.configure_git_cmd(&mut cmd);
+    cmd.args(["worktree", "add", main_wt.to_str().unwrap(), "main"])
+        .current_dir(repo.root_path())
+        .output()
+        .expect("Failed to add worktree");
+
+    // Create a feature worktree and make a change
+    let feature_wt = repo.add_worktree("feature", "feature");
+    fs::write(feature_wt.join("feature.txt"), "feature content").expect("Failed to write file");
+
+    // Merge with --force (changes uncommitted, should trigger pre-commit hook)
+    snapshot_merge(
+        "merge_pre_commit_command_success",
+        &repo,
+        &["main", "--force"],
+        Some(&feature_wt),
+    );
+}
+
+#[test]
+fn test_merge_pre_commit_command_failure() {
+    let mut repo = TestRepo::new();
+    repo.commit("Initial commit");
+    repo.setup_remote("main");
+
+    // Create project config with failing pre-commit command
+    let config_dir = repo.root_path().join(".config");
+    fs::create_dir_all(&config_dir).expect("Failed to create config dir");
+    fs::write(
+        config_dir.join("wt.toml"),
+        r#"pre-commit-command = "exit 1""#,
+    )
+    .expect("Failed to write config");
+
+    repo.commit("Add config");
+
+    // Create a worktree for main
+    let main_wt = repo.root_path().parent().unwrap().join("test-repo.main-wt");
+    let mut cmd = Command::new("git");
+    repo.configure_git_cmd(&mut cmd);
+    cmd.args(["worktree", "add", main_wt.to_str().unwrap(), "main"])
+        .current_dir(repo.root_path())
+        .output()
+        .expect("Failed to add worktree");
+
+    // Create a feature worktree and make a change
+    let feature_wt = repo.add_worktree("feature", "feature");
+    fs::write(feature_wt.join("feature.txt"), "feature content").expect("Failed to write file");
+
+    // Merge with --force - pre-commit command should fail and block merge
+    snapshot_merge(
+        "merge_pre_commit_command_failure",
+        &repo,
+        &["main", "--force"],
+        Some(&feature_wt),
+    );
+}
+
+#[test]
+fn test_merge_pre_squash_command_success() {
+    let mut repo = TestRepo::new();
+    repo.commit("Initial commit");
+    repo.setup_remote("main");
+
+    // Create project config with pre-squash command
+    let config_dir = repo.root_path().join(".config");
+    fs::create_dir_all(&config_dir).expect("Failed to create config dir");
+    fs::write(
+        config_dir.join("wt.toml"),
+        r#"pre-squash-command = "echo 'Pre-squash check passed'""#,
+    )
+    .expect("Failed to write config");
+
+    repo.commit("Add config");
+
+    // Create a worktree for main
+    let main_wt = repo.root_path().parent().unwrap().join("test-repo.main-wt");
+    let mut cmd = Command::new("git");
+    repo.configure_git_cmd(&mut cmd);
+    cmd.args(["worktree", "add", main_wt.to_str().unwrap(), "main"])
+        .current_dir(repo.root_path())
+        .output()
+        .expect("Failed to add worktree");
+
+    // Create a feature worktree and make commits
+    let feature_wt = repo.add_worktree("feature", "feature");
+    fs::write(feature_wt.join("feature.txt"), "feature content").expect("Failed to write file");
+
+    let mut cmd = Command::new("git");
+    repo.configure_git_cmd(&mut cmd);
+    cmd.args(["add", "feature.txt"])
+        .current_dir(&feature_wt)
+        .output()
+        .expect("Failed to add file");
+
+    let mut cmd = Command::new("git");
+    repo.configure_git_cmd(&mut cmd);
+    cmd.args(["commit", "-m", "Add feature file"])
+        .current_dir(&feature_wt)
+        .output()
+        .expect("Failed to commit");
+
+    // Merge with --squash and --force
+    snapshot_merge(
+        "merge_pre_squash_command_success",
+        &repo,
+        &["main", "--squash", "--force"],
+        Some(&feature_wt),
+    );
+}
+
+#[test]
+fn test_merge_pre_squash_command_failure() {
+    let mut repo = TestRepo::new();
+    repo.commit("Initial commit");
+    repo.setup_remote("main");
+
+    // Create project config with failing pre-squash command
+    let config_dir = repo.root_path().join(".config");
+    fs::create_dir_all(&config_dir).expect("Failed to create config dir");
+    fs::write(
+        config_dir.join("wt.toml"),
+        r#"pre-squash-command = "exit 1""#,
+    )
+    .expect("Failed to write config");
+
+    repo.commit("Add config");
+
+    // Create a worktree for main
+    let main_wt = repo.root_path().parent().unwrap().join("test-repo.main-wt");
+    let mut cmd = Command::new("git");
+    repo.configure_git_cmd(&mut cmd);
+    cmd.args(["worktree", "add", main_wt.to_str().unwrap(), "main"])
+        .current_dir(repo.root_path())
+        .output()
+        .expect("Failed to add worktree");
+
+    // Create a feature worktree and make commits
+    let feature_wt = repo.add_worktree("feature", "feature");
+    fs::write(feature_wt.join("feature.txt"), "feature content").expect("Failed to write file");
+
+    let mut cmd = Command::new("git");
+    repo.configure_git_cmd(&mut cmd);
+    cmd.args(["add", "feature.txt"])
+        .current_dir(&feature_wt)
+        .output()
+        .expect("Failed to add file");
+
+    let mut cmd = Command::new("git");
+    repo.configure_git_cmd(&mut cmd);
+    cmd.args(["commit", "-m", "Add feature file"])
+        .current_dir(&feature_wt)
+        .output()
+        .expect("Failed to commit");
+
+    // Merge with --squash and --force - pre-squash command should fail and block merge
+    snapshot_merge(
+        "merge_pre_squash_command_failure",
+        &repo,
+        &["main", "--squash", "--force"],
+        Some(&feature_wt),
+    );
+}

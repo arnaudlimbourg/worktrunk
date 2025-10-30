@@ -57,6 +57,8 @@ enum ConfigCommand {
 pub enum HookType {
     PostCreate,
     PostStart,
+    PreCommit,
+    PreSquash,
     PreMerge,
     PostMerge,
 }
@@ -67,6 +69,8 @@ impl HookType {
         match self {
             HookType::PostCreate => "post-create",
             HookType::PostStart => "post-start",
+            HookType::PreCommit => "pre-commit",
+            HookType::PreSquash => "pre-squash",
             HookType::PreMerge => "pre-merge",
             HookType::PostMerge => "post-merge",
         }

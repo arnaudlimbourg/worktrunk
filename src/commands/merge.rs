@@ -61,13 +61,19 @@ pub fn handle_merge(
                 .git_context("Failed to stage changes")?;
         } else {
             // Commit immediately when not squashing
-            handle_commit_changes(&config.commit_generation)?;
+            handle_commit_changes(&config.commit_generation, &current_branch, no_hooks, force)?;
         }
     }
 
     // Squash commits if requested
     if squash {
-        handle_squash(&target_branch, &config.commit_generation)?;
+        handle_squash(
+            &target_branch,
+            &config.commit_generation,
+            &current_branch,
+            no_hooks,
+            force,
+        )?;
     }
 
     // Rebase onto target
@@ -275,8 +281,26 @@ fn commit_with_generated_message(
 /// Commit uncommitted changes with LLM-generated message
 fn handle_commit_changes(
     commit_generation_config: &worktrunk::config::CommitGenerationConfig,
+    current_branch: &str,
+    no_hooks: bool,
+    force: bool,
 ) -> Result<(), GitError> {
     let repo = Repository::current();
+    let config = WorktrunkConfig::load().git_context("Failed to load config")?;
+
+    // Run pre-commit hook unless --no-hooks was specified
+    if !no_hooks && let Ok(Some(project_config)) = ProjectConfig::load(&repo.worktree_root()?) {
+        let worktree_path =
+            std::env::current_dir().git_context("Failed to get current directory")?;
+        run_pre_commit_commands(
+            &project_config,
+            current_branch,
+            &worktree_path,
+            &repo,
+            &config,
+            force,
+        )?;
+    }
 
     // Stage all changes including untracked files
     repo.run_command(&["add", "-A"])
@@ -288,8 +312,27 @@ fn handle_commit_changes(
 fn handle_squash(
     target_branch: &str,
     commit_generation_config: &worktrunk::config::CommitGenerationConfig,
+    current_branch: &str,
+    no_hooks: bool,
+    force: bool,
 ) -> Result<Option<usize>, GitError> {
     let repo = Repository::current();
+    let config = WorktrunkConfig::load().git_context("Failed to load config")?;
+
+    // Run pre-squash hook unless --no-hooks was specified
+    if !no_hooks && let Ok(Some(project_config)) = ProjectConfig::load(&repo.worktree_root()?) {
+        let worktree_path =
+            std::env::current_dir().git_context("Failed to get current directory")?;
+        run_pre_squash_commands(
+            &project_config,
+            current_branch,
+            target_branch,
+            &worktree_path,
+            &repo,
+            &config,
+            force,
+        )?;
+    }
 
     // Get merge base with target branch
     let merge_base = repo.merge_base("HEAD", target_branch)?;
@@ -513,6 +556,129 @@ pub fn execute_post_merge_commands(
             };
             crate::output::progress(message)?;
             // Continue with other commands even if one fails
+        }
+    }
+
+    crate::output::flush()?;
+
+    Ok(())
+}
+
+/// Run pre-commit commands sequentially (blocking, fail-fast)
+pub fn run_pre_commit_commands(
+    project_config: &ProjectConfig,
+    current_branch: &str,
+    worktree_path: &std::path::Path,
+    repo: &Repository,
+    config: &WorktrunkConfig,
+    force: bool,
+) -> Result<(), GitError> {
+    let Some(pre_commit_config) = &project_config.pre_commit_command else {
+        return Ok(());
+    };
+
+    let repo_root = repo.main_worktree_root()?;
+    let ctx = CommandContext::new(
+        repo,
+        config,
+        current_branch,
+        worktree_path,
+        &repo_root,
+        force,
+    );
+    let commands = prepare_project_commands(
+        pre_commit_config,
+        &ctx,
+        false,
+        &[],
+        "Pre-commit commands",
+        |_name, command| {
+            let dim = AnstyleStyle::new().dimmed();
+            crate::output::progress(format!("{dim}Skipping command: {command}{dim:#}")).ok();
+        },
+    )?;
+
+    if commands.is_empty() {
+        return Ok(());
+    }
+
+    // Execute each command sequentially
+    for prepared in commands {
+        let header = if let Some(name) = &prepared.name {
+            format!("🔄 {CYAN}Running pre-commit command {CYAN_BOLD}{name}{CYAN_BOLD:#}:{CYAN:#}")
+        } else {
+            format!("🔄 {CYAN}Running pre-commit command:{CYAN:#}")
+        };
+        crate::output::progress(header)?;
+        crate::output::progress(format_bash_with_gutter(&prepared.expanded, ""))?;
+
+        if let Err(e) = execute_command_in_worktree(worktree_path, &prepared.expanded) {
+            return Err(GitError::PreCommitCommandFailed {
+                command_name: prepared.name.clone(),
+                error: e.to_string(),
+            });
+        }
+    }
+
+    crate::output::flush()?;
+
+    Ok(())
+}
+
+/// Run pre-squash commands sequentially (blocking, fail-fast)
+pub fn run_pre_squash_commands(
+    project_config: &ProjectConfig,
+    current_branch: &str,
+    target_branch: &str,
+    worktree_path: &std::path::Path,
+    repo: &Repository,
+    config: &WorktrunkConfig,
+    force: bool,
+) -> Result<(), GitError> {
+    let Some(pre_squash_config) = &project_config.pre_squash_command else {
+        return Ok(());
+    };
+
+    let repo_root = repo.main_worktree_root()?;
+    let ctx = CommandContext::new(
+        repo,
+        config,
+        current_branch,
+        worktree_path,
+        &repo_root,
+        force,
+    );
+    let commands = prepare_project_commands(
+        pre_squash_config,
+        &ctx,
+        false,
+        &[("target", target_branch)],
+        "Pre-squash commands",
+        |_name, command| {
+            let dim = AnstyleStyle::new().dimmed();
+            crate::output::progress(format!("{dim}Skipping command: {command}{dim:#}")).ok();
+        },
+    )?;
+
+    if commands.is_empty() {
+        return Ok(());
+    }
+
+    // Execute each command sequentially
+    for prepared in commands {
+        let header = if let Some(name) = &prepared.name {
+            format!("🔄 {CYAN}Running pre-squash command {CYAN_BOLD}{name}{CYAN_BOLD:#}:{CYAN:#}")
+        } else {
+            format!("🔄 {CYAN}Running pre-squash command:{CYAN:#}")
+        };
+        crate::output::progress(header)?;
+        crate::output::progress(format_bash_with_gutter(&prepared.expanded, ""))?;
+
+        if let Err(e) = execute_command_in_worktree(worktree_path, &prepared.expanded) {
+            return Err(GitError::PreSquashCommandFailed {
+                command_name: prepared.name.clone(),
+                error: e.to_string(),
+            });
         }
     }
 

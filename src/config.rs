@@ -86,13 +86,13 @@ pub struct CommitGenerationConfig {
 ///
 /// # Template Variables
 ///
-/// Commands support template variable expansion:
+/// All commands support these template variables:
 /// - `{repo}` - Repository name (e.g., "my-project")
 /// - `{branch}` - Branch name (e.g., "feature-foo")
 /// - `{worktree}` - Absolute path to the worktree
 /// - `{repo_root}` - Absolute path to the repository root
 ///
-/// Additionally, `pre-merge-command` commands support:
+/// Merge-related commands (`pre-squash-command`, `pre-merge-command`, `post-merge-command`) also support:
 /// - `{target}` - Target branch for the merge (e.g., "main")
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ProjectConfig {
@@ -109,6 +109,22 @@ pub struct ProjectConfig {
     /// Available template variables: `{repo}`, `{branch}`, `{worktree}`, `{repo_root}`
     #[serde(default, rename = "post-start-command")]
     pub post_start_command: Option<CommandConfig>,
+
+    /// Commands to execute before committing changes (blocking, fail-fast validation)
+    /// Supports string (single command), array (sequential), or table (named, sequential)
+    /// All commands must exit with code 0 for commit to proceed
+    ///
+    /// Available template variables: `{repo}`, `{branch}`, `{worktree}`, `{repo_root}`
+    #[serde(default, rename = "pre-commit-command")]
+    pub pre_commit_command: Option<CommandConfig>,
+
+    /// Commands to execute before squashing commits (blocking, fail-fast validation)
+    /// Supports string (single command), array (sequential), or table (named, sequential)
+    /// All commands must exit with code 0 for squash to proceed
+    ///
+    /// Available template variables: `{repo}`, `{branch}`, `{worktree}`, `{repo_root}`, `{target}`
+    #[serde(default, rename = "pre-squash-command")]
+    pub pre_squash_command: Option<CommandConfig>,
 
     /// Commands to execute before merging (blocking, fail-fast validation)
     /// Supports string (single command), array (sequential), or table (named, sequential)

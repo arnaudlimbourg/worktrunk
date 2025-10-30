@@ -2,7 +2,10 @@ use worktrunk::config::{ProjectConfig, WorktrunkConfig};
 use worktrunk::git::{GitError, GitResultExt, Repository};
 use worktrunk::styling::{AnstyleStyle, HINT, HINT_EMOJI};
 
-use super::merge::{execute_post_merge_commands, run_pre_merge_commands};
+use super::merge::{
+    execute_post_merge_commands, run_pre_commit_commands, run_pre_merge_commands,
+    run_pre_squash_commands,
+};
 use super::worktree::{execute_post_create_commands, execute_post_start_commands_sequential};
 
 // Re-export HookType from main
@@ -35,6 +38,30 @@ pub fn handle_dev_run_hook(hook_type: HookType, force: bool) -> Result<(), GitEr
         HookType::PostStart => {
             check_hook_configured(&project_config.post_start_command, hook_type)?;
             execute_post_start_commands_sequential(&worktree_path, &repo, &config, &branch, force)
+        }
+        HookType::PreCommit => {
+            check_hook_configured(&project_config.pre_commit_command, hook_type)?;
+            run_pre_commit_commands(
+                &project_config,
+                &branch,
+                &worktree_path,
+                &repo,
+                &config,
+                force,
+            )
+        }
+        HookType::PreSquash => {
+            check_hook_configured(&project_config.pre_squash_command, hook_type)?;
+            let target_branch = repo.default_branch().unwrap_or_else(|_| "main".to_string());
+            run_pre_squash_commands(
+                &project_config,
+                &branch,
+                &target_branch,
+                &worktree_path,
+                &repo,
+                &config,
+                force,
+            )
         }
         HookType::PreMerge => {
             check_hook_configured(&project_config.pre_merge_command, hook_type)?;
