@@ -490,7 +490,7 @@ fn main() {
         Commands::Remove { worktrees } => {
             if worktrees.is_empty() {
                 // No worktrees specified, remove current worktree
-                handle_remove(None).and_then(|result| handle_remove_output(&result))
+                handle_remove(None).and_then(|result| handle_remove_output(&result, None))
             } else {
                 // When removing multiple worktrees, we need to handle the current worktree last
                 // to avoid deleting the directory we're currently in
@@ -516,30 +516,17 @@ fn main() {
                         }
                     }
 
-                    // Remove others first
+                    // Remove others first, then current last
+                    // Progress messages shown by handle_remove_output for all cases
                     for worktree in others.iter() {
-                        // Show progress before starting removal
-                        use worktrunk::styling::CYAN;
-                        let cyan_bold = CYAN.bold();
-                        output::progress(format!(
-                            "🔄 {CYAN}Removing worktree for {cyan_bold}{worktree}{cyan_bold:#}...{CYAN:#}"
-                        ))?;
-
                         let result = handle_remove(Some(worktree.as_str()))?;
-                        handle_remove_output(&result)?;
+                        handle_remove_output(&result, Some(worktree.as_str()))?;
                     }
 
                     // Remove current worktree last (if it was in the list)
                     if let Some(current_name) = current {
-                        // Show progress before starting removal
-                        use worktrunk::styling::CYAN;
-                        let cyan_bold = CYAN.bold();
-                        output::progress(format!(
-                            "🔄 {CYAN}Removing worktree for {cyan_bold}{current_name}{cyan_bold:#}...{CYAN:#}"
-                        ))?;
-
                         let result = handle_remove(Some(current_name.as_str()))?;
-                        handle_remove_output(&result)?;
+                        handle_remove_output(&result, Some(current_name.as_str()))?;
                     }
 
                     Ok(())

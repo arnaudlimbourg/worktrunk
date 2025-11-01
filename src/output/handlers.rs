@@ -2,7 +2,7 @@
 
 use crate::commands::worktree::{RemoveResult, SwitchResult};
 use crate::output::global::format_switch_success;
-use worktrunk::git::GitError;
+use worktrunk::git::{GitError, GitResultExt};
 
 /// Format message for switch operation (mode-specific via output system)
 fn format_switch_message(result: &SwitchResult, branch: &str) -> String {
@@ -22,9 +22,10 @@ fn format_switch_message(result: &SwitchResult, branch: &str) -> String {
 }
 
 /// Format message for remove operation (includes emoji and color for consistency)
-fn format_remove_message(result: &RemoveResult) -> String {
-    use worktrunk::styling::{GREEN, SUCCESS_EMOJI};
+fn format_remove_message(result: &RemoveResult, branch: Option<&str>) -> String {
+    use worktrunk::styling::{AnstyleStyle, GREEN, SUCCESS_EMOJI};
     let green_bold = GREEN.bold();
+    let dim = AnstyleStyle::new().dimmed();
 
     match result {
         RemoveResult::AlreadyOnDefault(branch) => {
@@ -32,20 +33,26 @@ fn format_remove_message(result: &RemoveResult) -> String {
                 "{SUCCESS_EMOJI} {GREEN}Already on default branch {GREEN:#}{green_bold}{branch}{green_bold:#}"
             )
         }
-        RemoveResult::RemovedWorktree { primary_path } => {
-            format!(
-                "{SUCCESS_EMOJI} {GREEN}Removed worktree, returned to primary at {green_bold}{}{green_bold:#}",
-                primary_path.display()
-            )
+        RemoveResult::RemovedWorktree {
+            primary_path,
+            changed_directory,
+            ..
+        } => {
+            let branch_suffix = branch
+                .map(|b| format!(" for {green_bold}{b}{green_bold:#}"))
+                .unwrap_or_default();
+            if *changed_directory {
+                format!(
+                    "{SUCCESS_EMOJI} {GREEN}Removed worktree{branch_suffix}, returned to primary at {GREEN:#}{dim}{}{dim:#}",
+                    primary_path.display()
+                )
+            } else {
+                format!("{SUCCESS_EMOJI} {GREEN}Removed worktree{branch_suffix}{GREEN:#}")
+            }
         }
         RemoveResult::SwitchedToDefault(branch) => {
             format!(
                 "{SUCCESS_EMOJI} {GREEN}Switched to default branch {GREEN:#}{green_bold}{branch}{green_bold:#}"
-            )
-        }
-        RemoveResult::RemovedOtherWorktree { branch } => {
-            format!(
-                "{SUCCESS_EMOJI} {GREEN}Removed worktree for {GREEN:#}{green_bold}{branch}{green_bold:#}"
             )
         }
     }
@@ -90,14 +97,39 @@ pub fn handle_switch_output(
 }
 
 /// Handle output for a remove operation
-pub fn handle_remove_output(result: &RemoveResult) -> Result<(), GitError> {
-    // For removed worktree, set target directory for shell to cd to
-    if let RemoveResult::RemovedWorktree { primary_path } = result {
-        super::change_directory(primary_path)?;
+pub fn handle_remove_output(result: &RemoveResult, branch: Option<&str>) -> Result<(), GitError> {
+    // For removed worktree: emit cd directive BEFORE deletion so shell changes directory instantly
+    if let RemoveResult::RemovedWorktree {
+        primary_path,
+        worktree_path,
+        changed_directory,
+    } = result
+    {
+        use worktrunk::styling::CYAN;
+
+        // 1. Emit cd directive if needed - shell will execute this immediately
+        if *changed_directory {
+            super::change_directory(primary_path)?;
+            super::flush()?; // Force flush to ensure shell processes the cd
+        }
+
+        // 2. Show progress message with branch name
+        let cyan_bold = CYAN.bold();
+        let progress_msg = if let Some(b) = branch {
+            format!("🔄 {CYAN}Removing worktree for {cyan_bold}{b}{cyan_bold:#}...{CYAN:#}")
+        } else {
+            format!("🔄 {CYAN}Removing worktree...{CYAN:#}")
+        };
+        super::progress(progress_msg)?;
+
+        // 3. Do the deletion (shell already changed directory if needed)
+        let repo = worktrunk::git::Repository::current();
+        repo.remove_worktree(worktree_path)
+            .git_context("Failed to remove worktree")?;
     }
 
     // Show success message (includes emoji and color)
-    super::success(format_remove_message(result))?;
+    super::success(format_remove_message(result, branch))?;
 
     // Flush output
     super::flush()?;

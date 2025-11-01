@@ -7,7 +7,7 @@ use worktrunk::styling::{
 };
 
 use super::command_executor::{CommandContext, prepare_project_commands};
-use super::worktree::{handle_push, handle_remove, parse_diff_shortstat};
+use super::worktree::{handle_push, parse_diff_shortstat};
 use crate::output::execute_command_in_worktree;
 
 /// Extract untracked files from git status --porcelain output
@@ -155,7 +155,9 @@ pub fn handle_merge(
 
         // STEP 4: Only NOW remove the worktree (after all checks passed)
         crate::output::progress(format!("🔄 {CYAN}Cleaning up worktree...{CYAN:#}"))?;
-        handle_remove(None)?;
+        let worktree_root = repo.worktree_root()?;
+        repo.remove_worktree(&worktree_root)
+            .git_context("Failed to remove worktree")?;
 
         // Print comprehensive summary
         crate::output::progress("")?;

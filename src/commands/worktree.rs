@@ -134,12 +134,14 @@ impl SwitchResult {
 pub enum RemoveResult {
     /// Already on default branch, no action taken
     AlreadyOnDefault(String),
-    /// Removed worktree and returned to primary
-    RemovedWorktree { primary_path: PathBuf },
+    /// Removed worktree and returned to primary (if needed)
+    RemovedWorktree {
+        primary_path: PathBuf,
+        worktree_path: PathBuf,
+        changed_directory: bool,
+    },
     /// Switched to default branch in main repo
     SwitchedToDefault(String),
-    /// Removed a different worktree (not the current one)
-    RemovedOtherWorktree { branch: String },
 }
 
 pub fn handle_switch(
@@ -251,12 +253,11 @@ fn remove_current_worktree(repo: &Repository) -> Result<RemoveResult, GitError> 
         let worktree_root = repo.worktree_root()?;
         let primary_worktree_dir = repo.main_worktree_root()?;
 
-        // Remove the worktree (fail fast if this fails)
-        repo.remove_worktree(&worktree_root)
-            .git_context("Failed to remove worktree")?;
-
+        // Return paths - deletion will happen in output handler after cd directive is emitted
         Ok(RemoveResult::RemovedWorktree {
             primary_path: primary_worktree_dir,
+            worktree_path: worktree_root,
+            changed_directory: true, // We're in the worktree being removed
         })
     } else {
         // In main repo: check if already on default branch
@@ -305,26 +306,20 @@ fn remove_worktree_by_name(repo: &Repository, branch_name: &str) -> Result<Remov
     let current_worktree = repo.worktree_root()?;
     let removing_current = current_worktree == worktree_path;
 
-    // Get primary worktree path BEFORE removing (while we can still run git commands)
-    let primary_worktree_dir = if removing_current {
-        Some(repo.main_worktree_root()?)
+    // Return paths for all cases - deletion happens in output handler
+    let (primary_path, changed_directory) = if removing_current {
+        // Removing current worktree - will cd to main worktree
+        (repo.main_worktree_root()?, true)
     } else {
-        None
+        // Removing different worktree - stay in current location
+        (repo.worktree_root()?, false)
     };
 
-    // Remove the worktree (fail fast if this fails)
-    repo.remove_worktree(&worktree_path)
-        .git_context("Failed to remove worktree")?;
-
-    // If we removed the current worktree, return to primary
-    if let Some(primary_path) = primary_worktree_dir {
-        Ok(RemoveResult::RemovedWorktree { primary_path })
-    } else {
-        // Stay where we are (no directory change needed)
-        Ok(RemoveResult::RemovedOtherWorktree {
-            branch: branch_name.to_string(),
-        })
-    }
+    Ok(RemoveResult::RemovedWorktree {
+        primary_path,
+        worktree_path,
+        changed_directory,
+    })
 }
 
 /// Check for conflicting uncommitted changes in target worktree
