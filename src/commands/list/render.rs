@@ -196,10 +196,6 @@ fn append_line(target: &mut StyledLine, source: StyledLine) {
     }
 }
 
-fn push_gap(line: &mut StyledLine) {
-    line.push_raw("  ");
-}
-
 fn push_blank(line: &mut StyledLine, width: usize) {
     if width > 0 {
         line.push_raw(" ".repeat(width));
@@ -260,20 +256,46 @@ pub fn format_all_states(info: &WorktreeInfo) -> String {
 
 pub fn format_header_line(layout: &LayoutConfig) {
     let widths = &layout.widths;
-    let style = Style::new();
+    let positions = &layout.positions;
+    let dim = Style::new().dimmed();
     let mut line = StyledLine::new();
 
-    push_optional_header(&mut line, "Branch", widths.branch, style);
-    push_optional_header(&mut line, "WT +/-", widths.working_diff.total, style);
-    push_optional_header(&mut line, "Commits", widths.ahead_behind.total, style);
-    push_optional_header(&mut line, "Branch +/-", widths.branch_diff.total, style);
-    push_optional_header(&mut line, "State", widths.states, style);
-    push_optional_header(&mut line, "Path", widths.path, style);
-    push_optional_header(&mut line, "Remote", widths.upstream.total, style);
-    push_optional_header(&mut line, "Age", widths.time, style);
-    push_optional_header(&mut line, "CI", widths.ci_status, style);
-    push_optional_header(&mut line, "Commit", widths.commit, style);
-    push_optional_header(&mut line, "Message", widths.message, style);
+    // Use absolute positions for guaranteed alignment
+    push_header_at(&mut line, "Branch", widths.branch, positions.branch, dim);
+    push_header_at(
+        &mut line,
+        "Working ±",
+        widths.working_diff.total,
+        positions.working_diff,
+        dim,
+    );
+    push_header_at(
+        &mut line,
+        "Main ↕",
+        widths.ahead_behind.total,
+        positions.ahead_behind,
+        dim,
+    );
+    push_header_at(
+        &mut line,
+        "Main ±",
+        widths.branch_diff.total,
+        positions.branch_diff,
+        dim,
+    );
+    push_header_at(&mut line, "State", widths.states, positions.states, dim);
+    push_header_at(&mut line, "Path", widths.path, positions.path, dim);
+    push_header_at(
+        &mut line,
+        "Remote ↕",
+        widths.upstream.total,
+        positions.upstream,
+        dim,
+    );
+    push_header_at(&mut line, "Age", widths.time, positions.time, dim);
+    push_header_at(&mut line, "CI", widths.ci_status, positions.ci_status, dim);
+    push_header_at(&mut line, "Commit", widths.commit, positions.commit, dim);
+    push_header_at(&mut line, "Message", widths.message, positions.message, dim);
 
     println!("{}", line.render());
 }
@@ -288,15 +310,14 @@ fn optional_reason_state(label: &str, reason: Option<&str>) -> Option<String> {
     })
 }
 
-fn push_header(line: &mut StyledLine, label: &str, width: usize, dim: Style) {
-    let header = format!("{:width$}", label, width = width);
-    line.push_styled(header, dim);
-    line.push_raw("  ");
-}
-
-fn push_optional_header(line: &mut StyledLine, label: &str, width: usize, dim: Style) {
+/// Push a header at an absolute column position
+fn push_header_at(line: &mut StyledLine, label: &str, width: usize, position: usize, dim: Style) {
     if width > 0 {
-        push_header(line, label, width, dim);
+        // Pad to absolute position
+        line.pad_to(position);
+        // Add header content padded to width
+        let header = format!("{:width$}", label, width = width);
+        line.push_styled(header, dim);
     }
 }
 
@@ -349,31 +370,35 @@ pub fn format_list_item_line(
         text_style
     };
 
-    // Start building the line
+    // Start building the line using absolute column positions
     let mut line = StyledLine::new();
+    let positions = &layout.positions;
 
-    // Branch name
-    let branch_text = format!("{:width$}", item.branch_name(), width = widths.branch);
-    if let Some(style) = text_style {
-        line.push_styled(branch_text, style);
-    } else {
-        line.push_raw(branch_text);
+    // Branch name (dimmed if removable)
+    if widths.branch > 0 {
+        line.pad_to(positions.branch);
+        let branch_text = format!("{:width$}", item.branch_name(), width = widths.branch);
+        if let Some(style) = text_style {
+            line.push_styled(branch_text, style);
+        } else {
+            line.push_raw(branch_text);
+        }
     }
-    push_gap(&mut line);
 
     // Working tree diff (worktrees only)
     if widths.working_diff.total > 0 {
+        line.pad_to(positions.working_diff);
         if let Some(info) = worktree_info {
             let (wt_added, wt_deleted) = info.working_tree_diff;
             push_diff(&mut line, wt_added, wt_deleted, &widths.working_diff);
         } else {
             push_blank(&mut line, widths.working_diff.total);
         }
-        push_gap(&mut line);
     }
 
     // Ahead/behind (commits difference) - green ahead, dim red behind
     if widths.ahead_behind.total > 0 {
+        line.pad_to(positions.ahead_behind);
         if !item.is_primary() && (counts.ahead > 0 || counts.behind > 0) {
             let dim_deletion = DELETION.dimmed();
             append_line(
@@ -389,11 +414,21 @@ pub fn format_list_item_line(
         } else {
             push_blank(&mut line, widths.ahead_behind.total);
         }
-        push_gap(&mut line);
+    }
+
+    // Branch diff (line diff in commits)
+    if widths.branch_diff.total > 0 {
+        line.pad_to(positions.branch_diff);
+        if !item.is_primary() {
+            push_diff(&mut line, branch_diff.0, branch_diff.1, &widths.branch_diff);
+        } else {
+            push_blank(&mut line, widths.branch_diff.total);
+        }
     }
 
     // States (worktrees only)
     if widths.states > 0 {
+        line.pad_to(positions.states);
         if let Some(info) = worktree_info {
             let states = format_all_states(info);
             if !states.is_empty() {
@@ -405,11 +440,11 @@ pub fn format_list_item_line(
         } else {
             push_blank(&mut line, widths.states);
         }
-        push_gap(&mut line);
     }
 
     // Path (worktrees only)
     if widths.path > 0 {
+        line.pad_to(positions.path);
         if let Some(info) = worktree_info {
             let path_str = shorten_path(&info.worktree.path, &layout.common_prefix);
             let path_text = format!("{:width$}", path_str, width = widths.path);
@@ -421,21 +456,11 @@ pub fn format_list_item_line(
         } else {
             push_blank(&mut line, widths.path);
         }
-        push_gap(&mut line);
-    }
-
-    // Branch diff (line diff in commits)
-    if widths.branch_diff.total > 0 {
-        if !item.is_primary() {
-            push_diff(&mut line, branch_diff.0, branch_diff.1, &widths.branch_diff);
-        } else {
-            push_blank(&mut line, widths.branch_diff.total);
-        }
-        push_gap(&mut line);
     }
 
     // Upstream tracking
     if widths.upstream.total > 0 {
+        line.pad_to(positions.upstream);
         if let Some((_remote_name, upstream_ahead, upstream_behind)) = upstream.active() {
             let dim_deletion = DELETION.dimmed();
             // TODO: Handle show_remote_names when implemented
@@ -452,22 +477,22 @@ pub fn format_list_item_line(
         } else {
             push_blank(&mut line, widths.upstream.total);
         }
-        push_gap(&mut line);
     }
 
     // Age (Time)
     if widths.time > 0 {
+        line.pad_to(positions.time);
         let time_str = format!(
             "{:width$}",
             format_relative_time(commit.timestamp),
             width = widths.time
         );
         line.push_styled(time_str, Style::new().dimmed());
-        push_gap(&mut line);
     }
 
     // CI status
     if widths.ci_status > 0 {
+        line.pad_to(positions.ci_status);
         if let Some(pr_status) = item.pr_status() {
             let mut ci_segment = format_ci_status(pr_status);
             ci_segment.pad_to(widths.ci_status);
@@ -475,18 +500,17 @@ pub fn format_list_item_line(
         } else {
             push_blank(&mut line, widths.ci_status);
         }
-        push_gap(&mut line);
     }
 
     // Commit (short HEAD) - always dimmed (reference info)
     if widths.commit > 0 {
-        let commit_text = format!("{:width$}", short_head, width = widths.commit);
-        line.push_styled(commit_text, Style::new().dimmed());
-        push_gap(&mut line);
+        line.pad_to(positions.commit);
+        line.push_styled(short_head, Style::new().dimmed());
     }
 
     // Message
     if widths.message > 0 {
+        line.pad_to(positions.message);
         let msg = truncate_at_word_boundary(&commit.commit_message, layout.max_message_len);
         let msg_start = line.width();
         line.push_styled(msg, Style::new().dimmed());

@@ -181,7 +181,7 @@ fn test_column_alignment_varying_diff_widths() {
         std::fs::write(large_path.join(format!("file{}.txt", i)), "content").unwrap();
     }
 
-    // Test at a width where WT +/- column is visible
+    // Test at a width where Dirty column is visible
     snapshot_list_with_width("alignment_varying_diffs", &repo, 180);
 }
 

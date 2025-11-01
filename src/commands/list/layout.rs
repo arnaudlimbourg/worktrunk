@@ -4,6 +4,9 @@ use unicode_width::UnicodeWidthStr;
 
 use super::model::ListItem;
 
+/// Width of short commit hash display (first 8 hex characters)
+const COMMIT_HASH_WIDTH: usize = 8;
+
 /// Helper: Try to allocate space for a column. Returns the allocated width if successful.
 /// Updates `remaining` by subtracting the allocated width + spacing.
 /// If is_first is true, doesn't require spacing before the column.
@@ -65,8 +68,25 @@ pub struct ColumnWidths {
     pub path: usize,
 }
 
+/// Absolute column positions for guaranteed alignment
+#[derive(Clone, Copy, Debug)]
+pub struct ColumnPositions {
+    pub branch: usize,
+    pub working_diff: usize,
+    pub ahead_behind: usize,
+    pub branch_diff: usize,
+    pub states: usize,
+    pub path: usize,
+    pub upstream: usize,
+    pub time: usize,
+    pub ci_status: usize,
+    pub commit: usize,
+    pub message: usize,
+}
+
 pub struct LayoutConfig {
     pub widths: ColumnWidths,
+    pub positions: ColumnPositions,
     pub common_prefix: PathBuf,
     pub max_message_len: usize,
 }
@@ -151,13 +171,13 @@ pub fn calculate_column_widths(items: &[ListItem]) -> ColumnWidths {
     // Format: "+" + digits + " " + "-" + digits
     let working_diff_total = if max_wt_added_digits > 0 || max_wt_deleted_digits > 0 {
         let data_width = 1 + max_wt_added_digits + 1 + 1 + max_wt_deleted_digits;
-        data_width.max("WT +/-".width()) // Ensure header fits if we have data
+        data_width.max("Working ±".width()) // Ensure header fits if we have data
     } else {
         0 // No data, no column
     };
     let branch_diff_total = if max_br_added_digits > 0 || max_br_deleted_digits > 0 {
         let data_width = 1 + max_br_added_digits + 1 + 1 + max_br_deleted_digits;
-        data_width.max("Branch +/-".width()) // Ensure header fits if we have data
+        data_width.max("Main ±".width()) // Ensure header fits if we have data
     } else {
         0 // No data, no column
     };
@@ -165,7 +185,7 @@ pub fn calculate_column_widths(items: &[ListItem]) -> ColumnWidths {
     // Calculate ahead/behind column width (format: "↑n ↓n")
     let ahead_behind_total = if max_ahead_digits > 0 || max_behind_digits > 0 {
         let data_width = 1 + max_ahead_digits + 1 + 1 + max_behind_digits;
-        data_width.max("Commits".width())
+        data_width.max("Main ↕".width())
     } else {
         0
     };
@@ -175,7 +195,7 @@ pub fn calculate_column_widths(items: &[ListItem]) -> ColumnWidths {
         // Format: "↑" + digits + " " + "↓" + digits
         // TODO: Add remote name when show_remote_names is implemented
         let data_width = 1 + max_upstream_ahead_digits + 1 + 1 + max_upstream_behind_digits;
-        data_width.max("Remote".width())
+        data_width.max("Remote ↕".width())
     } else {
         0
     };
@@ -216,8 +236,8 @@ pub fn calculate_column_widths(items: &[ListItem]) -> ColumnWidths {
             deleted_digits: max_upstream_behind_digits,
         },
         states: final_states,
-        commit: 8, // Fixed width for short commit hash
-        path: 0,   // Path width calculated later in responsive layout
+        commit: COMMIT_HASH_WIDTH,
+        path: 0, // Path width calculated later in responsive layout
     }
 }
 
@@ -246,7 +266,7 @@ pub fn calculate_responsive_layout(items: &[ListItem]) -> LayoutConfig {
         .unwrap_or(20); // fallback to 20 if no paths
 
     let spacing = 2;
-    let commit_width = 8; // Short commit hash
+    let commit_width = COMMIT_HASH_WIDTH;
 
     // Priority order for columns (from high to low):
     // 1. branch - identity (what is this?)
@@ -362,8 +382,38 @@ pub fn calculate_responsive_layout(items: &[ListItem]) -> LayoutConfig {
 
     let final_max_message_len = widths.message;
 
+    // Calculate absolute column positions (with 2-space gaps between columns)
+    let gap = 2;
+    let mut pos = 0;
+
+    // Helper closure to advance position for a column
+    // Returns the column's start position, or 0 if column is hidden (width=0)
+    let mut advance = |width: usize| -> usize {
+        if width == 0 {
+            return 0;
+        }
+        let column_pos = if pos == 0 { 0 } else { pos + gap };
+        pos = column_pos + width;
+        column_pos
+    };
+
+    let positions = ColumnPositions {
+        branch: advance(widths.branch),
+        working_diff: advance(widths.working_diff.total),
+        ahead_behind: advance(widths.ahead_behind.total),
+        branch_diff: advance(widths.branch_diff.total),
+        states: advance(widths.states),
+        path: advance(widths.path),
+        upstream: advance(widths.upstream.total),
+        time: advance(widths.time),
+        ci_status: advance(widths.ci_status),
+        commit: advance(widths.commit),
+        message: advance(widths.message),
+    };
+
     LayoutConfig {
         widths,
+        positions,
         common_prefix,
         max_message_len: final_max_message_len,
     }
@@ -413,33 +463,259 @@ mod tests {
 
         let widths = calculate_column_widths(&[super::ListItem::Worktree(info1)]);
 
-        // "↑3 ↓2" has format "↑3 ↓2" = 1+1+1+1+1 = 5, but header "Commits" is 7
+        // "↑3 ↓2" has format "↑3 ↓2" = 1+1+1+1+1 = 5, but header "Main ↕" is 6
         assert_eq!(
-            widths.ahead_behind.total, 7,
-            "Ahead/behind column should fit header 'Commits' (width 7)"
+            widths.ahead_behind.total, 6,
+            "Ahead/behind column should fit header 'Main ↕' (width 6)"
         );
         assert_eq!(widths.ahead_behind.added_digits, 1, "3 has 1 digit");
         assert_eq!(widths.ahead_behind.deleted_digits, 1, "2 has 1 digit");
 
-        // "+100 -50" has width 8
-        assert_eq!(widths.working_diff.total, 8, "+100 -50 should have width 8");
+        // "+100 -50" has width 8, but header "Working ±" is 9, so column width is 9
+        assert_eq!(
+            widths.working_diff.total, 9,
+            "Working diff column should fit header 'Working ±' (width 9)"
+        );
         assert_eq!(widths.working_diff.added_digits, 3, "100 has 3 digits");
         assert_eq!(widths.working_diff.deleted_digits, 2, "50 has 2 digits");
 
-        // "+200 -30" has width 8, but header "Branch +/-" is 10, so column width is 10
+        // "+200 -30" has width 8, but header "Main ±" is 6, so column width is 8
         assert_eq!(
-            widths.branch_diff.total, 10,
-            "Branch diff column should fit header 'Branch +/-' (width 10)"
+            widths.branch_diff.total, 8,
+            "Branch diff column should fit header 'Main ±' (width 6)"
         );
         assert_eq!(widths.branch_diff.added_digits, 3, "200 has 3 digits");
         assert_eq!(widths.branch_diff.deleted_digits, 2, "30 has 2 digits");
 
-        // Upstream: "↑4 ↓0" = "↑" (1) + "4" (1) + " " (1) + "↓" (1) + "0" (1) = 5, but header "Remote" = 6
+        // Upstream: "↑4 ↓0" = "↑" (1) + "4" (1) + " " (1) + "↓" (1) + "0" (1) = 5, but header "Remote ↕" = 8
         assert_eq!(
-            widths.upstream.total, 6,
-            "Upstream column should fit header 'Remote' (width 6)"
+            widths.upstream.total, 8,
+            "Upstream column should fit header 'Remote ↕' (width 8)"
         );
         assert_eq!(widths.upstream.added_digits, 1, "4 has 1 digit");
         assert_eq!(widths.upstream.deleted_digits, 1, "0 has 1 digit");
+    }
+
+    #[test]
+    fn test_visible_columns_follow_gap_rule() {
+        use crate::commands::list::model::{
+            AheadBehind, BranchDiffTotals, CommitDetails, UpstreamStatus, WorktreeInfo,
+        };
+
+        // Create test data with specific widths to verify position calculation
+        let info = WorktreeInfo {
+            worktree: worktrunk::git::Worktree {
+                path: PathBuf::from("/test/path"),
+                head: "abc12345".to_string(),
+                branch: Some("feature".to_string()),
+                bare: false,
+                detached: false,
+                locked: None,
+                prunable: None,
+            },
+            commit: CommitDetails {
+                timestamp: 1234567890,
+                commit_message: "Test commit message".to_string(),
+            },
+            counts: AheadBehind {
+                ahead: 5,
+                behind: 10,
+            },
+            working_tree_diff: (100, 50),
+            branch_diff: BranchDiffTotals { diff: (200, 30) },
+            is_primary: false,
+            upstream: UpstreamStatus::from_parts(Some("origin".to_string()), 4, 2),
+            worktree_state: None,
+            pr_status: None,
+            commits_display: None,
+            working_diff_display: None,
+            branch_diff_display: None,
+            upstream_display: None,
+            ci_status_display: None,
+        };
+
+        let items = vec![super::ListItem::Worktree(info)];
+        let layout = calculate_responsive_layout(&items);
+        let pos = &layout.positions;
+        let widths = &layout.widths;
+
+        // Test key invariants of position calculation
+
+        // 1. Branch always starts at position 0
+        assert_eq!(pos.branch, 0, "Branch must start at position 0");
+
+        // 2. States is hidden (no state data), should have position 0
+        assert_eq!(
+            pos.states, 0,
+            "States column should be hidden (no state data)"
+        );
+
+        // 3. For visible columns, verify correct spacing
+        // Each visible column should be at: previous_position + previous_width + gap(2)
+        let gap = 2;
+
+        if widths.working_diff.total > 0 && pos.working_diff > 0 {
+            assert_eq!(
+                pos.working_diff,
+                pos.branch + widths.branch + gap,
+                "Working diff position should follow branch with 2-space gap"
+            );
+        }
+
+        if widths.ahead_behind.total > 0 && pos.ahead_behind > 0 {
+            let prev_col_end = if pos.working_diff > 0 {
+                pos.working_diff + widths.working_diff.total
+            } else {
+                pos.branch + widths.branch
+            };
+            assert_eq!(
+                pos.ahead_behind,
+                prev_col_end + gap,
+                "Ahead/behind position should follow previous visible column with 2-space gap"
+            );
+        }
+
+        // 4. Path must be visible and have position > 0 (it's always shown)
+        assert!(pos.path > 0, "Path column must be visible");
+        assert!(widths.path > 0, "Path column must have width > 0");
+    }
+
+    #[test]
+    fn test_column_positions_with_hidden_columns() {
+        use crate::commands::list::model::{
+            AheadBehind, BranchDiffTotals, CommitDetails, UpstreamStatus, WorktreeInfo,
+        };
+
+        // Create minimal data - most columns will be hidden
+        let info = WorktreeInfo {
+            worktree: worktrunk::git::Worktree {
+                path: PathBuf::from("/test"),
+                head: "abc12345".to_string(),
+                branch: Some("main".to_string()),
+                bare: false,
+                detached: false,
+                locked: None,
+                prunable: None,
+            },
+            commit: CommitDetails {
+                timestamp: 1234567890,
+                commit_message: "Test".to_string(),
+            },
+            counts: AheadBehind {
+                ahead: 0,
+                behind: 0,
+            },
+            working_tree_diff: (0, 0),
+            branch_diff: BranchDiffTotals { diff: (0, 0) },
+            is_primary: true, // Primary worktree: no ahead/behind shown
+            upstream: UpstreamStatus::default(),
+            worktree_state: None,
+            pr_status: None,
+            commits_display: None,
+            working_diff_display: None,
+            branch_diff_display: None,
+            upstream_display: None,
+            ci_status_display: None,
+        };
+
+        let items = vec![super::ListItem::Worktree(info)];
+        let layout = calculate_responsive_layout(&items);
+        let pos = &layout.positions;
+
+        // Branch should be at 0
+        assert_eq!(pos.branch, 0, "Branch always starts at position 0");
+
+        // Hidden columns should have position 0
+        assert_eq!(
+            pos.working_diff, 0,
+            "Working diff should be hidden (no changes)"
+        );
+        assert_eq!(
+            pos.ahead_behind, 0,
+            "Ahead/behind should be hidden (primary worktree)"
+        );
+        assert_eq!(pos.branch_diff, 0, "Branch diff should be hidden (no diff)");
+        assert_eq!(pos.states, 0, "States should be hidden (no state)");
+        assert_eq!(pos.upstream, 0, "Upstream should be hidden (no upstream)");
+
+        // Path should be visible (only visible column besides branch)
+        assert!(pos.path > 0, "Path should be visible");
+    }
+
+    #[test]
+    fn test_consecutive_hidden_columns_skip_correctly() {
+        use crate::commands::list::model::{
+            AheadBehind, BranchDiffTotals, CommitDetails, UpstreamStatus, WorktreeInfo,
+        };
+
+        // Create data where multiple consecutive columns are hidden:
+        // visible(branch) → hidden(working_diff) → hidden(ahead_behind) → hidden(branch_diff)
+        // → hidden(states) → visible(path)
+        let info = WorktreeInfo {
+            worktree: worktrunk::git::Worktree {
+                path: PathBuf::from("/test/worktree"),
+                head: "abc12345".to_string(),
+                branch: Some("feature-x".to_string()),
+                bare: false,
+                detached: false,
+                locked: None,
+                prunable: None,
+            },
+            commit: CommitDetails {
+                timestamp: 1234567890,
+                commit_message: "Test commit".to_string(),
+            },
+            counts: AheadBehind {
+                ahead: 0,
+                behind: 0,
+            },
+            working_tree_diff: (0, 0), // Hidden: no dirty changes
+            branch_diff: BranchDiffTotals { diff: (0, 0) }, // Hidden: no diff
+            is_primary: true,          // Hidden: no ahead/behind for primary
+            upstream: UpstreamStatus::default(), // Hidden: no upstream
+            worktree_state: None,      // Hidden: no state
+            pr_status: None,
+            commits_display: None,
+            working_diff_display: None,
+            branch_diff_display: None,
+            upstream_display: None,
+            ci_status_display: None,
+        };
+
+        let items = vec![super::ListItem::Worktree(info)];
+        let layout = calculate_responsive_layout(&items);
+        let pos = &layout.positions;
+        let widths = &layout.widths;
+
+        // Verify all middle columns are hidden (position = 0)
+        assert_eq!(
+            pos.working_diff, 0,
+            "Working diff should be hidden (no changes)"
+        );
+        assert_eq!(
+            pos.ahead_behind, 0,
+            "Ahead/behind should be hidden (primary worktree)"
+        );
+        assert_eq!(pos.branch_diff, 0, "Branch diff should be hidden (no diff)");
+        assert_eq!(pos.states, 0, "States should be hidden (no state)");
+
+        // The critical test: path should come immediately after branch
+        // with only one gap, not affected by the hidden columns
+        let gap = 2;
+        let expected_path_pos = widths.branch + gap;
+
+        assert_eq!(
+            pos.path, expected_path_pos,
+            "Path should be positioned immediately after branch (branch_width + gap), \
+             skipping all hidden columns. Expected {}, got {}",
+            expected_path_pos, pos.path
+        );
+
+        // Verify the invariant: hidden columns don't consume position space
+        // Only visible columns advance the position counter
+        assert!(
+            pos.path < widths.branch + gap + 10,
+            "Path position should not be inflated by hidden columns"
+        );
     }
 }

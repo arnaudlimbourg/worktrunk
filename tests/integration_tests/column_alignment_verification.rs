@@ -55,13 +55,13 @@ impl ColumnPositions {
         if let Some(pos) = header.find("Age") {
             positions.age = Some(pos);
         }
-        if let Some(pos) = header.find("Commits") {
+        if let Some(pos) = header.find("Main-Cmt") {
             positions.cmts = Some(pos);
         }
-        if let Some(pos) = header.find("Branch +/-") {
+        if let Some(pos) = header.find("Main-Δ") {
             positions.cmt_diff = Some(pos);
         }
-        if let Some(pos) = header.find("WT +/-") {
+        if let Some(pos) = header.find("Dirty") {
             positions.wt_diff = Some(pos);
         }
         if let Some(pos) = header.find("Remote") {
@@ -198,9 +198,9 @@ fn verify_table_alignment(output: &str) -> Result<(), String> {
         let positions = [
             ("Branch", Some(0usize)), // Branch always starts at 0
             ("Age", header_positions.age),
-            ("Commits", header_positions.cmts),
-            ("Branch +/-", header_positions.cmt_diff),
-            ("WT +/-", header_positions.wt_diff),
+            ("Main-Cmt", header_positions.cmts),
+            ("Main-Δ", header_positions.cmt_diff),
+            ("Dirty", header_positions.wt_diff),
             ("Remote", header_positions.remote),
             ("Commit", header_positions.commit),
             ("Message", header_positions.message),
@@ -449,7 +449,7 @@ fn test_alignment_real_world_scenario() {
     repo.add_worktree("no-changes", "no-changes");
     // No changes on this one
 
-    // Run wt list at a width where WT +/- is visible
+    // Run wt list at a width where Dirty column is visible
     let mut cmd = Command::new(get_cargo_bin("wt"));
     repo.clean_cli_env(&mut cmd);
     cmd.arg("list")
