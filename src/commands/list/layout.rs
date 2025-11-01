@@ -54,6 +54,7 @@ impl DiffWidths {
 pub struct ColumnWidths {
     pub branch: usize,
     pub time: usize,
+    pub ci_status: usize,
     pub message: usize,
     pub ahead_behind: DiffWidths,
     pub working_diff: DiffWidths,
@@ -129,7 +130,7 @@ pub fn calculate_column_widths(items: &[ListItem]) -> ColumnWidths {
             max_br_deleted_digits = max_br_deleted_digits.max(branch_diff.1.to_string().len());
         }
 
-        // Upstream tracking - track digits separately
+        // Upstream tracking - track digits only (not remote name yet)
         if let Some((_remote_name, upstream_ahead, upstream_behind)) = upstream.active() {
             max_upstream_ahead_digits =
                 max_upstream_ahead_digits.max(upstream_ahead.to_string().len());
@@ -171,6 +172,8 @@ pub fn calculate_column_widths(items: &[ListItem]) -> ColumnWidths {
 
     // Calculate upstream column width (format: "↑n ↓n" or "remote ↑n ↓n")
     let upstream_total = if max_upstream_ahead_digits > 0 || max_upstream_behind_digits > 0 {
+        // Format: "↑" + digits + " " + "↓" + digits
+        // TODO: Add remote name when show_remote_names is implemented
         let data_width = 1 + max_upstream_ahead_digits + 1 + 1 + max_upstream_behind_digits;
         data_width.max("Remote".width())
     } else {
@@ -183,9 +186,14 @@ pub fn calculate_column_widths(items: &[ListItem]) -> ColumnWidths {
         0
     };
 
+    // CI status column: Always 2 chars wide if any item has CI status
+    let has_ci_status = items.iter().any(|item| item.pr_status().is_some());
+    let ci_status_width = if has_ci_status { 2 } else { 0 };
+
     ColumnWidths {
         branch: max_branch,
         time: max_time,
+        ci_status: ci_status_width,
         message: max_message,
         ahead_behind: DiffWidths {
             total: ahead_behind_total,
@@ -260,6 +268,7 @@ pub fn calculate_responsive_layout(items: &[ListItem]) -> LayoutConfig {
     let mut widths = ColumnWidths {
         branch: 0,
         time: 0,
+        ci_status: 0,
         message: 0,
         ahead_behind: DiffWidths::zero(),
         working_diff: DiffWidths::zero(),
@@ -320,6 +329,9 @@ pub fn calculate_responsive_layout(items: &[ListItem]) -> LayoutConfig {
 
     // Time column (contextual information)
     widths.time = try_allocate(&mut remaining, ideal_widths.time, spacing, false);
+
+    // CI status column (high priority when present, fixed width)
+    widths.ci_status = try_allocate(&mut remaining, ideal_widths.ci_status, spacing, false);
 
     // Commit column (reference hash - rarely needed)
     widths.commit = try_allocate(&mut remaining, commit_width, spacing, false);
@@ -391,6 +403,7 @@ mod tests {
             is_primary: false,
             upstream: UpstreamStatus::from_parts(Some("origin".to_string()), 4, 0),
             worktree_state: None,
+            pr_status: None,
         };
 
         let widths = calculate_column_widths(&[super::ListItem::Worktree(info1)]);
@@ -416,10 +429,10 @@ mod tests {
         assert_eq!(widths.branch_diff.added_digits, 3, "200 has 3 digits");
         assert_eq!(widths.branch_diff.deleted_digits, 2, "30 has 2 digits");
 
-        // Single remote: "↑4 ↓0" has format "↑4 ↓0" = 1+1+1+1+1 = 5, but header "Remote" is 6
+        // Upstream: "↑4 ↓0" = "↑" (1) + "4" (1) + " " (1) + "↓" (1) + "0" (1) = 5, but header "Remote" = 6
         assert_eq!(
             widths.upstream.total, 6,
-            "Upstream column should fit header 'Remote' (width 6) when single remote"
+            "Upstream column should fit header 'Remote' (width 6)"
         );
         assert_eq!(widths.upstream.added_digits, 1, "4 has 1 digit");
         assert_eq!(widths.upstream.deleted_digits, 1, "0 has 1 digit");

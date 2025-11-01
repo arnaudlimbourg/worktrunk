@@ -133,6 +133,16 @@ enum Commands {
         /// Also display branches that don't have worktrees
         #[arg(long)]
         branches: bool,
+
+        /// Fetch CI status from GitHub/GitLab PRs/MRs
+        ///
+        /// Shows colored indicator for each branch: green (passed), blue (running),
+        /// red (failed), yellow (conflicts), gray (no CI). Dimmed = stale (unpushed commits).
+        ///
+        /// Requires gh (GitHub) or glab (GitLab) CLI installed and authenticated.
+        /// WARNING: Slow! Adds ~0.5-2s per branch (makes network requests).
+        #[arg(long)]
+        ci: bool,
     },
 
     /// Switch to a worktree
@@ -393,7 +403,11 @@ fn main() {
         Commands::Dev { action } => match action {
             DevCommand::RunHook { hook_type, force } => handle_dev_run_hook(hook_type, force),
         },
-        Commands::List { format, branches } => handle_list(format, branches),
+        Commands::List {
+            format,
+            branches,
+            ci,
+        } => handle_list(format, branches, ci),
         Commands::Switch {
             branch,
             create,

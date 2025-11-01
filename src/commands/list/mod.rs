@@ -1,3 +1,4 @@
+mod ci_status;
 mod layout;
 mod model;
 mod render;
@@ -10,12 +11,16 @@ use model::{ListData, ListItem, gather_list_data};
 use render::{format_header_line, format_list_item_line};
 use worktrunk::git::{GitError, Repository};
 
-pub fn handle_list(format: crate::OutputFormat, show_branches: bool) -> Result<(), GitError> {
+pub fn handle_list(
+    format: crate::OutputFormat,
+    show_branches: bool,
+    fetch_ci: bool,
+) -> Result<(), GitError> {
     let repo = Repository::current();
     let Some(ListData {
         items,
         current_worktree_path,
-    }) = gather_list_data(&repo, show_branches)?
+    }) = gather_list_data(&repo, show_branches, fetch_ci)?
     else {
         return Ok(());
     };

@@ -2,6 +2,7 @@ use crate::display::{format_relative_time, shorten_path, truncate_at_word_bounda
 use anstyle::{AnsiColor, Color, Style};
 use worktrunk::styling::{ADDITION, CURRENT, DELETION, StyledLine};
 
+use super::ci_status::{CiStatus, PrStatus};
 use super::layout::{DiffWidths, LayoutConfig};
 use super::model::{ListItem, WorktreeInfo};
 
@@ -138,6 +139,30 @@ fn push_diff(line: &mut StyledLine, added: usize, deleted: usize, widths: &DiffW
     );
 }
 
+/// Format CI status indicator using the statusline.sh color scheme
+fn format_ci_status(pr_status: &PrStatus) -> StyledLine {
+    let mut segment = StyledLine::new();
+
+    // Choose color based on CI status
+    let color = match pr_status.ci_status {
+        CiStatus::Passed => AnsiColor::Green,
+        CiStatus::Running => AnsiColor::Blue,
+        CiStatus::Failed => AnsiColor::Red,
+        CiStatus::Conflicts => AnsiColor::Yellow,
+        CiStatus::NoCI => AnsiColor::BrightBlack,
+    };
+
+    // Apply dimming if stale (local HEAD differs from PR HEAD)
+    let style = if pr_status.is_stale {
+        Style::new().fg_color(Some(Color::Ansi(color))).dimmed()
+    } else {
+        Style::new().fg_color(Some(Color::Ansi(color)))
+    };
+
+    segment.push_styled("●".to_string(), style);
+    segment
+}
+
 pub fn format_all_states(info: &WorktreeInfo) -> String {
     let mut states = Vec::new();
 
@@ -172,6 +197,7 @@ pub fn format_header_line(layout: &LayoutConfig) {
     push_optional_header(&mut line, "Path", widths.path, dim);
     push_optional_header(&mut line, "Remote", widths.upstream.total, dim);
     push_optional_header(&mut line, "Age", widths.time, dim);
+    push_optional_header(&mut line, "CI", widths.ci_status, dim);
     push_optional_header(&mut line, "Commit", widths.commit, dim);
     push_optional_header(&mut line, "Message", widths.message, dim);
 
@@ -251,42 +277,29 @@ pub fn format_list_item_line(
 
     // Start building the line
     let mut line = StyledLine::new();
-    let mut first_column = true;
 
-    // Helper to add gap before column if not first
-    let mut push_gap_if_needed = |line: &mut StyledLine| {
-        if !first_column {
-            push_gap(line);
-        }
-        first_column = false;
-    };
-
-    // Branch name (dimmed if removable)
-    if widths.branch > 0 {
-        push_gap_if_needed(&mut line);
-
-        let branch_text = format!("{:width$}", item.branch_name(), width = widths.branch);
-        if let Some(style) = text_style {
-            line.push_styled(branch_text, style);
-        } else {
-            line.push_raw(branch_text);
-        }
+    // Branch name
+    let branch_text = format!("{:width$}", item.branch_name(), width = widths.branch);
+    if let Some(style) = text_style {
+        line.push_styled(branch_text, style);
+    } else {
+        line.push_raw(branch_text);
     }
+    push_gap(&mut line);
 
     // Working tree diff (worktrees only)
     if widths.working_diff.total > 0 {
-        push_gap_if_needed(&mut line);
         if let Some(info) = worktree_info {
             let (wt_added, wt_deleted) = info.working_tree_diff;
             push_diff(&mut line, wt_added, wt_deleted, &widths.working_diff);
         } else {
             push_blank(&mut line, widths.working_diff.total);
         }
+        push_gap(&mut line);
     }
 
     // Ahead/behind (commits difference) - green ahead, dim red behind
     if widths.ahead_behind.total > 0 {
-        push_gap_if_needed(&mut line);
         if !item.is_primary() && (counts.ahead > 0 || counts.behind > 0) {
             let dim_deletion = DELETION.dimmed();
             append_line(
@@ -302,21 +315,11 @@ pub fn format_list_item_line(
         } else {
             push_blank(&mut line, widths.ahead_behind.total);
         }
-    }
-
-    // Branch diff (line diff in commits)
-    if widths.branch_diff.total > 0 {
-        push_gap_if_needed(&mut line);
-        if !item.is_primary() {
-            push_diff(&mut line, branch_diff.0, branch_diff.1, &widths.branch_diff);
-        } else {
-            push_blank(&mut line, widths.branch_diff.total);
-        }
+        push_gap(&mut line);
     }
 
     // States (worktrees only)
     if widths.states > 0 {
-        push_gap_if_needed(&mut line);
         if let Some(info) = worktree_info {
             let states = format_all_states(info);
             if !states.is_empty() {
@@ -328,11 +331,11 @@ pub fn format_list_item_line(
         } else {
             push_blank(&mut line, widths.states);
         }
+        push_gap(&mut line);
     }
 
     // Path (worktrees only)
     if widths.path > 0 {
-        push_gap_if_needed(&mut line);
         if let Some(info) = worktree_info {
             let path_str = shorten_path(&info.worktree.path, &layout.common_prefix);
             let path_text = format!("{:width$}", path_str, width = widths.path);
@@ -344,11 +347,21 @@ pub fn format_list_item_line(
         } else {
             push_blank(&mut line, widths.path);
         }
+        push_gap(&mut line);
+    }
+
+    // Branch diff (line diff in commits)
+    if widths.branch_diff.total > 0 {
+        if !item.is_primary() {
+            push_diff(&mut line, branch_diff.0, branch_diff.1, &widths.branch_diff);
+        } else {
+            push_blank(&mut line, widths.branch_diff.total);
+        }
+        push_gap(&mut line);
     }
 
     // Upstream tracking
     if widths.upstream.total > 0 {
-        push_gap_if_needed(&mut line);
         if let Some((_remote_name, upstream_ahead, upstream_behind)) = upstream.active() {
             let dim_deletion = DELETION.dimmed();
             // TODO: Handle show_remote_names when implemented
@@ -365,28 +378,41 @@ pub fn format_list_item_line(
         } else {
             push_blank(&mut line, widths.upstream.total);
         }
+        push_gap(&mut line);
     }
 
     // Age (Time)
     if widths.time > 0 {
-        push_gap_if_needed(&mut line);
         let time_str = format!(
             "{:width$}",
             format_relative_time(commit.timestamp),
             width = widths.time
         );
         line.push_styled(time_str, Style::new().dimmed());
+        push_gap(&mut line);
     }
 
-    // Commit (short HEAD) - dimmed reference info
+    // CI status
+    if widths.ci_status > 0 {
+        if let Some(pr_status) = item.pr_status() {
+            let mut ci_segment = format_ci_status(pr_status);
+            ci_segment.pad_to(widths.ci_status);
+            append_line(&mut line, ci_segment);
+        } else {
+            push_blank(&mut line, widths.ci_status);
+        }
+        push_gap(&mut line);
+    }
+
+    // Commit (short HEAD) - always dimmed (reference info)
     if widths.commit > 0 {
-        push_gap_if_needed(&mut line);
-        line.push_styled(short_head, Style::new().dimmed());
+        let commit_text = format!("{:width$}", short_head, width = widths.commit);
+        line.push_styled(commit_text, Style::new().dimmed());
+        push_gap(&mut line);
     }
 
     // Message
     if widths.message > 0 {
-        push_gap_if_needed(&mut line);
         let msg = truncate_at_word_boundary(&commit.commit_message, layout.max_message_len);
         let msg_start = line.width();
         line.push_styled(msg, Style::new().dimmed());
@@ -400,7 +426,13 @@ pub fn format_list_item_line(
 #[cfg(test)]
 mod tests {
     use super::*;
-    // Note: Column alignment is tested via integration tests which capture actual output
+    use crate::commands::list::layout::{ColumnWidths, LayoutConfig};
+    use crate::commands::list::model::{
+        AheadBehind, BranchDiffTotals, CommitDetails, UpstreamStatus, WorktreeInfo,
+    };
+    use crate::display::shorten_path;
+    use std::path::PathBuf;
+    use worktrunk::styling::StyledLine;
 
     #[test]
     fn test_format_diff_column_pads_to_total_width() {

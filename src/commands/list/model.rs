@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use worktrunk::git::{GitError, Repository};
 use worktrunk::styling::{HINT, HINT_EMOJI, WARNING, WARNING_EMOJI, println};
 
+use super::ci_status::PrStatus;
+
 #[derive(serde::Serialize)]
 pub struct WorktreeInfo {
     pub worktree: worktrunk::git::Worktree,
@@ -17,6 +19,7 @@ pub struct WorktreeInfo {
     #[serde(flatten)]
     pub upstream: UpstreamStatus,
     pub worktree_state: Option<String>,
+    pub pr_status: Option<PrStatus>,
 }
 
 #[derive(serde::Serialize)]
@@ -31,6 +34,7 @@ pub struct BranchInfo {
     pub branch_diff: BranchDiffTotals,
     #[serde(flatten)]
     pub upstream: UpstreamStatus,
+    pub pr_status: Option<PrStatus>,
 }
 
 #[derive(serde::Serialize, Clone)]
@@ -209,6 +213,13 @@ impl ListItem {
     pub fn worktree_path(&self) -> Option<&PathBuf> {
         self.worktree_info().map(|info| &info.worktree.path)
     }
+
+    pub fn pr_status(&self) -> Option<&PrStatus> {
+        match self {
+            ListItem::Worktree(info) => info.pr_status.as_ref(),
+            ListItem::Branch(info) => info.pr_status.as_ref(),
+        }
+    }
 }
 
 impl BranchInfo {
@@ -217,6 +228,7 @@ impl BranchInfo {
         branch: &str,
         repo: &Repository,
         primary_branch: Option<&str>,
+        fetch_ci: bool,
     ) -> Result<Self, GitError> {
         // Get the commit SHA for this branch
         let head = repo.run_command(&["rev-parse", branch])?.trim().to_string();
@@ -226,6 +238,12 @@ impl BranchInfo {
         let branch_diff = BranchDiffTotals::compute(repo, primary_branch, &head)?;
         let upstream = UpstreamStatus::calculate(repo, Some(branch), &head)?;
 
+        let pr_status = if fetch_ci {
+            PrStatus::detect(branch, &head)
+        } else {
+            None
+        };
+
         Ok(BranchInfo {
             name: branch.to_string(),
             head,
@@ -233,6 +251,7 @@ impl BranchInfo {
             counts,
             branch_diff,
             upstream,
+            pr_status,
         })
     }
 }
@@ -242,6 +261,7 @@ impl WorktreeInfo {
     fn from_worktree(
         wt: &worktrunk::git::Worktree,
         primary: &worktrunk::git::Worktree,
+        fetch_ci: bool,
     ) -> Result<Self, GitError> {
         let wt_repo = Repository::at(&wt.path);
         let is_primary = wt.path == primary.path;
@@ -257,6 +277,14 @@ impl WorktreeInfo {
         // Get worktree state (merge/rebase/etc)
         let worktree_state = wt_repo.worktree_state()?;
 
+        let pr_status = if fetch_ci {
+            wt.branch
+                .as_deref()
+                .and_then(|branch| PrStatus::detect(branch, &wt.head))
+        } else {
+            None
+        };
+
         Ok(WorktreeInfo {
             worktree: wt.clone(),
             commit,
@@ -266,6 +294,7 @@ impl WorktreeInfo {
             is_primary,
             upstream,
             worktree_state,
+            pr_status,
         })
     }
 }
@@ -274,6 +303,7 @@ impl WorktreeInfo {
 pub fn gather_list_data(
     repo: &Repository,
     show_branches: bool,
+    fetch_ci: bool,
 ) -> Result<Option<ListData>, GitError> {
     let worktrees = repo.list_worktrees()?;
 
@@ -288,19 +318,40 @@ pub fn gather_list_data(
     let current_worktree_path = repo.worktree_root().ok();
 
     // Gather enhanced information for all worktrees in parallel
-    let worktree_infos: Vec<WorktreeInfo> = worktrees
+    let worktree_results: Vec<Result<WorktreeInfo, GitError>> = worktrees
         .par_iter()
-        .map(|wt| WorktreeInfo::from_worktree(wt, &primary))
-        .collect::<Result<Vec<_>, _>>()?;
+        .map(|wt| WorktreeInfo::from_worktree(wt, &primary, fetch_ci))
+        .collect();
 
     // Build list of items to display (worktrees + optional branches)
-    let mut items: Vec<ListItem> = worktree_infos.into_iter().map(ListItem::Worktree).collect();
+    let mut items: Vec<ListItem> = Vec::new();
 
+    // Process worktree results
+    for result in worktree_results {
+        match result {
+            Ok(info) => items.push(ListItem::Worktree(info)),
+            Err(e) => {
+                // Worktree enrichment failures are critical - propagate error
+                return Err(e);
+            }
+        }
+    }
+
+    // Process branches in parallel if requested
     if show_branches {
         let available_branches = repo.available_branches()?;
         let primary_branch = primary.branch.as_deref();
-        for branch in available_branches {
-            match BranchInfo::from_branch(&branch, repo, primary_branch) {
+
+        let branch_results: Vec<(String, Result<BranchInfo, GitError>)> = available_branches
+            .par_iter()
+            .map(|branch| {
+                let result = BranchInfo::from_branch(branch, repo, primary_branch, fetch_ci);
+                (branch.clone(), result)
+            })
+            .collect();
+
+        for (branch, result) in branch_results {
+            match result {
                 Ok(branch_info) => items.push(ListItem::Branch(branch_info)),
                 Err(e) => {
                     let warning_bold = WARNING.bold();
