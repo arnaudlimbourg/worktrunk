@@ -1,4 +1,5 @@
 mod ci_status;
+mod columns;
 mod layout;
 mod model;
 mod render;
