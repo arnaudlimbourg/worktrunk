@@ -30,6 +30,15 @@ impl ConfigAction {
             ConfigAction::WouldCreate => "Will create",
         }
     }
+
+    /// Returns the appropriate emoji for this action
+    pub fn emoji(&self) -> &'static str {
+        match self {
+            ConfigAction::Added | ConfigAction::Created => SUCCESS_EMOJI,
+            ConfigAction::AlreadyExists => INFO_EMOJI,
+            ConfigAction::WouldAdd | ConfigAction::WouldCreate => PROGRESS_EMOJI,
+        }
+    }
 }
 
 pub fn handle_configure_shell(
@@ -341,15 +350,9 @@ fn prompt_for_confirmation(results: &[ConfigureResult]) -> Result<bool, String> 
         let shell = result.shell;
         let path = result.path.display();
 
-        // Choose emoji based on action type (matches main.rs execution output)
-        let emoji = match result.action {
-            ConfigAction::Added | ConfigAction::Created => SUCCESS_EMOJI,
-            ConfigAction::AlreadyExists => INFO_EMOJI,
-            ConfigAction::WouldAdd | ConfigAction::WouldCreate => PROGRESS_EMOJI,
-        };
-
         eprintln!(
-            "{emoji} {} {bold}{shell}{bold:#} {bold}{path}{bold:#}",
+            "{} {} {bold}{shell}{bold:#} {bold}{path}{bold:#}",
+            result.action.emoji(),
             result.action.description(),
         );
 

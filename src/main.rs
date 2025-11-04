@@ -5,7 +5,7 @@ use std::sync::OnceLock;
 use worktrunk::HookType;
 use worktrunk::config::WorktrunkConfig;
 use worktrunk::git::{GitError, GitResultExt, Repository};
-use worktrunk::styling::{INFO_EMOJI, PROGRESS_EMOJI, SUCCESS_EMOJI, println};
+use worktrunk::styling::{SUCCESS_EMOJI, println};
 
 /// Get the version string, trying git describe first, falling back to Cargo version
 fn version_str() -> &'static str {
@@ -549,15 +549,9 @@ fn main() {
                             let shell = result.shell;
                             let path = result.path.display();
 
-                            // Choose emoji based on action type
-                            let emoji = match result.action {
-                                ConfigAction::Added | ConfigAction::Created => SUCCESS_EMOJI,
-                                ConfigAction::AlreadyExists => INFO_EMOJI,
-                                ConfigAction::WouldAdd | ConfigAction::WouldCreate => PROGRESS_EMOJI,
-                            };
-
                             println!(
-                                "{emoji} {} {bold}{shell}{bold:#} {path}",
+                                "{} {} {bold}{shell}{bold:#} {path}",
+                                result.action.emoji(),
                                 result.action.description(),
                             );
                             // Show config line with gutter
