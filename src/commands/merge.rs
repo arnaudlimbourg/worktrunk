@@ -1,5 +1,5 @@
 use worktrunk::HookType;
-use worktrunk::config::{Command, ProjectConfig, WorktrunkConfig};
+use worktrunk::config::{Command, CommandPhase, ProjectConfig, WorktrunkConfig};
 use worktrunk::git::{GitError, GitResultExt, Repository};
 use worktrunk::styling::{
     AnstyleStyle, CYAN, CYAN_BOLD, ERROR, ERROR_EMOJI, HINT, HINT_EMOJI, WARNING, WARNING_EMOJI,
@@ -46,19 +46,19 @@ impl<'a> MergeCommandCollector<'a> {
             && !self.squash_enabled
             && let Some(pre_commit_config) = &project_config.pre_commit_command
         {
-            all_commands.extend(pre_commit_config.commands().to_vec());
+            all_commands.extend(pre_commit_config.commands_with_phase(CommandPhase::PreCommit));
         }
 
         // Collect pre-merge commands (if not --no-verify)
         if !self.no_verify
             && let Some(pre_merge_config) = &project_config.pre_merge_command
         {
-            all_commands.extend(pre_merge_config.commands().to_vec());
+            all_commands.extend(pre_merge_config.commands_with_phase(CommandPhase::PreMerge));
         }
 
         // Collect post-merge commands
         if let Some(post_merge_config) = &project_config.post_merge_command {
-            all_commands.extend(post_merge_config.commands().to_vec());
+            all_commands.extend(post_merge_config.commands_with_phase(CommandPhase::PostMerge));
         }
 
         let project_id = self.repo.project_identifier()?;
@@ -158,7 +158,7 @@ pub fn handle_merge(
 
     // Approve all commands in a single batch
     // Commands collected here are not yet expanded - expansion happens later in prepare_project_commands
-    approve_command_batch(&all_commands, &project_id, &config, force, "merge")?;
+    approve_command_batch(&all_commands, &project_id, &config, force)?;
 
     // Handle uncommitted changes (skip if --no-commit) - track whether commit occurred
     let committed = if !no_commit && repo.is_dirty()? {
@@ -503,7 +503,7 @@ pub fn run_pre_merge_commands(
         &ctx,
         false,
         &[("target", target_branch)],
-        "pre-merge",
+        CommandPhase::PreMerge,
     )?;
     for prepared in commands {
         let label = crate::commands::format_command_label("pre-merge", prepared.name.as_deref());
@@ -566,7 +566,7 @@ pub fn execute_post_merge_commands(
         &ctx,
         false,
         &[("target", target_branch)],
-        "post-merge",
+        CommandPhase::PostMerge,
     )?;
 
     if commands.is_empty() {
@@ -629,8 +629,13 @@ pub fn run_pre_commit_commands(
         vec![]
     };
 
-    let commands =
-        prepare_project_commands(pre_commit_config, &ctx, false, &extra_vars, "pre-commit")?;
+    let commands = prepare_project_commands(
+        pre_commit_config,
+        &ctx,
+        false,
+        &extra_vars,
+        CommandPhase::PreCommit,
+    )?;
 
     if commands.is_empty() {
         return Ok(());

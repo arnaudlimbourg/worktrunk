@@ -101,7 +101,7 @@
 //! See also: DEMO.md for detailed architecture explanation.
 
 use std::path::PathBuf;
-use worktrunk::config::{ProjectConfig, WorktrunkConfig};
+use worktrunk::config::{CommandPhase, ProjectConfig, WorktrunkConfig};
 use worktrunk::git::{GitError, GitResultExt, Repository};
 use worktrunk::styling::{
     ADDITION, CYAN, CYAN_BOLD, DELETION, GREEN, GREEN_BOLD, SUCCESS_EMOJI, WARNING, WARNING_EMOJI,
@@ -473,7 +473,13 @@ pub fn execute_post_create_commands(
 
     let repo_root = repo.worktree_base()?;
     let ctx = CommandContext::new(repo, config, branch, worktree_path, &repo_root, force);
-    let commands = prepare_project_commands(post_create_config, &ctx, false, &[], "post-create")?;
+    let commands = prepare_project_commands(
+        post_create_config,
+        &ctx,
+        false,
+        &[],
+        CommandPhase::PostCreate,
+    )?;
 
     if commands.is_empty() {
         return Ok(());
@@ -522,7 +528,8 @@ pub fn spawn_post_start_commands(
 
     let repo_root = repo.worktree_base()?;
     let ctx = CommandContext::new(repo, config, branch, worktree_path, &repo_root, force);
-    let commands = prepare_project_commands(post_start_config, &ctx, false, &[], "post-start")?;
+    let commands =
+        prepare_project_commands(post_start_config, &ctx, false, &[], CommandPhase::PostStart)?;
 
     if commands.is_empty() {
         return Ok(());
@@ -578,7 +585,8 @@ pub fn execute_post_start_commands_sequential(
 
     let repo_root = repo.worktree_base()?;
     let ctx = CommandContext::new(repo, config, branch, worktree_path, &repo_root, force);
-    let commands = prepare_project_commands(post_start_config, &ctx, false, &[], "post-start")?;
+    let commands =
+        prepare_project_commands(post_start_config, &ctx, false, &[], CommandPhase::PostStart)?;
 
     if commands.is_empty() {
         return Ok(());

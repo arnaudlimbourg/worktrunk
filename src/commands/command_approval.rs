@@ -19,7 +19,6 @@ pub fn approve_command_batch(
     project_id: &str,
     config: &WorktrunkConfig,
     force: bool,
-    context: &str,
 ) -> Result<bool, GitError> {
     let needs_approval: Vec<&Command> = commands
         .iter()
@@ -33,12 +32,23 @@ pub fn approve_command_batch(
     let approved = if force {
         true
     } else {
-        prompt_for_batch_approval(&needs_approval, project_id, context)?
+        prompt_for_batch_approval(&needs_approval, project_id)?
     };
 
     if !approved {
         let dim = AnstyleStyle::new().dimmed();
-        println!("{INFO_EMOJI} {dim}{context} declined{dim:#}");
+        // Derive phase from commands - if all same phase, show it; otherwise show generic message
+        let phase_str = if commands.len() == 1 {
+            commands[0].phase.to_string()
+        } else {
+            let first_phase = commands[0].phase;
+            if commands.iter().all(|cmd| cmd.phase == first_phase) {
+                first_phase.to_string()
+            } else {
+                "commands".to_string()
+            }
+        };
+        println!("{INFO_EMOJI} {dim}{phase_str} declined{dim:#}");
         return Ok(false);
     }
 
@@ -72,11 +82,7 @@ fn log_approval_warning(message: &str, error: impl std::fmt::Display) {
     println!("{WARNING_EMOJI} {WARNING}{message}: {error}{WARNING:#}");
 }
 
-fn prompt_for_batch_approval(
-    commands: &[&Command],
-    project_id: &str,
-    context: &str,
-) -> std::io::Result<bool> {
+fn prompt_for_batch_approval(commands: &[&Command], project_id: &str) -> std::io::Result<bool> {
     use std::io::{self, Write};
 
     let project_name = project_id.split('/').next_back().unwrap_or(project_id);
@@ -97,11 +103,12 @@ fn prompt_for_batch_approval(
     eprintln!();
 
     for cmd in commands {
-        // Format as: {context} {bold}{name}{bold:#}:
-        // context is provided by caller in lowercase (e.g., "post-create", "pre-merge")
+        // Format as: {phase} {bold}{name}{bold:#}:
+        // Phase comes from the command itself (e.g., "pre-commit", "pre-merge")
+        let phase = cmd.phase.to_string();
         let label = match &cmd.name {
-            Some(name) => format!("{PROGRESS_EMOJI} {context} {bold}{name}{bold:#}:"),
-            None => format!("{PROGRESS_EMOJI} {context}:"),
+            Some(name) => format!("{PROGRESS_EMOJI} {phase} {bold}{name}{bold:#}:"),
+            None => format!("{PROGRESS_EMOJI} {phase}:"),
         };
         eprintln!("{label}");
         eprint!("{}", format_bash_with_gutter(&cmd.expanded, ""));

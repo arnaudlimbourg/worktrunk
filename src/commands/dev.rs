@@ -384,7 +384,7 @@ pub fn handle_dev_rebase(target: Option<&str>) -> Result<bool, GitError> {
 /// Handle `wt dev ask-approval` command - test the approval prompt UI
 pub fn handle_dev_ask_approval(force: bool) -> Result<(), GitError> {
     use super::command_approval::approve_command_batch;
-    use worktrunk::config::{Command, WorktrunkConfig};
+    use worktrunk::config::{Command, CommandPhase, WorktrunkConfig};
 
     // Create some test commands to show in the approval prompt
     let test_commands = vec![
@@ -392,16 +392,19 @@ pub fn handle_dev_ask_approval(force: bool) -> Result<(), GitError> {
             Some("insta".to_string()),
             "NEXTEST_STATUS_LEVEL=fail cargo insta test".to_string(),
             "NEXTEST_STATUS_LEVEL=fail cargo insta test --test-runner nextest".to_string(),
+            CommandPhase::PreMerge,
         ),
         Command::with_expansion(
             Some("doc".to_string()),
             "RUSTDOCFLAGS='-Dwarnings' cargo doc --no-deps".to_string(),
             "RUSTDOCFLAGS='-Dwarnings' cargo doc --no-deps".to_string(),
+            CommandPhase::PreMerge,
         ),
         Command::with_expansion(
             None,
             "cargo install --path .".to_string(),
             "cargo install --path .".to_string(),
+            CommandPhase::PostMerge,
         ),
     ];
 
@@ -410,7 +413,7 @@ pub fn handle_dev_ask_approval(force: bool) -> Result<(), GitError> {
     let config = WorktrunkConfig::load().git_context("Failed to load config")?;
 
     // Call the approval prompt
-    let approved = approve_command_batch(&test_commands, &project_id, &config, force, "test")?;
+    let approved = approve_command_batch(&test_commands, &project_id, &config, force)?;
 
     // Show result
     if approved {

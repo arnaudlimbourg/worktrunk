@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::path::Path;
-use worktrunk::config::{Command, CommandConfig, WorktrunkConfig, expand_template};
+use worktrunk::config::{Command, CommandConfig, CommandPhase, WorktrunkConfig, expand_template};
 use worktrunk::git::{GitError, Repository};
 
 use super::command_approval::approve_command_batch;
@@ -45,11 +45,10 @@ impl<'a> CommandContext<'a> {
 /// This is the canonical command expansion implementation.
 /// Returns cloned commands with their expanded forms filled in.
 fn expand_commands(
-    command_config: &CommandConfig,
+    commands: &[Command],
     ctx: &CommandContext<'_>,
     extra_vars: &[(&str, &str)],
 ) -> Result<Vec<Command>, GitError> {
-    let commands = command_config.commands();
     if commands.is_empty() {
         return Ok(Vec::new());
     }
@@ -87,6 +86,7 @@ fn expand_commands(
             cmd.name.clone(),
             cmd.template.clone(),
             expanded_str,
+            cmd.phase,
         ));
     }
 
@@ -106,9 +106,9 @@ pub fn prepare_project_commands(
     ctx: &CommandContext<'_>,
     auto_trust: bool,
     extra_vars: &[(&str, &str)],
-    approval_context: &str,
+    phase: CommandPhase,
 ) -> Result<Vec<PreparedCommand>, GitError> {
-    let commands = command_config.commands();
+    let commands = command_config.commands_with_phase(phase);
     if commands.is_empty() {
         return Ok(Vec::new());
     }
@@ -116,17 +116,11 @@ pub fn prepare_project_commands(
     let project_id = ctx.repo.project_identifier()?;
 
     // Expand commands before approval for transparency
-    let expanded_commands = expand_commands(command_config, ctx, extra_vars)?;
+    let expanded_commands = expand_commands(&commands, ctx, extra_vars)?;
 
     // Approve using expanded commands (which have both template and expanded forms)
     if !auto_trust
-        && !approve_command_batch(
-            &expanded_commands,
-            &project_id,
-            ctx.config,
-            ctx.force,
-            approval_context,
-        )?
+        && !approve_command_batch(&expanded_commands, &project_id, ctx.config, ctx.force)?
     {
         return Err(GitError::CommandNotApproved);
     }

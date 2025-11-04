@@ -200,6 +200,22 @@ pub struct ProjectConfig {
     pub post_merge_command: Option<CommandConfig>,
 }
 
+/// Phase in which a command executes
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::Display, strum::AsRefStr)]
+#[strum(serialize_all = "kebab-case")]
+pub enum CommandPhase {
+    /// After creating a worktree (blocking)
+    PostCreate,
+    /// After creating a worktree (background)
+    PostStart,
+    /// Before committing during merge (blocking, fail-fast)
+    PreCommit,
+    /// Before merging (blocking, fail-fast)
+    PreMerge,
+    /// After successful merge (blocking)
+    PostMerge,
+}
+
 /// Represents a command with its template and optionally expanded form
 #[derive(Debug, Clone, PartialEq)]
 pub struct Command {
@@ -209,24 +225,33 @@ pub struct Command {
     pub template: String,
     /// Expanded command with variables substituted (same as template if not expanded yet)
     pub expanded: String,
+    /// Phase in which this command executes
+    pub phase: CommandPhase,
 }
 
 impl Command {
     /// Create a new command from a template (not yet expanded)
-    pub fn new(name: Option<String>, template: String) -> Self {
+    pub fn new(name: Option<String>, template: String, phase: CommandPhase) -> Self {
         Self {
             name,
             expanded: template.clone(),
             template,
+            phase,
         }
     }
 
     /// Create a command with both template and expanded forms
-    pub fn with_expansion(name: Option<String>, template: String, expanded: String) -> Self {
+    pub fn with_expansion(
+        name: Option<String>,
+        template: String,
+        expanded: String,
+        phase: CommandPhase,
+    ) -> Self {
         Self {
             name,
             template,
             expanded,
+            phase,
         }
     }
 }
@@ -254,6 +279,17 @@ impl CommandConfig {
     pub fn commands(&self) -> &[Command] {
         &self.commands
     }
+
+    /// Returns commands with the specified phase
+    pub fn commands_with_phase(&self, phase: CommandPhase) -> Vec<Command> {
+        self.commands
+            .iter()
+            .map(|cmd| Command {
+                phase,
+                ..cmd.clone()
+            })
+            .collect()
+    }
 }
 
 // Custom deserialization to handle 3 TOML formats
@@ -272,15 +308,20 @@ impl<'de> Deserialize<'de> for CommandConfig {
 
         let toml = CommandConfigToml::deserialize(deserializer)?;
         let commands = match toml {
-            CommandConfigToml::Single(cmd) => vec![Command::new(None, cmd)],
+            CommandConfigToml::Single(cmd) => {
+                // Phase will be set later when commands are collected
+                vec![Command::new(None, cmd, CommandPhase::PostCreate)]
+            }
             CommandConfigToml::Multiple(cmds) => cmds
                 .into_iter()
-                .map(|template| Command::new(None, template))
+                .map(|template| Command::new(None, template, CommandPhase::PostCreate))
                 .collect(),
             CommandConfigToml::Named(map) => {
                 // IndexMap preserves insertion order from TOML
                 map.into_iter()
-                    .map(|(name, template)| Command::new(Some(name), template))
+                    .map(|(name, template)| {
+                        Command::new(Some(name), template, CommandPhase::PostCreate)
+                    })
                     .collect()
             }
         };
@@ -868,7 +909,10 @@ mod tests {
         let cmd_config = config.post_create_command.unwrap();
         let commands = cmd_config.commands();
         assert_eq!(commands.len(), 1);
-        assert_eq!(commands[0], Command::new(None, "npm install".to_string()));
+        assert_eq!(
+            commands[0],
+            Command::new(None, "npm install".to_string(), CommandPhase::PostCreate)
+        );
     }
 
     #[test]
@@ -878,8 +922,14 @@ mod tests {
         let cmd_config = config.post_create_command.unwrap();
         let commands = cmd_config.commands();
         assert_eq!(commands.len(), 2);
-        assert_eq!(commands[0], Command::new(None, "npm install".to_string()));
-        assert_eq!(commands[1], Command::new(None, "npm test".to_string()));
+        assert_eq!(
+            commands[0],
+            Command::new(None, "npm install".to_string(), CommandPhase::PostCreate)
+        );
+        assert_eq!(
+            commands[1],
+            Command::new(None, "npm test".to_string(), CommandPhase::PostCreate)
+        );
     }
 
     #[test]
@@ -896,11 +946,19 @@ mod tests {
         // Preserves TOML insertion order
         assert_eq!(
             commands[0],
-            Command::new(Some("server".to_string()), "npm run dev".to_string())
+            Command::new(
+                Some("server".to_string()),
+                "npm run dev".to_string(),
+                CommandPhase::PostCreate
+            )
         );
         assert_eq!(
             commands[1],
-            Command::new(Some("watch".to_string()), "npm run watch".to_string())
+            Command::new(
+                Some("watch".to_string()),
+                "npm run watch".to_string(),
+                CommandPhase::PostCreate
+            )
         );
     }
 
@@ -981,7 +1039,10 @@ task2 = "echo 'Task 2 running' > task2.txt"
         let cmd_config = config.pre_merge_command.unwrap();
         let commands = cmd_config.commands();
         assert_eq!(commands.len(), 1);
-        assert_eq!(commands[0], Command::new(None, "cargo test".to_string()));
+        assert_eq!(
+            commands[0],
+            Command::new(None, "cargo test".to_string(), CommandPhase::PostCreate)
+        );
     }
 
     #[test]
@@ -993,9 +1054,16 @@ task2 = "echo 'Task 2 running' > task2.txt"
         assert_eq!(commands.len(), 2);
         assert_eq!(
             commands[0],
-            Command::new(None, "cargo fmt -- --check".to_string())
+            Command::new(
+                None,
+                "cargo fmt -- --check".to_string(),
+                CommandPhase::PostCreate
+            )
         );
-        assert_eq!(commands[1], Command::new(None, "cargo test".to_string()));
+        assert_eq!(
+            commands[1],
+            Command::new(None, "cargo test".to_string(), CommandPhase::PostCreate)
+        );
     }
 
     #[test]
@@ -1015,16 +1083,25 @@ task2 = "echo 'Task 2 running' > task2.txt"
             commands[0],
             Command::new(
                 Some("format".to_string()),
-                "cargo fmt -- --check".to_string()
+                "cargo fmt -- --check".to_string(),
+                CommandPhase::PostCreate
             )
         );
         assert_eq!(
             commands[1],
-            Command::new(Some("lint".to_string()), "cargo clippy".to_string())
+            Command::new(
+                Some("lint".to_string()),
+                "cargo clippy".to_string(),
+                CommandPhase::PostCreate
+            )
         );
         assert_eq!(
             commands[2],
-            Command::new(Some("test".to_string()), "cargo test".to_string())
+            Command::new(
+                Some("test".to_string()),
+                "cargo test".to_string(),
+                CommandPhase::PostCreate
+            )
         );
     }
 
