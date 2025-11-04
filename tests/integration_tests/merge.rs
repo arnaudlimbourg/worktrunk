@@ -1799,17 +1799,14 @@ EOF
     fs::write(bin_dir.join("llm"), llm_script).expect("Failed to write llm script");
 
     // Make scripts executable
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(bin_dir.join("cargo")).unwrap().permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(bin_dir.join("cargo"), perms).unwrap();
+    use std::os::unix::fs::PermissionsExt;
+    let mut perms = fs::metadata(bin_dir.join("cargo")).unwrap().permissions();
+    perms.set_mode(0o755);
+    fs::set_permissions(bin_dir.join("cargo"), perms).unwrap();
 
-        let mut perms = fs::metadata(bin_dir.join("llm")).unwrap().permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(bin_dir.join("llm"), perms).unwrap();
-    }
+    let mut perms = fs::metadata(bin_dir.join("llm")).unwrap().permissions();
+    perms.set_mode(0o755);
+    fs::set_permissions(bin_dir.join("llm"), perms).unwrap();
 
     let config_content = r#"
 [pre-merge-command]
@@ -1983,7 +1980,7 @@ fn test_merge_no_commit_with_clean_tree() {
          1 file changed, 1 insertion(+)
 
         ✅ [32mMerged to [1m[32mmain[0m[0m (1 commit, 1 file, [32m+1[0m)
-        💡 [2mUse 'wt remove' to remove worktree[0m
+        ✅ [32mWorktree preserved (--no-remove)[0m
 
         ----- stderr -----
         ");
@@ -2090,7 +2087,7 @@ fn test_merge_no_commit_no_squash_no_remove_redundant() {
          1 file changed, 1 insertion(+)
 
         ✅ [32mMerged to [1m[32mmain[0m[0m (1 commit, 1 file, [32m+1[0m)
-        💡 [2mUse 'wt remove' to remove worktree[0m
+        ✅ [32mWorktree preserved (--no-remove)[0m
 
         ----- stderr -----
         ");
