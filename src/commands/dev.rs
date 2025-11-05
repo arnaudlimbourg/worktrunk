@@ -1,6 +1,6 @@
 use worktrunk::HookType;
 use worktrunk::config::{ProjectConfig, WorktrunkConfig};
-use worktrunk::git::{GitError, GitResultExt, Repository};
+use worktrunk::git::{GitError, GitResultExt, Repository, parse_diff_shortstat};
 use worktrunk::styling::{
     AnstyleStyle, CYAN, CYAN_BOLD, HINT, HINT_EMOJI, eprintln, format_with_gutter,
 };
@@ -9,9 +9,7 @@ use super::merge::{
     commit_staged_changes, execute_post_merge_commands, format_commit_message_for_display,
     run_pre_commit_commands, run_pre_merge_commands, show_llm_config_hint_if_needed,
 };
-use super::worktree::{
-    execute_post_create_commands, execute_post_start_commands_sequential, parse_diff_shortstat,
-};
+use super::worktree::{execute_post_create_commands, execute_post_start_commands_sequential};
 
 /// Handle `wt dev run-hook` command
 pub fn handle_dev_run_hook(hook_type: HookType, force: bool) -> Result<(), GitError> {

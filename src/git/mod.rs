@@ -3,6 +3,7 @@
 use std::path::PathBuf;
 
 // Submodules
+mod diff;
 mod error;
 mod parse;
 mod repository;
@@ -11,6 +12,7 @@ mod repository;
 mod test;
 
 // Re-exports from submodules
+pub use diff::{DiffStats, parse_diff_shortstat};
 pub use error::GitError;
 pub use repository::{GitResultExt, Repository};
 

@@ -1,6 +1,6 @@
 use worktrunk::HookType;
 use worktrunk::config::{Command, CommandPhase, ProjectConfig, WorktrunkConfig};
-use worktrunk::git::{GitError, GitResultExt, Repository};
+use worktrunk::git::{GitError, GitResultExt, Repository, parse_diff_shortstat};
 use worktrunk::styling::{
     AnstyleStyle, CYAN, CYAN_BOLD, ERROR, ERROR_EMOJI, HINT, HINT_EMOJI, WARNING,
     format_bash_with_gutter, format_with_gutter,
@@ -8,7 +8,7 @@ use worktrunk::styling::{
 
 use super::command_approval::approve_command_batch;
 use super::command_executor::{CommandContext, prepare_project_commands};
-use super::worktree::{handle_push, parse_diff_shortstat};
+use super::worktree::handle_push;
 use crate::output::execute_command_in_worktree;
 
 /// Context for collecting merge commands

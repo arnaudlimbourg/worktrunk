@@ -102,10 +102,8 @@
 
 use std::path::PathBuf;
 use worktrunk::config::{CommandPhase, ProjectConfig, WorktrunkConfig};
-use worktrunk::git::{GitError, GitResultExt, Repository};
-use worktrunk::styling::{
-    ADDITION, CYAN, CYAN_BOLD, DELETION, GREEN, GREEN_BOLD, WARNING, format_bash_with_gutter,
-};
+use worktrunk::git::{GitError, GitResultExt, Repository, parse_diff_shortstat};
+use worktrunk::styling::{CYAN, CYAN_BOLD, GREEN, GREEN_BOLD, WARNING, format_bash_with_gutter};
 
 use super::command_executor::{CommandContext, prepare_project_commands};
 use crate::commands::process::spawn_detached;
@@ -796,65 +794,4 @@ pub fn handle_push(
     }
 
     Ok(())
-}
-
-/// Parse git diff --shortstat output
-pub struct DiffStats {
-    pub files: Option<usize>,
-    pub insertions: Option<usize>,
-    pub deletions: Option<usize>,
-}
-
-impl DiffStats {
-    /// Format stats as a summary string (e.g., "3 files, +45, -12")
-    pub fn format_summary(&self) -> Vec<String> {
-        let mut parts = Vec::new();
-
-        if let Some(files) = self.files {
-            parts.push(format!(
-                "{} file{}",
-                files,
-                if files == 1 { "" } else { "s" }
-            ));
-        }
-        if let Some(insertions) = self.insertions {
-            parts.push(format!("{ADDITION}+{insertions}{ADDITION:#}"));
-        }
-        if let Some(deletions) = self.deletions {
-            parts.push(format!("{DELETION}-{deletions}{DELETION:#}"));
-        }
-
-        parts
-    }
-}
-
-pub fn parse_diff_shortstat(output: &str) -> DiffStats {
-    let mut stats = DiffStats {
-        files: None,
-        insertions: None,
-        deletions: None,
-    };
-
-    // Example: " 3 files changed, 45 insertions(+), 12 deletions(-)"
-    let parts: Vec<&str> = output.split(',').collect();
-
-    for part in parts {
-        let part = part.trim();
-
-        if part.contains("file") {
-            if let Some(num_str) = part.split_whitespace().next() {
-                stats.files = num_str.parse().ok();
-            }
-        } else if part.contains("insertion") {
-            if let Some(num_str) = part.split_whitespace().next() {
-                stats.insertions = num_str.parse().ok();
-            }
-        } else if part.contains("deletion")
-            && let Some(num_str) = part.split_whitespace().next()
-        {
-            stats.deletions = num_str.parse().ok();
-        }
-    }
-
-    stats
 }
