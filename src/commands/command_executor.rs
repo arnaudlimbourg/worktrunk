@@ -118,6 +118,10 @@ pub fn prepare_project_commands(
     // Expand commands before approval for transparency
     let expanded_commands = expand_commands(&commands, ctx, extra_vars)?;
 
+    // Flush stdout before prompting on stderr to ensure correct output ordering
+    // This prevents the approval prompt from appearing before previous success messages
+    crate::output::flush()?;
+
     // Approve using expanded commands (which have both template and expanded forms)
     if !auto_trust
         && !approve_command_batch(
