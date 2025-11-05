@@ -16,7 +16,7 @@ info:
     LANG: C
     LC_ALL: C
     SOURCE_DATE_EPOCH: "1761609600"
-    WORKTRUNK_CONFIG_PATH: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmpA4ttAG/test-config.toml
+    WORKTRUNK_CONFIG_PATH: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmpCRPK4I/test-config.toml
 ---
 success: true
 exit_code: 0
@@ -92,8 +92,7 @@ if command -v wt >/dev/null 2>&1 || [[ -n "${WORKTRUNK_BIN:-}" ]]; then
 
         # If --source was specified, build and use local debug binary
         if [[ "$use_source" == true ]]; then
-            if ! cargo build --quiet >/dev/null 2>&1; then
-                echo "Error: cargo build failed" >&2
+            if ! cargo build --quiet; then
                 _WORKTRUNK_CMD="$saved_cmd"
                 return 1
             fi

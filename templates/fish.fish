@@ -105,8 +105,7 @@ if type -q {{ cmd_prefix }}; or set -q WORKTRUNK_BIN
 
         # If --source was specified, build and use local debug binary
         if test $use_source = true
-            if not cargo build --quiet >/dev/null 2>&1
-                echo "Error: cargo build failed" >&2
+            if not cargo build --quiet
                 set _WORKTRUNK_CMD $saved_cmd
                 return 1
             end

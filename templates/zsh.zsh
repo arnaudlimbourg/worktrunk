@@ -59,27 +59,59 @@ if command -v wt >/dev/null 2>&1 || [[ -n "${WORKTRUNK_BIN:-}" ]]; then
 
     # Override {{ cmd_prefix }} command to add --internal flag for switch, remove, and merge
     {{ cmd_prefix }}() {
-        local subcommand="$1"
+        local use_source=false
+        local -a args
+        local saved_cmd="$_WORKTRUNK_CMD"
 
-        case "$subcommand" in
-            switch|remove|merge)
-                # Commands that need --internal for directory change support
-                shift
-                _wt_exec --internal "$subcommand" "$@"
-                ;;
-            beta)
-                # Check if beta subcommand is select
-                if [[ "$2" == "select" ]]; then
-                    _wt_exec --internal "$@"
-                else
-                    command "$_WORKTRUNK_CMD" "$@"
-                fi
-                ;;
-            *)
-                # All other commands pass through directly
-                command "$_WORKTRUNK_CMD" "$@"
-                ;;
-        esac
+        # Check for --source flag and strip it
+        for arg in "$@"; do
+            if [[ "$arg" == "--source" ]]; then
+                use_source=true
+            else
+                args+=("$arg")
+            fi
+        done
+
+        # If --source was specified, build and use local debug binary
+        if [[ "$use_source" == true ]]; then
+            if ! cargo build --quiet; then
+                _WORKTRUNK_CMD="$saved_cmd"
+                return 1
+            fi
+            _WORKTRUNK_CMD="./target/debug/wt"
+        fi
+
+        # Dispatch based on subcommand (zsh arrays are 1-indexed)
+        if [[ ${{ '{' }}#args[@]} -gt 0 ]]; then
+            local subcommand="${args[1]}"
+
+            case "$subcommand" in
+                switch|remove|merge)
+                    # Commands that need --internal for directory change support
+                    _wt_exec --internal "${args[@]}"
+                    ;;
+                beta)
+                    # Check if beta subcommand is select
+                    if [[ ${{ '{' }}#args[@]} -gt 1 ]] && [[ "${args[2]}" == "select" ]]; then
+                        _wt_exec --internal "${args[@]}"
+                    else
+                        command "$_WORKTRUNK_CMD" "${args[@]}"
+                    fi
+                    ;;
+                *)
+                    # All other commands pass through directly
+                    command "$_WORKTRUNK_CMD" "${args[@]}"
+                    ;;
+            esac
+        else
+            # No arguments, just run the command
+            command "$_WORKTRUNK_CMD"
+        fi
+
+        # Restore original command
+        local result=$?
+        _WORKTRUNK_CMD="$saved_cmd"
+        return $result
     }
 
     # Dynamic completion function for zsh

@@ -69,8 +69,7 @@ if command -v wt >/dev/null 2>&1 || [[ -n "${WORKTRUNK_BIN:-}" ]]; then
 
         # If --source was specified, build and use local debug binary
         if [[ "$use_source" == true ]]; then
-            if ! cargo build --quiet >/dev/null 2>&1; then
-                echo "Error: cargo build failed" >&2
+            if ! cargo build --quiet; then
                 _WORKTRUNK_CMD="$saved_cmd"
                 return 1
             fi

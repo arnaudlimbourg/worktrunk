@@ -1020,4 +1020,136 @@ approved-commands = ["echo 'fish background task'"]
         // Normalize paths in output for snapshot testing
         assert_snapshot!(output.normalized());
     }
+
+    // ========================================================================
+    // --source Flag Error Passthrough Tests
+    // ========================================================================
+    //
+    // These tests verify that actual error messages pass through correctly
+    // when using the --source flag (instead of being hidden with generic
+    // wrapper error messages like "Error: cargo build failed").
+
+    #[rstest]
+    #[case("bash")]
+    #[case("zsh")]
+    #[case("fish")]
+    fn test_source_flag_forwards_errors(#[case] shell: &str) {
+        use std::env;
+
+        let repo = TestRepo::new();
+        repo.commit("Initial commit");
+
+        // Get the worktrunk source directory (where this test is running from)
+        // This is the directory that contains Cargo.toml with the workspace
+        let worktrunk_source = env::current_dir()
+            .expect("Failed to get current directory")
+            .canonicalize()
+            .expect("Failed to canonicalize path");
+
+        // Build a shell script that runs from the worktrunk source directory
+        let wt_bin = get_cargo_bin("wt");
+        let wrapper_script = generate_wrapper(&repo, shell);
+        let mut script = String::new();
+
+        // Set environment variables
+        match shell {
+            "fish" => {
+                script.push_str(&format!("set -x WORKTRUNK_BIN '{}'\n", wt_bin.display()));
+                script.push_str(&format!(
+                    "set -x WORKTRUNK_CONFIG_PATH '{}'\n",
+                    repo.test_config_path().display()
+                ));
+                script.push_str("set -x CLICOLOR_FORCE 1\n");
+            }
+            "zsh" => {
+                script.push_str("autoload -Uz compinit && compinit -i 2>/dev/null\n");
+                script.push_str(&format!("export WORKTRUNK_BIN='{}'\n", wt_bin.display()));
+                script.push_str(&format!(
+                    "export WORKTRUNK_CONFIG_PATH='{}'\n",
+                    repo.test_config_path().display()
+                ));
+                script.push_str("export CLICOLOR_FORCE=1\n");
+            }
+            _ => {
+                // bash
+                script.push_str(&format!("export WORKTRUNK_BIN='{}'\n", wt_bin.display()));
+                script.push_str(&format!(
+                    "export WORKTRUNK_CONFIG_PATH='{}'\n",
+                    repo.test_config_path().display()
+                ));
+                script.push_str("export CLICOLOR_FORCE=1\n");
+            }
+        }
+
+        // Source the wrapper
+        script.push_str(&wrapper_script);
+        script.push('\n');
+
+        // Try to run wt --source with an invalid subcommand
+        // The --source flag triggers cargo build (which succeeds)
+        // Then it tries to run 'wt foo' which should fail with "unrecognized subcommand"
+        script.push_str("wt --source foo\n");
+
+        // Wrap in subshell to merge stderr
+        let final_script = match shell {
+            "fish" => format!("begin\n{}\nend 2>&1", script),
+            _ => format!("( {} ) 2>&1", script),
+        };
+
+        let env_vars = vec![
+            ("CLICOLOR_FORCE".to_string(), "1".to_string()),
+            (
+                "WORKTRUNK_CONFIG_PATH".to_string(),
+                repo.test_config_path().to_string_lossy().to_string(),
+            ),
+            ("TERM".to_string(), "xterm".to_string()),
+            ("GIT_AUTHOR_NAME".to_string(), "Test User".to_string()),
+            (
+                "GIT_AUTHOR_EMAIL".to_string(),
+                "test@example.com".to_string(),
+            ),
+            ("GIT_COMMITTER_NAME".to_string(), "Test User".to_string()),
+            (
+                "GIT_COMMITTER_EMAIL".to_string(),
+                "test@example.com".to_string(),
+            ),
+            (
+                "GIT_AUTHOR_DATE".to_string(),
+                "2025-10-28T12:00:00Z".to_string(),
+            ),
+            (
+                "GIT_COMMITTER_DATE".to_string(),
+                "2025-10-28T12:00:00Z".to_string(),
+            ),
+            ("LANG".to_string(), "C".to_string()),
+            ("LC_ALL".to_string(), "C".to_string()),
+            ("SOURCE_DATE_EPOCH".to_string(), "1761609600".to_string()),
+        ];
+
+        let (combined, exit_code) = exec_in_pty(shell, &final_script, &worktrunk_source, &env_vars);
+
+        // Shell-agnostic assertions
+        assert_ne!(exit_code, 0, "{}: Command should fail", shell);
+
+        // CRITICAL: Should see wt's actual error message about unrecognized subcommand
+        assert!(
+            combined.contains("unrecognized subcommand"),
+            "{}: Should show actual wt error message 'unrecognized subcommand'.\nOutput:\n{}",
+            shell,
+            combined
+        );
+
+        // CRITICAL: Should NOT see the old generic wrapper error message
+        assert!(
+            !combined.contains("Error: cargo build failed"),
+            "{}: Should not contain old generic error message",
+            shell
+        );
+
+        // Consolidated snapshot - output should be identical across shells
+        // (wt error messages are deterministic)
+        insta::allow_duplicates! {
+            assert_snapshot!("source_flag_error_passthrough", combined);
+        }
+    }
 }
