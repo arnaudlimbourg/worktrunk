@@ -136,10 +136,10 @@ pub fn handle_merge(
 
     // Check if already on target branch
     if current_branch == target_branch {
-        use worktrunk::styling::{GREEN, SUCCESS_EMOJI};
+        use worktrunk::styling::GREEN;
         let green_bold = GREEN.bold();
         crate::output::success(format!(
-            "{SUCCESS_EMOJI} {GREEN}Already on {green_bold}{target_branch}{green_bold:#}, nothing to merge{GREEN:#}"
+            "{GREEN}Already on {green_bold}{target_branch}{green_bold:#}, nothing to merge{GREEN:#}"
         ))?;
         return Ok(());
     }
@@ -246,10 +246,10 @@ pub fn handle_merge(
         crate::output::flush()?;
 
         // Show success message now that user has been cd'd to primary
-        use worktrunk::styling::{GREEN, SUCCESS_EMOJI};
+        use worktrunk::styling::GREEN;
         let green_bold = GREEN.bold();
         crate::output::success(format!(
-            "{SUCCESS_EMOJI} {GREEN}Returned to primary at {green_bold}{}{green_bold:#}{GREEN:#}",
+            "{GREEN}Returned to primary at {green_bold}{}{green_bold:#}{GREEN:#}",
             primary_worktree_dir.display()
         ))?;
 
@@ -258,7 +258,7 @@ pub fn handle_merge(
         let new_branch = primary_repo.current_branch()?;
         if new_branch.as_deref() != Some(&target_branch) {
             crate::output::progress(format!(
-                "🔄 {CYAN}Switching to {CYAN_BOLD}{target_branch}{CYAN_BOLD:#}{CYAN}...{CYAN:#}"
+                "{CYAN}Switching to {CYAN_BOLD}{target_branch}{CYAN_BOLD:#}{CYAN}...{CYAN:#}"
             ))?;
             primary_repo
                 .run_command(&["switch", &target_branch])
@@ -298,19 +298,19 @@ pub fn handle_merge(
     Ok(())
 }
 
-/// Format the merge summary message (includes emoji and color for consistency)
+/// Format the merge summary message (no emoji - output system adds it)
 fn format_merge_summary(primary_path: Option<&std::path::Path>) -> String {
-    use worktrunk::styling::{GREEN, SUCCESS_EMOJI};
+    use worktrunk::styling::GREEN;
     let green_bold = GREEN.bold();
 
     // Show where we ended up
     if let Some(path) = primary_path {
         format!(
-            "{SUCCESS_EMOJI} {GREEN}Returned to primary at {green_bold}{}{green_bold:#}{GREEN:#}",
+            "{GREEN}Returned to primary at {green_bold}{}{green_bold:#}{GREEN:#}",
             path.display()
         )
     } else {
-        format!("{SUCCESS_EMOJI} {GREEN}Worktree preserved (--no-remove){GREEN:#}")
+        format!("{GREEN}Worktree preserved (--no-remove){GREEN:#}")
     }
 }
 
@@ -356,7 +356,7 @@ pub fn show_llm_config_hint_if_needed(
 ) -> Result<(), GitError> {
     if !commit_generation_config.is_configured() {
         crate::output::hint(format!(
-            "{HINT_EMOJI} {HINT}Using fallback commit message. Run 'wt config help' to configure LLM-generated messages{HINT:#}"
+            "{HINT}Using fallback commit message. Run 'wt config help' to configure LLM-generated messages{HINT:#}"
         ))?;
     }
     Ok(())
@@ -393,9 +393,9 @@ pub fn commit_staged_changes(
     }
 
     let full_progress_msg = if parts.is_empty() {
-        format!("🔄 {CYAN}{action}{CYAN:#}")
+        format!("{CYAN}{action}{CYAN:#}")
     } else {
-        format!("🔄 {CYAN}{action}{CYAN:#} ({})", parts.join(", "))
+        format!("{CYAN}{action}{CYAN:#} ({})", parts.join(", "))
     };
 
     crate::output::progress(full_progress_msg)?;
@@ -415,10 +415,10 @@ pub fn commit_staged_changes(
         .trim()
         .to_string();
 
-    use worktrunk::styling::{GREEN, SUCCESS_EMOJI};
+    use worktrunk::styling::GREEN;
     let green_dim = GREEN.dimmed();
     crate::output::success(format!(
-        "{SUCCESS_EMOJI} {GREEN}Committed changes @ {green_dim}{commit_hash}{green_dim:#}{GREEN:#}"
+        "{GREEN}Committed changes @ {green_dim}{commit_hash}{green_dim:#}{GREEN:#}"
     ))?;
 
     Ok(())

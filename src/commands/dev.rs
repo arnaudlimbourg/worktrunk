@@ -200,8 +200,8 @@ pub fn handle_dev_squash(
     // Handle different scenarios
     if commit_count == 0 && !has_staged {
         // No commits and no staged changes - nothing to squash
-        crate::output::progress(format!(
-            "{HINT_EMOJI} {HINT}No commits to squash - already at merge base{HINT:#}"
+        crate::output::hint(format!(
+            "{HINT}No commits to squash - already at merge base{HINT:#}"
         ))?;
         return Ok(false);
     }
@@ -237,11 +237,11 @@ pub fn handle_dev_squash(
         ""
     };
     let squash_progress = match stats_parts.is_empty() {
-        true => format!(
-            "🔄 {CYAN}Squashing {commit_count} {commit_text}{with_changes} into 1...{CYAN:#}"
-        ),
+        true => {
+            format!("{CYAN}Squashing {commit_count} {commit_text}{with_changes} into 1...{CYAN:#}")
+        }
         false => format!(
-            "🔄 {CYAN}Squashing {commit_count} {commit_text}{with_changes} into 1{CYAN:#} ({})...",
+            "{CYAN}Squashing {commit_count} {commit_text}{with_changes} into 1{CYAN:#} ({})...",
             stats_parts.join(", ")
         ),
     };
@@ -251,9 +251,7 @@ pub fn handle_dev_squash(
     let subjects = repo.commit_subjects(&range)?;
 
     // Generate squash commit message
-    crate::output::progress(format!(
-        "🔄 {CYAN}Generating squash commit message...{CYAN:#}"
-    ))?;
+    crate::output::progress(format!("{CYAN}Generating squash commit message...{CYAN:#}"))?;
 
     show_llm_config_hint_if_needed(&config.commit_generation)?;
 
@@ -344,7 +342,7 @@ pub fn handle_dev_rebase(target: Option<&str>) -> Result<bool, GitError> {
 
     // Rebase onto target
     crate::output::progress(format!(
-        "🔄 {CYAN}Rebasing onto {CYAN_BOLD}{target_branch}{CYAN_BOLD:#}{CYAN}...{CYAN:#}"
+        "{CYAN}Rebasing onto {CYAN_BOLD}{target_branch}{CYAN_BOLD:#}{CYAN}...{CYAN:#}"
     ))?;
 
     let rebase_result = repo.run_command(&["rebase", &target_branch]);
@@ -395,7 +393,6 @@ pub fn handle_dev_rebase(target: Option<&str>) -> Result<bool, GitError> {
 pub fn handle_dev_ask_approvals(force: bool, show_all: bool) -> Result<(), GitError> {
     use super::command_approval::approve_command_batch;
     use worktrunk::config::{CommandPhase, WorktrunkConfig};
-    use worktrunk::styling::INFO_EMOJI;
 
     let repo = Repository::current();
     let project_id = repo.project_identifier()?;
@@ -434,9 +431,7 @@ pub fn handle_dev_ask_approvals(force: bool, show_all: bool) -> Result<(), GitEr
 
     if commands.is_empty() {
         let dim = worktrunk::styling::AnstyleStyle::new().dimmed();
-        crate::output::success(format!(
-            "{INFO_EMOJI} {dim}No commands configured in project{dim:#}"
-        ))?;
+        crate::output::info(format!("{dim}No commands configured in project{dim:#}"))?;
         return Ok(());
     }
 
@@ -449,9 +444,7 @@ pub fn handle_dev_ask_approvals(force: bool, show_all: bool) -> Result<(), GitEr
 
         if unapproved.is_empty() {
             let dim = worktrunk::styling::AnstyleStyle::new().dimmed();
-            crate::output::success(format!(
-                "{INFO_EMOJI} {dim}All commands already approved{dim:#}"
-            ))?;
+            crate::output::info(format!("{dim}All commands already approved{dim:#}"))?;
             return Ok(());
         }
 

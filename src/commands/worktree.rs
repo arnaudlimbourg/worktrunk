@@ -104,8 +104,7 @@ use std::path::PathBuf;
 use worktrunk::config::{CommandPhase, ProjectConfig, WorktrunkConfig};
 use worktrunk::git::{GitError, GitResultExt, Repository};
 use worktrunk::styling::{
-    ADDITION, CYAN, CYAN_BOLD, DELETION, GREEN, GREEN_BOLD, SUCCESS_EMOJI, WARNING,
-    format_bash_with_gutter,
+    ADDITION, CYAN, CYAN_BOLD, DELETION, GREEN, GREEN_BOLD, WARNING, format_bash_with_gutter,
 };
 
 use super::command_executor::{CommandContext, prepare_project_commands};
@@ -289,9 +288,9 @@ pub fn handle_remove(
     // Show progress with resolved name
     let cyan_bold = CYAN.bold();
     let progress_msg = if let Some(ref b) = resolved_name {
-        format!("🔄 {CYAN}Removing worktree for {cyan_bold}{b}{cyan_bold:#}...{CYAN:#}")
+        format!("{CYAN}Removing worktree for {cyan_bold}{b}{cyan_bold:#}...{CYAN:#}")
     } else {
-        format!("🔄 {CYAN}Removing worktree...{CYAN:#}")
+        format!("{CYAN}Removing worktree...{CYAN:#}")
     };
     crate::output::progress(progress_msg)?;
 
@@ -734,7 +733,7 @@ pub fn handle_push(
         };
 
         crate::output::progress(format!(
-            "🔄 {CYAN}{verb_ing} {commit_count} {commit_text} to {CYAN_BOLD}{target_branch}{CYAN_BOLD:#} @ {cyan_dim}{head_sha}{cyan_dim:#}{CYAN:#}{operations_note}\n"
+            "{CYAN}{verb_ing} {commit_count} {commit_text} to {CYAN_BOLD}{target_branch}{CYAN_BOLD:#} @ {cyan_dim}{head_sha}{cyan_dim:#}{CYAN:#}{operations_note}\n"
         ))?;
 
         // Show the commit graph with color
@@ -786,13 +785,13 @@ pub fn handle_push(
         )];
         summary_parts.extend(stats.format_summary());
 
-        crate::output::progress(format!(
-            "{SUCCESS_EMOJI} {GREEN}{verb} {GREEN_BOLD}{target_branch}{GREEN_BOLD:#}{GREEN:#} ({})",
+        crate::output::success(format!(
+            "{GREEN}{verb} {GREEN_BOLD}{target_branch}{GREEN_BOLD:#}{GREEN:#} ({})",
             summary_parts.join(", ")
         ))?;
     } else {
-        crate::output::progress(format!(
-            "{SUCCESS_EMOJI} {GREEN}{verb} {GREEN_BOLD}{target_branch}{GREEN_BOLD:#}{GREEN:#}"
+        crate::output::success(format!(
+            "{GREEN}{verb} {GREEN_BOLD}{target_branch}{GREEN_BOLD:#}{GREEN:#}"
         ))?;
     }
 
