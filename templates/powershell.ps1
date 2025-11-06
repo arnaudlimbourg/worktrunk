@@ -35,8 +35,7 @@ if ((Get-Command wt -ErrorAction SilentlyContinue) -or $env:WORKTRUNK_BIN) {
                 $execCmd = $chunk -replace '^__WORKTRUNK_EXEC__', ''
             } elseif ($chunk) {
                 # Regular output - write it with newline
-                # TODO: Use Write-Output instead of Write-Host for redirectable output
-                Write-Host $chunk
+                Write-Output $chunk
             }
         }
 

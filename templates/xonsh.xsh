@@ -23,13 +23,11 @@ if shutil.which("wt") is not None or os.environ.get('WORKTRUNK_BIN'):
             for chunk in result.out.split("\0"):
                 if chunk.startswith("__WORKTRUNK_CD__"):
                     # CD directive - extract path and change directory
-                    # TODO: Use str.replace instead of hard-coded offset (fragile if prefix changes)
-                    path = chunk[16:]  # Remove prefix
+                    path = chunk.replace("__WORKTRUNK_CD__", "", 1)
                     cd @(path)
                 elif chunk.startswith("__WORKTRUNK_EXEC__"):
                     # EXEC directive - extract command (may contain newlines)
-                    # TODO: Use str.replace instead of hard-coded offset (fragile if prefix changes)
-                    exec_cmd = chunk[18:]  # Remove prefix
+                    exec_cmd = chunk.replace("__WORKTRUNK_EXEC__", "", 1)
                 elif chunk:
                     # Regular output - print it with newline
                     print(chunk)
@@ -38,9 +36,8 @@ if shutil.which("wt") is not None or os.environ.get('WORKTRUNK_BIN'):
         if exec_cmd:
             execx(exec_cmd)
 
-        # Return the exit code
-        # TODO: Add fallback for None: return result.returncode or 0
-        return result.returncode
+        # Return the exit code, defaulting to 0 if the subprocess did not set one
+        return result.returncode if result.returncode is not None else 0
 
     def _{{ cmd_prefix }}_wrapper(args):
         """Override {{ cmd_prefix }} command to add --internal flag"""

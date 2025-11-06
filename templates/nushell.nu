@@ -17,13 +17,11 @@ if (which wt | is-not-empty) or ($env.WORKTRUNK_BIN? | is-not-empty) {
         for chunk in ($result.stdout | split row "\u{0000}") {
             if ($chunk | str starts-with "__WORKTRUNK_CD__") {
                 # CD directive - extract path and change directory
-                # TODO: Use str replace instead of hard-coded offset (fragile if prefix changes)
-                let path = ($chunk | str substring 16..)
+                let path = ($chunk | str replace --regex '^__WORKTRUNK_CD__' '')
                 cd $path
             } else if ($chunk | str starts-with "__WORKTRUNK_EXEC__") {
                 # EXEC directive - extract command (may contain newlines)
-                # TODO: Use str replace instead of hard-coded offset (fragile if prefix changes)
-                $exec_cmd = ($chunk | str substring 18..)
+                $exec_cmd = ($chunk | str replace --regex '^__WORKTRUNK_EXEC__' '')
             } else if ($chunk | str length) > 0 {
                 # Regular output - print it with newline
                 print $chunk
