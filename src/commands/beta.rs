@@ -172,9 +172,6 @@ pub fn handle_beta_squash(
     // Handle different scenarios
     if commit_count == 0 && !has_staged {
         // No commits and no staged changes - nothing to squash
-        crate::output::hint(format!(
-            "{HINT}No commits to squash - already at merge base{HINT:#}"
-        ))?;
         return Ok(false);
     }
 
@@ -278,14 +275,7 @@ pub fn handle_beta_squash(
 
 /// Handle `wt beta push` command
 pub fn handle_beta_push(target: Option<&str>, allow_merge_commits: bool) -> Result<(), GitError> {
-    super::worktree::handle_push(
-        target,
-        allow_merge_commits,
-        "Pushed to",
-        false,
-        false,
-        false,
-    )
+    super::worktree::handle_push(target, allow_merge_commits, "Pushed to", None, None, None)
 }
 
 /// Handle `wt beta rebase` command

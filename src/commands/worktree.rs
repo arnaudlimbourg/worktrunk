@@ -629,13 +629,18 @@ pub fn execute_post_start_commands_sequential(
     Ok(())
 }
 
+/// Push changes to target branch
+///
+/// The `committed`, `squashed`, and `rebased` parameters are optional flags indicating
+/// whether those operations occurred in the merge workflow. Pass `None` for standalone
+/// push operations where these concepts don't apply.
 pub fn handle_push(
     target: Option<&str>,
     allow_merge_commits: bool,
     verb: &str,
-    committed: bool,
-    squashed: bool,
-    rebased: bool,
+    committed: Option<bool>,
+    squashed: Option<bool>,
+    rebased: Option<bool>,
 ) -> Result<(), GitError> {
     let repo = Repository::current();
 
@@ -724,17 +729,19 @@ pub fn handle_push(
         // Build parenthetical showing which operations didn't happen and flags used
         let mut notes = Vec::new();
 
-        // Skipped operations
-        let mut skipped_ops = Vec::new();
-        if !committed && !squashed {
-            // Neither commit nor squash happened - combine them
-            skipped_ops.push("commit/squash");
-        }
-        if !rebased {
-            skipped_ops.push("rebase");
-        }
-        if !skipped_ops.is_empty() {
-            notes.push(format!("no {} needed", skipped_ops.join("/")));
+        // Skipped operations - only include if we're in merge workflow context (Some values)
+        if committed.is_some() || squashed.is_some() || rebased.is_some() {
+            let mut skipped_ops = Vec::new();
+            if !committed.unwrap_or(false) && !squashed.unwrap_or(false) {
+                // Neither commit nor squash happened - combine them
+                skipped_ops.push("commit/squash");
+            }
+            if !rebased.unwrap_or(false) {
+                skipped_ops.push("rebase");
+            }
+            if !skipped_ops.is_empty() {
+                notes.push(format!("no {} needed", skipped_ops.join("/")));
+            }
         }
 
         // Flag acknowledgments
@@ -804,8 +811,27 @@ pub fn handle_push(
             summary_parts.join(", ")
         ))?;
     } else {
+        // No commits to push - for merge workflow context, acknowledge operations that didn't happen
+        let note = if committed.is_some() || squashed.is_some() || rebased.is_some() {
+            let mut notes = Vec::new();
+            if !committed.unwrap_or(false) && !squashed.unwrap_or(false) {
+                notes.push("no new commits");
+            }
+            if !rebased.unwrap_or(false) {
+                notes.push("no rebase needed");
+            }
+            if notes.is_empty() {
+                String::new()
+            } else {
+                format!(" ({})", notes.join(", "))
+            }
+        } else {
+            // Standalone push - no merge workflow context
+            String::new()
+        };
+
         crate::output::success(format!(
-            "{GREEN}{verb} {GREEN_BOLD}{target_branch}{GREEN_BOLD:#}{GREEN:#}"
+            "{GREEN}{verb} {GREEN_BOLD}{target_branch}{GREEN_BOLD:#}{GREEN:#}{note}"
         ))?;
     }
 

@@ -219,9 +219,9 @@ pub fn handle_merge(
         Some(&target_branch),
         false,
         "Merged to",
-        committed,
-        squashed,
-        rebased,
+        Some(committed),
+        Some(squashed),
+        Some(rebased),
     )?;
 
     // Get primary worktree path before cleanup (while we can still run git commands)
