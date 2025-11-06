@@ -149,15 +149,15 @@ impl std::fmt::Display for GitError {
                 files,
                 worktree_path,
             } => {
-                use crate::styling::AnstyleStyle;
-                let dim = AnstyleStyle::new().dimmed();
+                use crate::styling::format_with_gutter;
 
                 write!(
                     f,
                     "{ERROR_EMOJI} {ERROR}Cannot push: conflicting uncommitted changes in:{ERROR:#}\n\n"
                 )?;
-                for file in files {
-                    writeln!(f, "{dim}•{dim:#} {file}")?;
+                if !files.is_empty() {
+                    let joined_files = files.join("\n");
+                    write!(f, "{}", format_with_gutter(&joined_files, "", None))?;
                 }
                 write!(
                     f,
