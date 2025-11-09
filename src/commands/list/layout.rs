@@ -214,6 +214,7 @@ pub struct DiffWidths {
     pub deleted_digits: usize, // Second part: - for diffs, ↓ for arrows
 }
 
+#[derive(Clone, Debug)]
 pub struct ColumnWidths {
     pub branch: usize,
     pub status: usize,
@@ -237,6 +238,14 @@ pub struct ColumnDataFlags {
     pub branch_diff: bool,
     pub upstream: bool,
     pub ci_status: bool,
+}
+
+/// Layout metadata including position mask for Status column
+#[derive(Clone, Debug)]
+pub struct LayoutMetadata {
+    pub widths: ColumnWidths,
+    pub data_flags: ColumnDataFlags,
+    pub status_position_mask: super::model::PositionMask,
 }
 
 const EMPTY_PENALTY: u8 = 10;
@@ -296,6 +305,7 @@ pub struct LayoutConfig {
     pub common_prefix: PathBuf,
     pub max_message_len: usize,
     pub hidden_nonempty_count: usize,
+    pub status_position_mask: super::model::PositionMask,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -366,13 +376,9 @@ fn ideal_for_column(
     }
 }
 
-pub fn calculate_column_widths(
-    items: &[ListItem],
-    fetch_ci: bool,
-) -> (ColumnWidths, ColumnDataFlags) {
+pub fn calculate_column_widths(items: &[ListItem], fetch_ci: bool) -> LayoutMetadata {
     // Track maximum data widths (headers are enforced via fit_header() later)
     let mut max_branch = 0;
-    let mut max_status = 0;
     let mut max_user_status = 0;
     let mut max_time = 0;
     let mut max_message = 0;
@@ -389,6 +395,9 @@ pub fn calculate_column_widths(
     let mut max_upstream_ahead_digits = 0;
     let mut max_upstream_behind_digits = 0;
 
+    // Track which status positions are used across all items
+    let mut status_position_mask = super::model::PositionMask::default();
+
     for item in items {
         let commit = item.commit_details();
         let counts = item.counts();
@@ -402,8 +411,9 @@ pub fn calculate_column_widths(
         // Status column: git status symbols (worktrees only)
         // User status column: user-defined status (worktrees and branches)
         if let Some(info) = worktree_info {
-            let git_status_width = info.status_symbols.render().width();
-            max_status = max_status.max(git_status_width);
+            // Collect position usage from this item's status symbols
+            let item_mask = super::model::PositionMask::from_symbols(&info.status_symbols);
+            status_position_mask.merge(&item_mask);
 
             if let Some(ref user_status) = info.user_status {
                 max_user_status = max_user_status.max(user_status.width());
@@ -474,6 +484,22 @@ pub fn calculate_column_widths(
         max_upstream_behind_digits,
     );
 
+    // Calculate Status column width based on position mask
+    // Now that we know which positions are used, calculate max width with selective rendering
+    let max_status = items
+        .iter()
+        .filter_map(|item| item.worktree_info())
+        .map(|info| {
+            info.status_symbols
+                .render_with_mask(&status_position_mask)
+                .width()
+        })
+        .max()
+        .unwrap_or(0);
+
+    // For Status column: always enforce minimum width to fit header
+    // Selective rendering narrows the column by eliminating unused positions,
+    // but the column must still be wide enough for the "Status" header text
     let has_status_data = max_status > 0;
     let final_status = fit_header(HEADER_STATUS, max_status);
 
@@ -508,7 +534,11 @@ pub fn calculate_column_widths(
         ci_status: has_ci_status,
     };
 
-    (widths, data_flags)
+    LayoutMetadata {
+        widths,
+        data_flags,
+        status_position_mask,
+    }
 }
 
 /// Calculate responsive layout based on terminal width
@@ -525,7 +555,10 @@ pub fn calculate_responsive_layout(
     let common_prefix = find_common_prefix(&paths);
 
     // Calculate ideal column widths and track which columns have data
-    let (ideal_widths, data_flags) = calculate_column_widths(items, fetch_ci);
+    let metadata = calculate_column_widths(items, fetch_ci);
+    let ideal_widths = metadata.widths;
+    let data_flags = metadata.data_flags;
+    let status_position_mask = metadata.status_position_mask;
 
     // Calculate actual maximum path width (after common prefix removal)
     let path_data_width = items
@@ -669,6 +702,7 @@ pub fn calculate_responsive_layout(
         common_prefix,
         max_message_len,
         hidden_nonempty_count,
+        status_position_mask,
     }
 }
 
@@ -717,8 +751,8 @@ mod tests {
             working_diff_display: None,
         };
 
-        let (widths, _data_flags) =
-            calculate_column_widths(&[super::ListItem::Worktree(info1)], false);
+        let metadata = calculate_column_widths(&[super::ListItem::Worktree(info1)], false);
+        let widths = metadata.widths;
 
         // "↑3 ↓2" has format "↑3 ↓2" = 1+1+1+1+1 = 5, header "main↕" is also 5
         assert_eq!(

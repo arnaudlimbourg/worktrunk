@@ -492,6 +492,59 @@ impl serde::Serialize for GitOperation {
     }
 }
 
+/// Tracks which status symbol positions are actually used across all items
+///
+/// This allows the Status column to only allocate space for positions that
+/// have data, rather than reserving space for all possible positions.
+///
+/// Uses a bit array for compact representation (7 positions = 7 bits).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct PositionMask {
+    /// Bit array: [0a, 0b, 0c, 0d, 1, 2, 3]
+    positions: [bool; 7],
+}
+
+impl PositionMask {
+    const POS_0A_CONFLICTS: usize = 0;
+    const POS_0B_BRANCH_STATE: usize = 1;
+    const POS_0C_GIT_OPERATION: usize = 2;
+    const POS_0D_WORKTREE_ATTRS: usize = 3;
+    const POS_1_MAIN_DIVERGENCE: usize = 4;
+    const POS_2_UPSTREAM_DIVERGENCE: usize = 5;
+    const POS_3_WORKING_TREE: usize = 6;
+
+    /// Full mask with all positions enabled (for JSON output)
+    pub const FULL: Self = Self {
+        positions: [true; 7],
+    };
+
+    /// Create a mask from a StatusSymbols instance
+    pub fn from_symbols(symbols: &StatusSymbols) -> Self {
+        let mut positions = [false; 7];
+        positions[Self::POS_0A_CONFLICTS] = symbols.has_conflicts;
+        positions[Self::POS_0B_BRANCH_STATE] = symbols.branch_state != BranchState::None;
+        positions[Self::POS_0C_GIT_OPERATION] = symbols.git_operation != GitOperation::None;
+        positions[Self::POS_0D_WORKTREE_ATTRS] = !symbols.worktree_attrs.is_empty();
+        positions[Self::POS_1_MAIN_DIVERGENCE] = symbols.main_divergence != MainDivergence::None;
+        positions[Self::POS_2_UPSTREAM_DIVERGENCE] =
+            symbols.upstream_divergence != UpstreamDivergence::None;
+        positions[Self::POS_3_WORKING_TREE] = !symbols.working_tree.is_empty();
+        Self { positions }
+    }
+
+    /// Merge this mask with another, keeping positions that are used in either
+    pub fn merge(&mut self, other: &Self) {
+        for (i, &other_val) in other.positions.iter().enumerate() {
+            self.positions[i] |= other_val;
+        }
+    }
+
+    /// Check if a position is included in the mask
+    fn includes(&self, pos: usize) -> bool {
+        self.positions[pos]
+    }
+}
+
 /// Structured status symbols for aligned rendering
 ///
 /// Symbols are categorized to enable vertical alignment in table output:
@@ -547,9 +600,18 @@ pub struct StatusSymbols {
 }
 
 impl StatusSymbols {
-    /// Render symbols with full alignment
+    /// Render symbols with full alignment (all positions)
     ///
-    /// Aligns all symbol types at fixed positions:
+    /// This is used for the display fields in JSON output.
+    /// For table rendering with selective positions, use `render_with_mask()`.
+    pub fn render(&self) -> String {
+        self.render_with_mask(&PositionMask::FULL)
+    }
+
+    /// Render symbols with selective alignment based on position mask
+    ///
+    /// Aligns all symbol types at fixed positions, but only includes positions
+    /// that are present in the mask:
     /// - Position 0a: Conflicts (= or space)
     /// - Position 0b: Branch state (≡, ∅, or space)
     /// - Position 0c: Git operation (↻, ⋈, or space)
@@ -559,92 +621,70 @@ impl StatusSymbols {
     /// - Position 3+: Working tree symbols (?, !, +, », ✘)
     ///
     /// This ensures vertical scannability - each symbol type appears at the same
-    /// column position across all rows.
-    pub fn render(&self) -> String {
+    /// column position across all rows, while minimizing wasted space.
+    pub fn render_with_mask(&self, mask: &PositionMask) -> String {
         let mut result = String::with_capacity(12);
 
         if self.is_empty() {
             return result;
         }
 
-        // Check if we have any symbols after each position (for conditional spacing)
-        let has_post_0a = self.branch_state != BranchState::None
-            || self.git_operation != GitOperation::None
-            || !self.worktree_attrs.is_empty()
-            || self.main_divergence != MainDivergence::None
-            || self.upstream_divergence != UpstreamDivergence::None
-            || !self.working_tree.is_empty();
+        // Build list of (position_index, content, has_data) tuples
+        let positions_data = [
+            (
+                PositionMask::POS_0A_CONFLICTS,
+                if self.has_conflicts { "=" } else { "" },
+                self.has_conflicts,
+            ),
+            (
+                PositionMask::POS_0B_BRANCH_STATE,
+                &self.branch_state.to_string(),
+                self.branch_state != BranchState::None,
+            ),
+            (
+                PositionMask::POS_0C_GIT_OPERATION,
+                &self.git_operation.to_string(),
+                self.git_operation != GitOperation::None,
+            ),
+            (
+                PositionMask::POS_0D_WORKTREE_ATTRS,
+                &self.worktree_attrs,
+                !self.worktree_attrs.is_empty(),
+            ),
+            (
+                PositionMask::POS_1_MAIN_DIVERGENCE,
+                &self.main_divergence.to_string(),
+                self.main_divergence != MainDivergence::None,
+            ),
+            (
+                PositionMask::POS_2_UPSTREAM_DIVERGENCE,
+                &self.upstream_divergence.to_string(),
+                self.upstream_divergence != UpstreamDivergence::None,
+            ),
+            (
+                PositionMask::POS_3_WORKING_TREE,
+                &self.working_tree,
+                !self.working_tree.is_empty(),
+            ),
+        ];
 
-        let has_post_0b = self.git_operation != GitOperation::None
-            || !self.worktree_attrs.is_empty()
-            || self.main_divergence != MainDivergence::None
-            || self.upstream_divergence != UpstreamDivergence::None
-            || !self.working_tree.is_empty();
+        // Render each position that's included in the mask (without allocating Vec)
+        for (i, (pos, content, has_data)) in positions_data.iter().enumerate() {
+            if !mask.includes(*pos) {
+                continue; // Skip positions not in mask
+            }
 
-        let has_post_0c = !self.worktree_attrs.is_empty()
-            || self.main_divergence != MainDivergence::None
-            || self.upstream_divergence != UpstreamDivergence::None
-            || !self.working_tree.is_empty();
+            // Check if any later position (that's included in mask) has data
+            let has_content_after = positions_data[(i + 1)..]
+                .iter()
+                .any(|(later_pos, _, later_has_data)| mask.includes(*later_pos) && *later_has_data);
 
-        let has_post_0d = self.main_divergence != MainDivergence::None
-            || self.upstream_divergence != UpstreamDivergence::None
-            || !self.working_tree.is_empty();
-
-        // Position 0a: Conflicts
-        if self.has_conflicts {
-            result.push('=');
-        } else if has_post_0a {
-            result.push(' ');
-        }
-
-        // Position 0b: Branch state (≡ or ∅)
-        let branch_state_str = self.branch_state.to_string();
-        if !branch_state_str.is_empty() {
-            result.push_str(&branch_state_str);
-        } else if has_post_0b {
-            result.push(' ');
-        }
-
-        // Position 0c: Git operation (↻ or ⋈)
-        let git_op_str = self.git_operation.to_string();
-        if !git_op_str.is_empty() {
-            result.push_str(&git_op_str);
-        } else if has_post_0c {
-            result.push(' ');
-        }
-
-        // Position 0d: Worktree attributes (◇⊠⚠)
-        if !self.worktree_attrs.is_empty() {
-            result.push_str(&self.worktree_attrs);
-        } else if has_post_0d {
-            result.push(' ');
-        }
-
-        // Position 1: Main divergence (↑, ↓, or ↕)
-        let main_str = self.main_divergence.to_string();
-        if !main_str.is_empty() {
-            result.push_str(&main_str);
-        } else {
-            // Only add space if we have upstream or working_tree symbols
-            if self.upstream_divergence != UpstreamDivergence::None || !self.working_tree.is_empty()
-            {
-                result.push(' ');
+            if *has_data {
+                result.push_str(content);
+            } else if has_content_after {
+                result.push(' '); // Spacing for alignment
             }
         }
-
-        // Position 2: Upstream divergence (⇡, ⇣, or ⇅)
-        let upstream_str = self.upstream_divergence.to_string();
-        if !upstream_str.is_empty() {
-            result.push_str(&upstream_str);
-        } else {
-            // Only add space if we have working_tree symbols
-            if !self.working_tree.is_empty() {
-                result.push(' ');
-            }
-        }
-
-        // Position 3+: Working tree symbols
-        result.push_str(&self.working_tree);
 
         result
     }

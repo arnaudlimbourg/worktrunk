@@ -209,7 +209,10 @@ pub fn format_header_line(layout: &LayoutConfig) {
         let is_last = i == layout.columns.len() - 1;
         let header_start = line.width();
 
-        line.push_styled(column.header.to_string(), style);
+        // Only render non-empty headers to avoid visual artifacts from styled empty strings
+        if !column.header.is_empty() {
+            line.push_styled(column.header.to_string(), style);
+        }
 
         if !is_last {
             line.pad_to(header_start + column.width);
@@ -313,7 +316,10 @@ pub fn format_list_item_line(
             (ColumnKind::Status, _) => {
                 // Git status symbols only (no user-defined status)
                 if let Some(info) = worktree_info {
-                    let git_status = info.status_symbols.render();
+                    // Render git status symbols with position mask
+                    let git_status = info
+                        .status_symbols
+                        .render_with_mask(&layout.status_position_mask);
                     let status_start = line.width();
 
                     // Status column never inherits row color
