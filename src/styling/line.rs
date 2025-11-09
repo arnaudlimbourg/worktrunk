@@ -69,6 +69,11 @@ impl StyledLine {
         self.segments.push(segment);
     }
 
+    /// Append every segment from another styled line.
+    pub fn extend(&mut self, other: StyledLine) {
+        self.segments.extend(other.segments);
+    }
+
     /// Pad with spaces to reach a specific width
     pub fn pad_to(&mut self, target_width: usize) {
         let current_width = self.width();

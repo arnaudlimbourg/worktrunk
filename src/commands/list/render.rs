@@ -1,11 +1,14 @@
 use crate::display::{format_relative_time, shorten_path, truncate_at_word_boundary};
 use anstyle::{AnsiColor, Color, Style};
+use std::path::Path;
 use worktrunk::styling::{ADDITION, CURRENT, DELETION, StyledLine, println};
 
 use super::ci_status::{CiStatus, PrStatus};
 use super::columns::{ColumnKind, DiffVariant};
-use super::layout::{ColumnFormat, DiffDigits, LayoutConfig};
-use super::model::ListItem;
+use super::layout::{ColumnFormat, ColumnLayout, DiffDigits, LayoutConfig};
+use super::model::{
+    AheadBehind, CommitDetails, ListItem, PositionMask, UpstreamStatus, WorktreeInfo,
+};
 
 /// Format ahead/behind counts as plain text with ANSI colors (for json-pretty)
 pub fn format_ahead_behind_plain(ahead: usize, behind: usize) -> Option<String> {
@@ -180,18 +183,6 @@ fn format_diff_like_column(
     segment
 }
 
-fn append_line(target: &mut StyledLine, source: StyledLine) {
-    for segment in source.segments {
-        target.push(segment);
-    }
-}
-
-fn push_blank(line: &mut StyledLine, width: usize) {
-    if width > 0 {
-        line.push_raw(" ".repeat(width));
-    }
-}
-
 /// Format CI status indicator using the statusline.sh color scheme
 fn format_ci_status(pr_status: &PrStatus) -> StyledLine {
     let mut segment = StyledLine::new();
@@ -200,24 +191,38 @@ fn format_ci_status(pr_status: &PrStatus) -> StyledLine {
     segment
 }
 
-pub fn format_header_line(layout: &LayoutConfig) {
-    let style = Style::new().bold();
+fn render_line<F>(layout: &LayoutConfig, mut render_cell: F) -> StyledLine
+where
+    F: FnMut(&ColumnLayout) -> StyledLine,
+{
     let mut line = StyledLine::new();
+    if layout.columns.is_empty() {
+        return line;
+    }
 
-    for (i, column) in layout.columns.iter().enumerate() {
+    let last_index = layout.columns.len() - 1;
+
+    for (index, column) in layout.columns.iter().enumerate() {
         line.pad_to(column.start);
-        let is_last = i == layout.columns.len() - 1;
-        let header_start = line.width();
+        line.extend(render_cell(column));
 
-        // Only render non-empty headers to avoid visual artifacts from styled empty strings
-        if !column.header.is_empty() {
-            line.push_styled(column.header.to_string(), style);
-        }
-
-        if !is_last {
-            line.pad_to(header_start + column.width);
+        if index != last_index {
+            line.pad_to(column.start + column.width);
         }
     }
+
+    line
+}
+
+pub fn format_header_line(layout: &LayoutConfig) {
+    let style = Style::new().bold();
+    let line = render_line(layout, |column| {
+        let mut cell = StyledLine::new();
+        if !column.header.is_empty() {
+            cell.push_styled(column.header.to_string(), style);
+        }
+        cell
+    });
 
     println!("{}", line.render());
 }
@@ -256,25 +261,50 @@ fn is_potentially_removable(item: &ListItem) -> bool {
     }
 }
 
-/// Render a list item (worktree or branch) as a formatted line
-pub fn format_list_item_line(
+struct ListRowContext<'a> {
+    item: &'a ListItem,
+    worktree_info: Option<&'a WorktreeInfo>,
+    counts: &'a AheadBehind,
+    branch_diff: (usize, usize),
+    upstream: &'a UpstreamStatus,
+    commit: &'a CommitDetails,
+    head: &'a str,
+    text_style: Option<Style>,
+}
+
+impl<'a> ListRowContext<'a> {
+    fn new(item: &'a ListItem, current_worktree_path: Option<&'a std::path::PathBuf>) -> Self {
+        let worktree_info = item.worktree_info();
+        let counts = item.counts();
+        let commit = item.commit_details();
+        let branch_diff = item.branch_diff().diff;
+        let upstream = item.upstream();
+        let head = item.head();
+        let text_style = resolve_text_style(item, worktree_info, current_worktree_path);
+
+        Self {
+            item,
+            worktree_info,
+            counts,
+            branch_diff,
+            upstream,
+            commit,
+            head,
+            text_style,
+        }
+    }
+
+    fn short_head(&self) -> &str {
+        &self.head[..8.min(self.head.len())]
+    }
+}
+
+fn resolve_text_style(
     item: &ListItem,
-    layout: &LayoutConfig,
+    worktree_info: Option<&WorktreeInfo>,
     current_worktree_path: Option<&std::path::PathBuf>,
-) {
-    let head = item.head();
-    let commit = item.commit_details();
-    let counts = item.counts();
-    let branch_diff = item.branch_diff().diff;
-    let upstream = item.upstream();
-    let worktree_info = item.worktree_info();
-    let short_head = &head[..8.min(head.len())];
-
-    // Check if branch is potentially removable
-    let removable = is_potentially_removable(item);
-
-    // Determine styling (worktree-specific)
-    let text_style = worktree_info.and_then(|info| {
+) -> Option<Style> {
+    let base_style = worktree_info.and_then(|info| {
         let is_current = current_worktree_path
             .map(|p| p == &info.worktree.path)
             .unwrap_or(false);
@@ -285,214 +315,168 @@ pub fn format_list_item_line(
         }
     });
 
-    // Override styling if removable (dim the row, preserving existing color)
-    let text_style = if removable {
-        Some(text_style.unwrap_or_default().dimmed())
+    if is_potentially_removable(item) {
+        Some(base_style.unwrap_or_default().dimmed())
     } else {
-        text_style
-    };
+        base_style
+    }
+}
 
-    let mut line = StyledLine::new();
-    let num_columns = layout.columns.len();
-    for (i, column) in layout.columns.iter().enumerate() {
-        line.pad_to(column.start);
-        let is_last = i == num_columns - 1;
-
-        match (column.kind, column.format) {
-            (ColumnKind::Branch, _) => {
-                let branch_start = line.width();
-                let branch_text = item.branch_name().to_string();
-
-                if let Some(style) = text_style {
-                    line.push_styled(branch_text, style);
-                } else {
-                    line.push_raw(branch_text);
-                }
-
-                if !is_last {
-                    line.pad_to(branch_start + column.width);
-                }
+fn render_list_cell(
+    column: &ColumnLayout,
+    ctx: &ListRowContext,
+    status_mask: &PositionMask,
+    common_prefix: &Path,
+    max_message_len: usize,
+) -> StyledLine {
+    match column.kind {
+        ColumnKind::Branch => {
+            let mut cell = StyledLine::new();
+            let text = ctx.item.branch_name().to_string();
+            if let Some(style) = ctx.text_style {
+                cell.push_styled(text, style);
+            } else {
+                cell.push_raw(text);
             }
-            (ColumnKind::Status, _) => {
-                // Git status symbols only (no user-defined status)
-                if let Some(info) = worktree_info {
-                    // Render git status symbols with position mask
-                    let git_status = info
-                        .status_symbols
-                        .render_with_mask(&layout.status_position_mask);
-                    let status_start = line.width();
-
-                    // Status column never inherits row color
-                    line.push_raw(git_status);
-
-                    if !is_last {
-                        line.pad_to(status_start + column.width);
-                    }
-                } else if !is_last {
-                    // Branch-only entries have no git status symbols
-                    push_blank(&mut line, column.width);
-                }
+            cell
+        }
+        ColumnKind::Status => {
+            let mut cell = StyledLine::new();
+            if let Some(info) = ctx.worktree_info {
+                cell.push_raw(info.status_symbols.render_with_mask(status_mask));
             }
-            (ColumnKind::UserStatus, _) => {
-                // User-defined status from worktrunk.status
-                let user_status_content = if let Some(info) = worktree_info {
-                    info.user_status.clone().unwrap_or_default()
-                } else if let ListItem::Branch(branch_info) = item {
-                    branch_info.user_status.clone().unwrap_or_default()
-                } else {
-                    String::new()
-                };
-
-                let user_status_start = line.width();
-
-                // UserStatus column never inherits row color
-                line.push_raw(user_status_content);
-
-                if !is_last {
-                    line.pad_to(user_status_start + column.width);
-                }
+            cell
+        }
+        ColumnKind::UserStatus => {
+            let mut cell = StyledLine::new();
+            let status = if let Some(info) = ctx.worktree_info {
+                info.user_status.clone()
+            } else if let ListItem::Branch(branch_info) = ctx.item {
+                branch_info.user_status.clone()
+            } else {
+                None
+            };
+            cell.push_raw(status.unwrap_or_default());
+            cell
+        }
+        ColumnKind::WorkingDiff => {
+            let Some((added, deleted)) = ctx.worktree_info.map(|info| info.working_tree_diff)
+            else {
+                return StyledLine::new();
+            };
+            render_diff_cell(column, added, deleted, ADDITION, DELETION, false)
+        }
+        ColumnKind::AheadBehind => {
+            if ctx.item.is_primary() {
+                return StyledLine::new();
             }
-            (ColumnKind::WorkingDiff, ColumnFormat::Diff { digits, variant }) => {
-                if let Some(info) = worktree_info {
-                    let (wt_added, wt_deleted) = info.working_tree_diff;
-                    let segment = format_diff_like_column(
-                        wt_added,
-                        wt_deleted,
-                        DiffColumnConfig {
-                            digits,
-                            total_width: column.width,
-                            variant,
-                            positive_style: ADDITION,
-                            negative_style: DELETION,
-                            always_show_zeros: false,
-                        },
-                    );
-                    append_line(&mut line, segment);
-                } else if !is_last {
-                    push_blank(&mut line, column.width);
-                }
+            let ahead = ctx.counts.ahead;
+            let behind = ctx.counts.behind;
+            if ahead == 0 && behind == 0 {
+                return StyledLine::new();
             }
-            (ColumnKind::AheadBehind, ColumnFormat::Diff { digits, variant }) => {
-                if !item.is_primary() && (counts.ahead > 0 || counts.behind > 0) {
-                    let dim_deletion = DELETION.dimmed();
-                    let segment = format_diff_like_column(
-                        counts.ahead,
-                        counts.behind,
-                        DiffColumnConfig {
-                            digits,
-                            total_width: column.width,
-                            variant,
-                            positive_style: ADDITION,
-                            negative_style: dim_deletion,
-                            always_show_zeros: false,
-                        },
-                    );
-                    append_line(&mut line, segment);
-                } else if !is_last {
-                    push_blank(&mut line, column.width);
-                }
+            let dim_deletion = DELETION.dimmed();
+            render_diff_cell(column, ahead, behind, ADDITION, dim_deletion, false)
+        }
+        ColumnKind::BranchDiff => {
+            if ctx.item.is_primary() {
+                return StyledLine::new();
             }
-            (ColumnKind::BranchDiff, ColumnFormat::Diff { digits, variant }) => {
-                if !item.is_primary() {
-                    let segment = format_diff_like_column(
-                        branch_diff.0,
-                        branch_diff.1,
-                        DiffColumnConfig {
-                            digits,
-                            total_width: column.width,
-                            variant,
-                            positive_style: ADDITION,
-                            negative_style: DELETION,
-                            always_show_zeros: false,
-                        },
-                    );
-                    append_line(&mut line, segment);
-                } else if !is_last {
-                    push_blank(&mut line, column.width);
-                }
+            render_diff_cell(
+                column,
+                ctx.branch_diff.0,
+                ctx.branch_diff.1,
+                ADDITION,
+                DELETION,
+                false,
+            )
+        }
+        ColumnKind::Path => {
+            let Some(info) = ctx.worktree_info else {
+                return StyledLine::new();
+            };
+            let mut cell = StyledLine::new();
+            let path_str = shorten_path(&info.worktree.path, common_prefix);
+            if let Some(style) = ctx.text_style {
+                cell.push_styled(path_str, style);
+            } else {
+                cell.push_raw(path_str);
             }
-            (ColumnKind::Path, _) => {
-                if let Some(info) = worktree_info {
-                    let path_str = shorten_path(&info.worktree.path, &layout.common_prefix);
-                    let path_start = line.width();
-
-                    if let Some(style) = text_style {
-                        line.push_styled(path_str, style);
-                    } else {
-                        line.push_raw(path_str);
-                    }
-
-                    if !is_last {
-                        line.pad_to(path_start + column.width);
-                    }
-                } else if !is_last {
-                    push_blank(&mut line, column.width);
-                }
-            }
-            (ColumnKind::Upstream, ColumnFormat::Diff { digits, variant }) => {
-                if let Some((_remote_name, upstream_ahead, upstream_behind)) = upstream.active() {
-                    let dim_deletion = DELETION.dimmed();
-                    let segment = format_diff_like_column(
-                        upstream_ahead,
-                        upstream_behind,
-                        DiffColumnConfig {
-                            digits,
-                            total_width: column.width,
-                            variant,
-                            positive_style: ADDITION,
-                            negative_style: dim_deletion,
-                            always_show_zeros: true,
-                        },
-                    );
-                    append_line(&mut line, segment);
-                } else if !is_last {
-                    push_blank(&mut line, column.width);
-                }
-            }
-            (ColumnKind::Time, _) => {
-                let time_str = format_relative_time(commit.timestamp);
-                let time_start = line.width();
-                line.push_styled(time_str, Style::new().dimmed());
-
-                if !is_last {
-                    line.pad_to(time_start + column.width);
-                }
-            }
-            (ColumnKind::CiStatus, _) => {
-                if let Some(pr_status) = item.pr_status() {
-                    let mut ci_segment = format_ci_status(pr_status);
-                    if !is_last {
-                        ci_segment.pad_to(column.width);
-                    }
-                    append_line(&mut line, ci_segment);
-                } else if !is_last {
-                    push_blank(&mut line, column.width);
-                }
-            }
-            (ColumnKind::Commit, _) => {
-                let commit_start = line.width();
-                line.push_styled(short_head.to_string(), Style::new().dimmed());
-
-                if !is_last {
-                    line.pad_to(commit_start + column.width);
-                }
-            }
-            (ColumnKind::Message, _) => {
-                let msg = truncate_at_word_boundary(&commit.commit_message, layout.max_message_len);
-                let msg_start = line.width();
-                line.push_styled(msg, Style::new().dimmed());
-                if !is_last {
-                    line.pad_to(msg_start + column.width);
-                }
-            }
-            // Fallback for diff columns when format is unexpectedly Text
-            (_, _) => {
-                if !is_last {
-                    push_blank(&mut line, column.width);
-                }
-            }
+            cell
+        }
+        ColumnKind::Upstream => {
+            let Some((_, ahead, behind)) = ctx.upstream.active() else {
+                return StyledLine::new();
+            };
+            let dim_deletion = DELETION.dimmed();
+            render_diff_cell(column, ahead, behind, ADDITION, dim_deletion, true)
+        }
+        ColumnKind::Time => {
+            let mut cell = StyledLine::new();
+            let time_str = format_relative_time(ctx.commit.timestamp);
+            cell.push_styled(time_str, Style::new().dimmed());
+            cell
+        }
+        ColumnKind::CiStatus => {
+            let Some(pr_status) = ctx.item.pr_status() else {
+                return StyledLine::new();
+            };
+            format_ci_status(pr_status)
+        }
+        ColumnKind::Commit => {
+            let mut cell = StyledLine::new();
+            cell.push_styled(ctx.short_head().to_string(), Style::new().dimmed());
+            cell
+        }
+        ColumnKind::Message => {
+            let mut cell = StyledLine::new();
+            let msg = truncate_at_word_boundary(&ctx.commit.commit_message, max_message_len);
+            cell.push_styled(msg, Style::new().dimmed());
+            cell
         }
     }
+}
+
+fn render_diff_cell(
+    column: &ColumnLayout,
+    positive: usize,
+    negative: usize,
+    positive_style: Style,
+    negative_style: Style,
+    always_show_zeros: bool,
+) -> StyledLine {
+    let ColumnFormat::Diff { digits, variant } = column.format else {
+        return StyledLine::new();
+    };
+
+    format_diff_like_column(
+        positive,
+        negative,
+        DiffColumnConfig {
+            digits,
+            total_width: column.width,
+            variant,
+            positive_style,
+            negative_style,
+            always_show_zeros,
+        },
+    )
+}
+
+/// Render a list item (worktree or branch) as a formatted line
+pub fn format_list_item_line(
+    item: &ListItem,
+    layout: &LayoutConfig,
+    current_worktree_path: Option<&std::path::PathBuf>,
+) {
+    let ctx = ListRowContext::new(item, current_worktree_path);
+    let status_mask = &layout.status_position_mask;
+    let common_prefix = &layout.common_prefix;
+    let max_message_len = layout.max_message_len;
+
+    let line = render_line(layout, |column| {
+        render_list_cell(column, &ctx, status_mask, common_prefix, max_message_len)
+    });
 
     println!("{}", line.render());
 }
