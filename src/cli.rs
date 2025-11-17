@@ -35,6 +35,10 @@ pub enum OutputFormat {
 #[command(version = version_str())]
 #[command(disable_help_subcommand = true)]
 pub struct Cli {
+    /// Run as if worktrunk was started in `<path>` instead of the current working directory
+    #[arg(short = 'C', global = true, value_name = "path")]
+    pub directory: Option<std::path::PathBuf>,
+
     /// Enable verbose output (show git commands and debug info)
     #[arg(long, short = 'v', global = true)]
     pub verbose: bool,

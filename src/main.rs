@@ -2,7 +2,7 @@ use anstyle::Style;
 use clap::{CommandFactory, Parser};
 use std::process;
 use worktrunk::config::WorktrunkConfig;
-use worktrunk::git::{GitError, GitResultExt, Repository};
+use worktrunk::git::{GitError, GitResultExt, Repository, set_base_path};
 use worktrunk::styling::{SUCCESS_EMOJI, println};
 
 mod cli;
@@ -39,6 +39,11 @@ fn main() {
     // When available, use built-in setting. Until then, could use try_parse() to intercept
     // MissingRequiredArgument errors and print custom messages with ValueEnum::value_variants().
     let cli = Cli::parse();
+
+    // Initialize base path from -C flag if provided
+    if let Some(path) = cli.directory {
+        set_base_path(path);
+    }
 
     // Initialize output context based on --internal flag
     let output_mode = if cli.internal {

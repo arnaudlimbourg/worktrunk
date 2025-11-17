@@ -1,6 +1,5 @@
 ---
 source: tests/integration_tests/init.rs
-assertion_line: 23
 info:
   program: wt
   args:
@@ -13,10 +12,11 @@ info:
     GIT_COMMITTER_DATE: "2025-01-01T00:00:00Z"
     GIT_CONFIG_GLOBAL: /dev/null
     GIT_CONFIG_SYSTEM: /dev/null
+    GIT_EDITOR: ""
     LANG: C
     LC_ALL: C
     SOURCE_DATE_EPOCH: "1761609600"
-    WORKTRUNK_CONFIG_PATH: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmps2V6eB/test-config.toml
+    WORKTRUNK_CONFIG_PATH: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmpwOlI4n/test-config.toml
 ---
 success: true
 exit_code: 0
@@ -221,12 +221,16 @@ _wt() {
 
     case "${cmd}" in
         wt)
-            opts="-v -h -V --verbose --help --version init config beta list switch remove merge"
+            opts="-C -v -h -V --verbose --help --version init config beta list switch remove merge"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                -C)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -235,12 +239,16 @@ _wt() {
             return 0
             ;;
         wt__beta)
-            opts="-v -h --verbose --help run-hook commit squash push rebase ask-approvals clear-approvals select"
+            opts="-C -v -h --verbose --help run-hook commit squash push rebase ask-approvals clear-approvals select"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                -C)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -249,12 +257,16 @@ _wt() {
             return 0
             ;;
         wt__beta__ask__approvals)
-            opts="-f -v -h --force --all --verbose --help"
+            opts="-f -C -v -h --force --all --verbose --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                -C)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -263,12 +275,16 @@ _wt() {
             return 0
             ;;
         wt__beta__clear__approvals)
-            opts="-g -v -h --global --verbose --help"
+            opts="-g -C -v -h --global --verbose --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                -C)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -277,12 +293,16 @@ _wt() {
             return 0
             ;;
         wt__beta__commit)
-            opts="-f -v -h --force --no-verify --verbose --help"
+            opts="-f -C -v -h --force --no-verify --verbose --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                -C)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -291,12 +311,16 @@ _wt() {
             return 0
             ;;
         wt__beta__push)
-            opts="-v -h --allow-merge-commits --verbose --help [TARGET]"
+            opts="-C -v -h --allow-merge-commits --verbose --help [TARGET]"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                -C)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -305,12 +329,16 @@ _wt() {
             return 0
             ;;
         wt__beta__rebase)
-            opts="-v -h --verbose --help [TARGET]"
+            opts="-C -v -h --verbose --help [TARGET]"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                -C)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -319,12 +347,16 @@ _wt() {
             return 0
             ;;
         wt__beta__run__hook)
-            opts="-f -v -h --force --verbose --help post-create post-start pre-commit pre-merge post-merge"
+            opts="-f -C -v -h --force --verbose --help post-create post-start pre-commit pre-merge post-merge"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                -C)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -333,12 +365,16 @@ _wt() {
             return 0
             ;;
         wt__beta__select)
-            opts="-v -h --verbose --help"
+            opts="-C -v -h --verbose --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                -C)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -347,12 +383,16 @@ _wt() {
             return 0
             ;;
         wt__beta__squash)
-            opts="-f -v -h --force --no-verify --verbose --help [TARGET]"
+            opts="-f -C -v -h --force --no-verify --verbose --help [TARGET]"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                -C)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -361,12 +401,16 @@ _wt() {
             return 0
             ;;
         wt__config)
-            opts="-v -h --verbose --help init list refresh-cache shell"
+            opts="-C -v -h --verbose --help init list refresh-cache shell"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                -C)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -375,12 +419,16 @@ _wt() {
             return 0
             ;;
         wt__config__init)
-            opts="-v -h --verbose --help"
+            opts="-C -v -h --verbose --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                -C)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -389,12 +437,16 @@ _wt() {
             return 0
             ;;
         wt__config__list)
-            opts="-v -h --verbose --help"
+            opts="-C -v -h --verbose --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                -C)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -403,12 +455,16 @@ _wt() {
             return 0
             ;;
         wt__config__refresh__cache)
-            opts="-v -h --verbose --help"
+            opts="-C -v -h --verbose --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                -C)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -417,7 +473,7 @@ _wt() {
             return 0
             ;;
         wt__config__shell)
-            opts="-f -v -h --shell --force --command-name --verbose --help"
+            opts="-f -C -v -h --shell --force --command-name --verbose --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -431,6 +487,10 @@ _wt() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                -C)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -439,13 +499,17 @@ _wt() {
             return 0
             ;;
         wt__init)
-            opts="-v -h --command-name --verbose --help bash elvish fish nushell oil powershell xonsh zsh"
+            opts="-C -v -h --command-name --verbose --help bash elvish fish nushell oil powershell xonsh zsh"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --command-name)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -C)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -457,7 +521,7 @@ _wt() {
             return 0
             ;;
         wt__list)
-            opts="-v -h --format --branches --full --verbose --help"
+            opts="-C -v -h --format --branches --full --verbose --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -465,6 +529,10 @@ _wt() {
             case "${prev}" in
                 --format)
                     COMPREPLY=($(compgen -W "table json" -- "${cur}"))
+                    return 0
+                    ;;
+                -C)
+                    COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
                 *)
@@ -475,12 +543,16 @@ _wt() {
             return 0
             ;;
         wt__merge)
-            opts="-f -v -h --no-squash --no-commit --no-remove --no-verify --force --tracked-only --verbose --help [TARGET]"
+            opts="-f -C -v -h --no-squash --no-commit --no-remove --no-verify --force --tracked-only --verbose --help [TARGET]"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                -C)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -489,12 +561,16 @@ _wt() {
             return 0
             ;;
         wt__remove)
-            opts="-v -h --no-delete-branch --verbose --help [WORKTREES]..."
+            opts="-C -v -h --no-delete-branch --verbose --help [WORKTREES]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                -C)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -503,7 +579,7 @@ _wt() {
             return 0
             ;;
         wt__switch)
-            opts="-c -b -x -f -v -h --create --base --execute --force --no-verify --verbose --help <BRANCH>"
+            opts="-c -b -x -f -C -v -h --create --base --execute --force --no-verify --verbose --help <BRANCH>"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -522,6 +598,10 @@ _wt() {
                     return 0
                     ;;
                 -x)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -C)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;

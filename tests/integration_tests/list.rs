@@ -744,3 +744,23 @@ fn test_readme_example_simple_list() {
 
     snapshot_list("readme_example_simple_list", &repo);
 }
+
+#[test]
+fn test_list_with_c_flag() {
+    let mut repo = TestRepo::new();
+    repo.commit("Initial commit");
+
+    // Create some worktrees
+    repo.add_worktree("feature-a", "feature-a");
+    repo.add_worktree("feature-b", "feature-b");
+
+    // Run wt -C <repo_path> list from a completely different directory
+    let settings = list_snapshots::standard_settings(&repo);
+    settings.bind(|| {
+        let mut cmd = wt_command();
+        cmd.args(["-C", repo.root_path().to_str().unwrap(), "list"]);
+        // Run from /tmp to ensure -C is actually being used
+        cmd.current_dir("/tmp");
+        assert_cmd_snapshot!("list_with_c_flag", cmd);
+    });
+}

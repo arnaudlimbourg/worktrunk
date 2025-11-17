@@ -31,7 +31,7 @@ static HEAVY_OPS_SEMAPHORE: LazyLock<semaphore::Semaphore> =
 // Re-exports from submodules
 pub use diff::{DiffStats, LineDiff};
 pub use error::GitError;
-pub use repository::{GitResultExt, Repository};
+pub use repository::{GitResultExt, Repository, set_base_path};
 
 // Re-export parsing helpers for internal use
 pub(crate) use parse::DefaultBranchName;

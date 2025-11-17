@@ -8,6 +8,25 @@ use super::{
     DefaultBranchName, DiffStats, GitError, LineDiff, SwitchHistory, Worktree, WorktreeList,
 };
 
+/// Global base path for repository operations, set by -C flag
+static BASE_PATH: OnceLock<PathBuf> = OnceLock::new();
+
+/// Initialize the global base path for repository operations.
+///
+/// This should be called once at program startup from main().
+/// If not called, defaults to "." (current directory).
+pub fn set_base_path(path: PathBuf) {
+    BASE_PATH.set(path).ok();
+}
+
+/// Get the base path for repository operations.
+fn base_path() -> &'static PathBuf {
+    static DEFAULT: OnceLock<PathBuf> = OnceLock::new();
+    BASE_PATH
+        .get()
+        .unwrap_or_else(|| DEFAULT.get_or_init(|| PathBuf::from(".")))
+}
+
 /// Extension trait for Result types to simplify GitError conversions
 ///
 /// This trait provides ergonomic methods to convert any Result into Result<T, GitError>.
@@ -95,9 +114,10 @@ impl Repository {
 
     /// Create a repository context for the current directory.
     ///
-    /// This is the most common usage pattern.
+    /// This is the most common usage pattern. If the -C flag was used,
+    /// this uses that path instead of the actual current directory.
     pub fn current() -> Self {
-        Self::at(".")
+        Self::at(base_path().clone())
     }
 
     /// Get the path this repository context operates on.

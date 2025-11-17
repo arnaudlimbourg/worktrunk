@@ -1,6 +1,5 @@
 ---
 source: tests/integration_tests/init.rs
-assertion_line: 23
 info:
   program: wt
   args:
@@ -13,10 +12,11 @@ info:
     GIT_COMMITTER_DATE: "2025-01-01T00:00:00Z"
     GIT_CONFIG_GLOBAL: /dev/null
     GIT_CONFIG_SYSTEM: /dev/null
+    GIT_EDITOR: ""
     LANG: C
     LC_ALL: C
     SOURCE_DATE_EPOCH: "1761609600"
-    WORKTRUNK_CONFIG_PATH: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmpQyAnKf/test-config.toml
+    WORKTRUNK_CONFIG_PATH: /var/folders/wf/s6ycxvvs4ln8qsdbfx40hnc40000gn/T/.tmpdfMHP8/test-config.toml
 ---
 success: true
 exit_code: 0
@@ -158,6 +158,7 @@ _wt() {
 
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" : \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '-v[Enable verbose output (show git commands and debug info)]' \
 '--verbose[Enable verbose output (show git commands and debug info)]' \
 '-h[Print help]' \
@@ -176,6 +177,7 @@ _wt() {
             (init)
 _arguments "${_arguments_options[@]}" : \
 '--command-name=[Command name to use (defaults to '\''wt'\'')]:COMMAND_NAME:_default' \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '-v[Enable verbose output (show git commands and debug info)]' \
 '--verbose[Enable verbose output (show git commands and debug info)]' \
 '-h[Print help]' \
@@ -185,6 +187,7 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (config)
 _arguments "${_arguments_options[@]}" : \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '-v[Enable verbose output (show git commands and debug info)]' \
 '--verbose[Enable verbose output (show git commands and debug info)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
@@ -201,6 +204,7 @@ _arguments "${_arguments_options[@]}" : \
         case $line[1] in
             (init)
 _arguments "${_arguments_options[@]}" : \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '-v[Enable verbose output (show git commands and debug info)]' \
 '--verbose[Enable verbose output (show git commands and debug info)]' \
 '-h[Print help]' \
@@ -209,6 +213,7 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (list)
 _arguments "${_arguments_options[@]}" : \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '-v[Enable verbose output (show git commands and debug info)]' \
 '--verbose[Enable verbose output (show git commands and debug info)]' \
 '-h[Print help]' \
@@ -217,6 +222,7 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (refresh-cache)
 _arguments "${_arguments_options[@]}" : \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '-v[Enable verbose output (show git commands and debug info)]' \
 '--verbose[Enable verbose output (show git commands and debug info)]' \
 '-h[Print help]' \
@@ -227,6 +233,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--shell=[Specific shell to configure (default\: all shells with existing config files)]:SHELL:(bash elvish fish nushell oil powershell xonsh zsh)' \
 '--command-name=[Command name to use (defaults to '\''wt'\'')]:COMMAND_NAME:_default' \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '-f[Skip confirmation prompt]' \
 '--force[Skip confirmation prompt]' \
 '-v[Enable verbose output (show git commands and debug info)]' \
@@ -241,6 +248,7 @@ esac
 ;;
 (beta)
 _arguments "${_arguments_options[@]}" : \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '-v[Enable verbose output (show git commands and debug info)]' \
 '--verbose[Enable verbose output (show git commands and debug info)]' \
 '-h[Print help]' \
@@ -257,6 +265,7 @@ _arguments "${_arguments_options[@]}" : \
         case $line[1] in
             (run-hook)
 _arguments "${_arguments_options[@]}" : \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '-f[Auto-approve project commands without saving approvals]' \
 '--force[Auto-approve project commands without saving approvals]' \
 '-v[Enable verbose output (show git commands and debug info)]' \
@@ -268,6 +277,7 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (commit)
 _arguments "${_arguments_options[@]}" : \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '-f[Auto-approve project commands without saving approvals]' \
 '--force[Auto-approve project commands without saving approvals]' \
 '--no-verify[Skip pre-commit project hooks]' \
@@ -279,6 +289,7 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (squash)
 _arguments "${_arguments_options[@]}" : \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '-f[Auto-approve project commands without saving approvals]' \
 '--force[Auto-approve project commands without saving approvals]' \
 '--no-verify[Skip pre-commit project hooks]' \
@@ -291,6 +302,7 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (push)
 _arguments "${_arguments_options[@]}" : \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '--allow-merge-commits[Allow pushing merge commits (non-linear history)]' \
 '-v[Enable verbose output (show git commands and debug info)]' \
 '--verbose[Enable verbose output (show git commands and debug info)]' \
@@ -301,6 +313,7 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (rebase)
 _arguments "${_arguments_options[@]}" : \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '-v[Enable verbose output (show git commands and debug info)]' \
 '--verbose[Enable verbose output (show git commands and debug info)]' \
 '-h[Print help]' \
@@ -310,6 +323,7 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (ask-approvals)
 _arguments "${_arguments_options[@]}" : \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '-f[Auto-approve project commands without saving approvals]' \
 '--force[Auto-approve project commands without saving approvals]' \
 '--all[Show all commands including already-approved ones]' \
@@ -321,6 +335,7 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (clear-approvals)
 _arguments "${_arguments_options[@]}" : \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '-g[Clear approvals from global config (all projects)]' \
 '--global[Clear approvals from global config (all projects)]' \
 '-v[Enable verbose output (show git commands and debug info)]' \
@@ -331,6 +346,7 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (select)
 _arguments "${_arguments_options[@]}" : \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '-v[Enable verbose output (show git commands and debug info)]' \
 '--verbose[Enable verbose output (show git commands and debug info)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
@@ -345,6 +361,7 @@ esac
 _arguments "${_arguments_options[@]}" : \
 '--format=[Output format]:FORMAT:((table\:"Human-readable table format"
 json\:"Machine-readable JSON with display fields (includes styled unicode for rendering)"))' \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '--branches[Include branches without worktrees]' \
 '--full[Show CI status, conflict detection, and complete diff statistics]' \
 '-v[Enable verbose output (show git commands and debug info)]' \
@@ -359,6 +376,7 @@ _arguments "${_arguments_options[@]}" : \
 '--base=[Base branch to create from (only with --create). Use '\''@'\'' for current HEAD]:BASE:_default' \
 '-x+[Execute command after switching]:EXECUTE:_default' \
 '--execute=[Execute command after switching]:EXECUTE:_default' \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '-c[Create a new branch]' \
 '--create[Create a new branch]' \
 '-f[Auto-approve project commands without saving approvals]' \
@@ -373,6 +391,7 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (remove)
 _arguments "${_arguments_options[@]}" : \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '--no-delete-branch[Don'\''t delete the branch after removing the worktree (by default, branches are deleted)]' \
 '-v[Enable verbose output (show git commands and debug info)]' \
 '--verbose[Enable verbose output (show git commands and debug info)]' \
@@ -383,6 +402,7 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (merge)
 _arguments "${_arguments_options[@]}" : \
+'-C+[Run as if worktrunk was started in <path> instead of the current working directory]:path:_files' \
 '--no-squash[Disable squashing commits (by default, commits are squashed into one before merging)]' \
 '--no-commit[Push commits as-is without transformations (requires clean tree; implies --no-squash, --no-remove, and skips rebase)]' \
 '--no-remove[Keep the worktree after merging]' \
