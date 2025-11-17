@@ -2314,7 +2314,6 @@ fn test_merge_no_commit_with_clean_tree() {
         exit_code: 0
         ----- stdout -----
         🔄 [36mMerging 1 commit to [1m[36mmain[0m[36m @ [2m[SHA][0m (no commit/squash/rebase needed)
-
         [40m [0m  * [SHA][33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature[m[33m)[m Add feature file
         [40m [0m   feature.txt | 1 [32m+[m
         [40m [0m   1 file changed, 1 insertion(+)
@@ -2419,7 +2418,6 @@ fn test_merge_no_commit_no_squash_no_remove_redundant() {
         exit_code: 0
         ----- stdout -----
         🔄 [36mMerging 1 commit to [1m[36mmain[0m[36m @ [2m[SHA][0m (no commit/squash/rebase needed)
-
         [40m [0m  * [SHA][33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature[m[33m)[m Add feature file
         [40m [0m   feature.txt | 1 [32m+[m
         [40m [0m   1 file changed, 1 insertion(+)

@@ -376,10 +376,20 @@ super::gutter(format_with_gutter(&error.to_string(), "", None))?;  // Adds ❌ e
 print!("{}", format_with_gutter(&command));
 ```
 
-**Linebreaks with gutter content:** Use a single newline (`\n`) between error messages and gutter content, never double newlines (`\n\n`). The gutter's visual structure (background color, indentation) provides sufficient separation - blank lines are redundant.
+**Linebreaks with gutter content:** Use a single newline (`\n`) between messages and gutter content, never double newlines (`\n\n`). The gutter's visual structure (background color, indentation) provides sufficient separation - blank lines are redundant.
+
+**Critical Rule**: Never include trailing `\n` in messages passed to `output::*()` functions - they use `println!()` which automatically adds the newline.
 
 ```rust
-// ✅ GOOD - single newline before gutter
+// ✅ GOOD - output function adds newline automatically
+output::progress(format!("{CYAN}Merging commits...{CYAN:#}"))?;
+output::gutter(format_with_gutter(&log_output, "", None))?;
+
+// ❌ BAD - trailing \n creates blank line (output::progress uses println!)
+output::progress(format!("{CYAN}Merging commits...{CYAN:#}\n"))?;
+output::gutter(format_with_gutter(&log_output, "", None))?;
+
+// ✅ GOOD - single newline in direct format!()
 format!("{header}\n{}", format_with_gutter(error, "", None))
 
 // ❌ BAD - double newline creates unnecessary blank line
