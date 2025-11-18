@@ -264,11 +264,12 @@ fn main() {
         Commands::Remove {
             worktrees,
             no_delete_branch,
+            background,
         } => {
             if worktrees.is_empty() {
                 // No worktrees specified, remove current worktree
                 handle_remove(None, no_delete_branch)
-                    .and_then(|result| handle_remove_output(&result, None, false))
+                    .and_then(|result| handle_remove_output(&result, None, false, background))
             } else {
                 // When removing multiple worktrees, we need to handle the current worktree last
                 // to avoid deleting the directory we're currently in
@@ -301,13 +302,18 @@ fn main() {
                     // Progress messages shown by handle_remove_output for all cases
                     for worktree in others.iter() {
                         let result = handle_remove(Some(worktree.as_str()), no_delete_branch)?;
-                        handle_remove_output(&result, Some(worktree.as_str()), false)?;
+                        handle_remove_output(&result, Some(worktree.as_str()), false, background)?;
                     }
 
                     // Remove current worktree last (if it was in the list)
                     if let Some(current_name) = current {
                         let result = handle_remove(Some(current_name.as_str()), no_delete_branch)?;
-                        handle_remove_output(&result, Some(current_name.as_str()), false)?;
+                        handle_remove_output(
+                            &result,
+                            Some(current_name.as_str()),
+                            false,
+                            background,
+                        )?;
                     }
 
                     Ok(())

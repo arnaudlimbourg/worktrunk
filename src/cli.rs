@@ -489,6 +489,10 @@ Switch to default in primary:
         /// Keep branch after removal
         #[arg(long = "no-delete-branch")]
         no_delete_branch: bool,
+
+        /// Background removal for large repos
+        #[arg(long)]
+        background: bool,
     },
 
     /// Merge worktree into target branch

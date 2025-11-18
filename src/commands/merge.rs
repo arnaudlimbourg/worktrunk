@@ -199,7 +199,7 @@ pub fn handle_merge(
             no_delete_branch: false,
             target_branch: Some(target_branch.clone()),
         };
-        crate::output::handle_remove_output(&remove_result, Some(&current_branch), true)?;
+        crate::output::handle_remove_output(&remove_result, Some(&current_branch), true, false)?;
     } else {
         // Print comprehensive summary (worktree preserved)
         handle_merge_summary_output(None)?;

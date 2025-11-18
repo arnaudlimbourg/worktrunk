@@ -1,5 +1,6 @@
 //! Output handlers for worktree operations using the global output context
 
+use crate::commands::process::spawn_detached;
 use crate::commands::worktree::{RemoveResult, SwitchResult};
 use crate::output::global::format_switch_success;
 use worktrunk::git::GitError;
@@ -138,14 +139,55 @@ pub fn execute_user_command(command: &str) -> Result<(), GitError> {
     Ok(())
 }
 
+/// Build shell command for background worktree removal
+///
+/// Constructs a command that:
+/// 1. Removes the worktree using `git worktree remove`
+/// 2. Conditionally deletes the branch if it's fully merged
+///
+/// The command replicates the same safety checks done in handle_remove_output:
+/// - Uses `git merge-base --is-ancestor` to check if branch is merged
+/// - Only deletes with `-D` if the branch is an ancestor of the target
+fn build_remove_command(
+    worktree_path: &std::path::Path,
+    branch_name: &str,
+    no_delete_branch: bool,
+    target_branch: &str,
+) -> String {
+    use shell_escape::escape;
+
+    let worktree_path_str = worktree_path.to_string_lossy();
+    let worktree_escaped = escape(worktree_path_str.as_ref().into());
+    let branch_escaped = escape(branch_name.into());
+    let target_escaped = escape(target_branch.into());
+
+    if no_delete_branch {
+        // Just remove the worktree
+        format!("git worktree remove {}", worktree_escaped)
+    } else {
+        // Remove worktree and conditionally delete branch if merged
+        format!(
+            "git worktree remove {} && if git merge-base --is-ancestor {} {}; then git branch -D {}; fi",
+            worktree_escaped, branch_escaped, target_escaped, branch_escaped
+        )
+    }
+}
+
 /// Handle output for a remove operation
 pub fn handle_remove_output(
     result: &RemoveResult,
     branch: Option<&str>,
     strict_branch_deletion: bool,
+    background: bool,
 ) -> Result<(), GitError> {
-    // Track whether branch was actually deleted (will be computed based on deletion attempt)
-    let branch_deleted = if let RemoveResult::RemovedWorktree {
+    // For non-worktree removals, show message immediately
+    if !matches!(result, RemoveResult::RemovedWorktree { .. }) {
+        super::success(format_remove_message(result, branch, false))?;
+        super::flush()?;
+        return Ok(());
+    }
+
+    let RemoveResult::RemovedWorktree {
         primary_path,
         worktree_path,
         changed_directory,
@@ -153,15 +195,40 @@ pub fn handle_remove_output(
         no_delete_branch,
         target_branch,
     } = result
-    {
-        // 1. Emit cd directive if needed - shell will execute this immediately
-        if *changed_directory {
-            super::change_directory(primary_path)?;
-            super::flush()?; // Force flush to ensure shell processes the cd
-        }
+    else {
+        unreachable!("Already handled non-RemovedWorktree cases above")
+    };
 
-        // 2. Do the deletion (shell already changed directory if needed)
-        // Progress message already shown at start of handle_remove()
+    // 1. Emit cd directive if needed - shell will execute this immediately
+    if *changed_directory {
+        super::change_directory(primary_path)?;
+        super::flush()?; // Force flush to ensure shell processes the cd
+    }
+
+    if background {
+        // Background mode: spawn detached process
+        let check_target = target_branch.as_deref().unwrap_or("HEAD");
+        let remove_command =
+            build_remove_command(worktree_path, branch_name, *no_delete_branch, check_target);
+
+        // Spawn the removal in background - runs from primary_path (where we cd'd to)
+        let log_path = spawn_detached(
+            primary_path,
+            &remove_command,
+            &format!("remove-{}", branch_name),
+        )?;
+
+        // Show info message indicating backgrounding (not "success" - work hasn't completed)
+        super::info(format!(
+            "Removal queued for {GREEN_BOLD}{branch_name}{GREEN_BOLD:#} (background)"
+        ))?;
+        super::info(format!("Log: {}", log_path.display()))?;
+
+        super::flush()?;
+        Ok(())
+    } else {
+        // Synchronous mode: remove immediately and report actual results
+        // Track whether branch was actually deleted (will be computed based on deletion attempt)
         let repo = worktrunk::git::Repository::current();
         if let Err(err) = repo.remove_worktree(worktree_path) {
             return Err(match err {
@@ -174,16 +241,12 @@ pub fn handle_remove_output(
             });
         }
 
-        // 3. Delete the branch (unless --no-delete-branch was specified)
-        // Returns true if branch was successfully deleted, false otherwise
-        if !no_delete_branch {
+        // Delete the branch (unless --no-delete-branch was specified)
+        let branch_deleted = if !no_delete_branch {
             let deletion_repo = worktrunk::git::Repository::at(primary_path);
-
-            // Determine what to check against: target branch if specified, otherwise HEAD
             let check_target = target_branch.as_deref().unwrap_or("HEAD");
 
             // Use git merge-base --is-ancestor to check if branch is merged to target
-            // This is the same safety check that `git branch -d` does, but we can specify the target
             let delete_result = match deletion_repo.run_command(&[
                 "merge-base",
                 "--is-ancestor",
@@ -217,13 +280,11 @@ pub fn handle_remove_output(
                     }
 
                     // If branch deletion fails in non-strict mode, show a warning but don't error
-                    // Show the warning message with branch name
                     super::warning(format!(
                         "{WARNING}Could not delete branch {WARNING_BOLD}{branch_name}{WARNING_BOLD:#}{WARNING:#}"
                     ))?;
 
                     // Show the git error in a gutter-formatted block (raw output, no styling)
-                    // Extract the raw error message without our formatting
                     let raw_error = match &e {
                         GitError::CommandFailed(msg) => msg.as_str(),
                         _ => &e.to_string(),
@@ -234,18 +295,13 @@ pub fn handle_remove_output(
             }
         } else {
             false
-        }
-    } else {
-        false
-    };
+        };
 
-    // Show success message (includes emoji and color)
-    super::success(format_remove_message(result, branch, branch_deleted))?;
-
-    // Flush output
-    super::flush()?;
-
-    Ok(())
+        // Show success message (includes emoji and color)
+        super::success(format_remove_message(result, branch, branch_deleted))?;
+        super::flush()?;
+        Ok(())
+    }
 }
 
 /// Execute a command with streaming output
