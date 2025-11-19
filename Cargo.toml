@@ -86,6 +86,7 @@ toml = "0.9"
 criterion = "0.7"
 regex = "1.12"
 portable-pty = "0.9"
+vt100 = "0.15"
 fs2 = "0.4"
 
 [[bench]]

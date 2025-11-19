@@ -23,6 +23,7 @@ pub mod init;
 pub mod internal_flag;
 pub mod list;
 pub mod list_column_alignment;
+pub mod list_progressive;
 pub mod list_pty;
 pub mod merge;
 pub mod post_start_commands;

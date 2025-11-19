@@ -26,6 +26,7 @@
 #![cfg(unix)]
 
 pub mod list_snapshots;
+pub mod progressive_output;
 pub mod shell;
 
 use insta_cmd::get_cargo_bin;
