@@ -165,9 +165,9 @@ pub fn handle_merge(
         false,
         "Merged to",
         Some(MergeOperations {
-            committed: Some(committed),
-            squashed: Some(squashed),
-            rebased: Some(rebased),
+            committed,
+            squashed,
+            rebased,
         }),
     )?;
 

@@ -111,9 +111,9 @@ use super::repository_ext::RepositoryCliExt;
 /// Flags indicating which merge operations occurred
 #[derive(Debug, Clone, Copy)]
 pub struct MergeOperations {
-    pub committed: Option<bool>,
-    pub squashed: Option<bool>,
-    pub rebased: Option<bool>,
+    pub committed: bool,
+    pub squashed: bool,
+    pub rebased: bool,
 }
 
 /// Result of a worktree switch operation
@@ -558,11 +558,11 @@ pub fn handle_push(
         // Skipped operations - only include if we're in merge workflow context
         if let Some(ops) = operations {
             let mut skipped_ops = Vec::new();
-            if !ops.committed.unwrap_or(false) && !ops.squashed.unwrap_or(false) {
+            if !ops.committed && !ops.squashed {
                 // Neither commit nor squash happened - combine them
                 skipped_ops.push("commit/squash");
             }
-            if !ops.rebased.unwrap_or(false) {
+            if !ops.rebased {
                 skipped_ops.push("rebase");
             }
             if !skipped_ops.is_empty() {
@@ -650,10 +650,10 @@ pub fn handle_push(
         // No commits to push - for merge workflow context, acknowledge operations that didn't happen
         let note = if let Some(ops) = operations {
             let mut notes = Vec::new();
-            if !ops.committed.unwrap_or(false) && !ops.squashed.unwrap_or(false) {
+            if !ops.committed && !ops.squashed {
                 notes.push("no new commits");
             }
-            if !ops.rebased.unwrap_or(false) {
+            if !ops.rebased {
                 notes.push("no rebase needed");
             }
             if notes.is_empty() {
