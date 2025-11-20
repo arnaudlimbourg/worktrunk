@@ -256,7 +256,7 @@ fn compute_item_status_symbols(item: &mut ListItem, base_branch: Option<&str>) {
                 has_potential_conflicts: false,
                 branch_state,
                 git_operation: GitOperation::None,
-                worktree_attrs: String::new(),
+                worktree_attrs: "⎇".to_string(), // Branch indicator
                 main_divergence,
                 upstream_divergence,
                 working_tree: String::new(),
