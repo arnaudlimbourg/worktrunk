@@ -28,7 +28,7 @@ pub use anstyle::Style as AnstyleStyle;
 pub use constants::*;
 pub use format::{GUTTER_OVERHEAD, format_bash_with_gutter, format_with_gutter, strip_ansi_codes};
 pub use highlighting::format_toml;
-pub use line::{StyledLine, StyledString};
+pub use line::{StyledLine, StyledString, truncate_visible};
 
 /// Wrap text with an OSC 8 hyperlink
 ///

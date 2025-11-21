@@ -525,13 +525,8 @@ pub fn collect(
     let max_width = super::layout::get_safe_list_width();
 
     // Clamp helper to keep progress output single-line in narrow terminals.
-    let clamp = |s: &str| -> String {
-        if crate::display::visible_width(s) > max_width {
-            crate::display::truncate_visible(s, max_width, "…")
-        } else {
-            s.to_owned()
-        }
-    };
+    // truncate_visible already returns early if no truncation needed, avoiding redundant work.
+    let clamp = |s: &str| -> String { crate::display::truncate_visible(s, max_width, "…") };
 
     // Create MultiProgress with explicit draw target and cursor mode
     // Use stderr for progress bars so they don't interfere with stdout directives

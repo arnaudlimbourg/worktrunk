@@ -2,12 +2,48 @@
 //!
 //! Provides types for building complex styled output with proper width calculation.
 
+use ansi_str::AnsiStr;
 use anstyle::Style;
-use unicode_width::UnicodeWidthStr;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
-/// Strip ANSI escape codes (SGR and OSC) to get visual text for width calculation
-fn strip_ansi_codes(text: &str) -> String {
-    String::from_utf8_lossy(&strip_ansi_escapes::strip(text)).to_string()
+/// Truncate a styled string to a visible width budget, preserving escapes.
+/// Escape sequences (ANSI/OSC) are zero-width; ellipsis is added when truncating.
+/// Appends ESC[0m on truncation to avoid style bleed.
+pub fn truncate_visible(rendered: &str, max_width: usize, ellipsis: &str) -> String {
+    if max_width == 0 {
+        return String::new();
+    }
+
+    let plain = rendered.ansi_strip();
+    let plain_str = plain.as_ref();
+    if UnicodeWidthStr::width(plain_str) <= max_width {
+        return rendered.to_owned();
+    }
+
+    let ellipsis_width = UnicodeWidthStr::width(ellipsis);
+    let budget = max_width.saturating_sub(ellipsis_width);
+    if budget == 0 {
+        let mut out = String::new();
+        out.push_str(ellipsis);
+        out.push_str("\u{1b}[0m");
+        return out;
+    }
+
+    let mut cut_at = 0;
+    let mut width = 0;
+    for (i, ch) in plain_str.char_indices() {
+        let w = UnicodeWidthChar::width(ch).unwrap_or(0);
+        if width + w > budget {
+            break;
+        }
+        width += w;
+        cut_at = i + ch.len_utf8();
+    }
+
+    let mut out = rendered.ansi_cut(..cut_at).into_owned();
+    out.push_str(ellipsis);
+    out.push_str("\u{1b}[0m");
+    out
 }
 
 /// A piece of text with an optional style
@@ -35,8 +71,7 @@ impl StyledString {
 
     /// Returns the visual width (unicode-aware, ANSI codes stripped)
     pub fn width(&self) -> usize {
-        let clean_text = strip_ansi_codes(&self.text);
-        clean_text.width()
+        self.text.ansi_strip().width()
     }
 
     /// Renders to a string with ANSI escape codes
@@ -96,6 +131,19 @@ impl StyledLine {
     /// Renders the entire line with ANSI escape codes
     pub fn render(&self) -> String {
         self.segments.iter().map(|s| s.render()).collect()
+    }
+
+    /// Truncate if the line exceeds the given width, preserving ANSI codes.
+    /// Returns a new StyledLine with truncated content and ellipsis.
+    pub fn truncate_to_width(self, max_width: usize) -> StyledLine {
+        if self.width() <= max_width {
+            return self;
+        }
+        let rendered = self.render();
+        let truncated = truncate_visible(&rendered, max_width, "…");
+        let mut new_line = StyledLine::new();
+        new_line.push_raw(truncated);
+        new_line
     }
 }
 
@@ -162,5 +210,32 @@ mod tests {
             "Combined styled text should have width 8, not {}",
             styled_str.width()
         );
+    }
+
+    /// Helper to compute visible width for tests
+    fn visible_width(rendered: &str) -> usize {
+        UnicodeWidthStr::width(rendered.ansi_strip().as_ref())
+    }
+
+    #[test]
+    fn test_visible_width_strips_osc8() {
+        let s = "\u{1b}]8;;https://example.com\u{1b}\\A\u{1b}]8;;\u{1b}\\";
+        assert_eq!(visible_width(s), 1, "OSC-8 should be zero-width");
+    }
+
+    #[test]
+    fn test_truncate_visible_preserves_budget_and_resets() {
+        let colored = "\u{1b}[31mhello\u{1b}[0m";
+        let out = truncate_visible(colored, 3, "…");
+        assert_eq!(visible_width(&out), 3);
+        assert!(out.ends_with("\u{1b}[0m"));
+    }
+
+    #[test]
+    fn test_truncate_visible_handles_wide_emoji() {
+        let rocket = "🚀";
+        let out = truncate_visible(rocket, 1, "…");
+        assert_eq!(visible_width(&out), 1);
+        assert!(out.ends_with("\u{1b}[0m"));
     }
 }

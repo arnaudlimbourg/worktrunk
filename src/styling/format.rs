@@ -2,6 +2,7 @@
 //!
 //! Provides functions for formatting commands and configuration with visual gutters.
 
+use ansi_str::AnsiStr;
 use anstyle::{AnsiColor, Color, Style};
 use unicode_width::UnicodeWidthStr;
 
@@ -23,9 +24,9 @@ const DEFAULT_TERMINAL_WIDTH: usize = 80;
 /// so the final output (content + gutter) fits within the terminal width.
 pub const GUTTER_OVERHEAD: usize = 3;
 
-/// Strip ANSI escape codes from a string using strip-ansi-escapes
+/// Strip ANSI escape codes from a string
 pub fn strip_ansi_codes(s: &str) -> String {
-    strip_ansi_escapes::strip_str(s)
+    s.ansi_strip().into_owned()
 }
 
 /// Calculate visual width of a string, ignoring ANSI escape codes

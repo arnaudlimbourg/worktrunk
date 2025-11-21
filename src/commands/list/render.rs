@@ -565,13 +565,13 @@ impl ColumnLayout {
             }
             ColumnKind::Branch => {
                 let mut cell = StyledLine::new();
-                let text = ctx.item.branch.as_deref().unwrap_or("(detached)");
+                let text = ctx.item.branch.as_deref().unwrap_or("-");
                 if let Some(style) = ctx.text_style {
                     cell.push_styled(text.to_string(), style);
                 } else {
                     cell.push_raw(text.to_string());
                 }
-                cell
+                cell.truncate_to_width(self.width)
             }
             ColumnKind::Status => {
                 let mut cell = StyledLine::new();
@@ -584,12 +584,12 @@ impl ColumnLayout {
                     cell.push_styled("⋯", Style::new().dimmed());
                 }
 
-                // Pad to column width
+                // Truncate if exceeds column width, then pad
+                let mut cell = cell.truncate_to_width(self.width);
                 let status_width = cell.width();
                 if status_width < self.width {
                     cell.push_raw(" ".repeat(self.width - status_width));
                 }
-
                 cell
             }
             ColumnKind::WorkingDiff => {
@@ -629,7 +629,7 @@ impl ColumnLayout {
                 } else {
                     cell.push_raw(path_str);
                 }
-                cell
+                cell.truncate_to_width(self.width)
             }
             ColumnKind::Upstream => {
                 let Some((_, ahead, behind)) = ctx.upstream.active() else {
@@ -837,7 +837,7 @@ mod tests {
         let rendered = result.render();
 
         // Strip ANSI codes to check alignment
-        let clean = strip_ansi_escapes::strip_str(&rendered);
+        let clean = worktrunk::styling::strip_ansi_codes(&rendered);
 
         // Should be " +1 -1" (with leading space for right-alignment)
         assert_eq!(clean, " +1 -1", "Diff should be right-aligned");
@@ -876,7 +876,7 @@ mod tests {
 
         // The rendered output should have correct spacing
         let rendered = line.render();
-        let clean = strip_ansi_escapes::strip_str(&rendered);
+        let clean = worktrunk::styling::strip_ansi_codes(&rendered);
         assert_eq!(
             clean.width(),
             24,
@@ -1052,7 +1052,7 @@ mod tests {
         );
         assert_eq!(without.width(), total);
         let rendered_without = without.render();
-        let clean_without = strip_ansi_escapes::strip_str(&rendered_without);
+        let clean_without = worktrunk::styling::strip_ansi_codes(&rendered_without);
         assert_eq!(clean_without, "       ", "Should render as blank");
 
         // With always_show_zeros=true, (0, 0) renders as "↑0 ↓0"
@@ -1073,7 +1073,7 @@ mod tests {
         );
         assert_eq!(with.width(), total);
         let rendered_with = with.render();
-        let clean_with = strip_ansi_escapes::strip_str(&rendered_with);
+        let clean_with = worktrunk::styling::strip_ansi_codes(&rendered_with);
         assert_eq!(
             clean_with, "  ↑0 ↓0",
             "Should render ↑0 ↓0 with padding (right-aligned)"
@@ -1166,7 +1166,7 @@ mod tests {
             },
         );
         let rendered1 = result1.render();
-        let clean1 = strip_ansi_escapes::strip_str(&rendered1);
+        let clean1 = worktrunk::styling::strip_ansi_codes(&rendered1);
         assert_eq!(clean1, " +53  -7", "Should be ' +53  -7'");
 
         // Test case 2: (33, 23) - both medium
@@ -1186,7 +1186,7 @@ mod tests {
             },
         );
         let rendered2 = result2.render();
-        let clean2 = strip_ansi_escapes::strip_str(&rendered2);
+        let clean2 = worktrunk::styling::strip_ansi_codes(&rendered2);
         assert_eq!(clean2, " +33 -23", "Should be ' +33 -23'");
 
         // Test case 3: (2, 2) - both small (needs padding)
@@ -1206,7 +1206,7 @@ mod tests {
             },
         );
         let rendered3 = result3.render();
-        let clean3 = strip_ansi_escapes::strip_str(&rendered3);
+        let clean3 = worktrunk::styling::strip_ansi_codes(&rendered3);
         assert_eq!(clean3, "  +2  -2", "Should be '  +2  -2'");
 
         // Verify vertical alignment: the ones digits should be in the same column

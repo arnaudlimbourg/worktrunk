@@ -13,11 +13,7 @@
 
 use crate::common::{TestRepo, wt_command};
 use unicode_width::UnicodeWidthStr;
-
-/// Strip ANSI escape codes from a string
-fn strip_ansi_codes(s: &str) -> String {
-    strip_ansi_escapes::strip_str(s)
-}
+use worktrunk::styling::strip_ansi_codes;
 
 /// Represents the start position of each column in a table row
 #[derive(Debug, Clone)]
