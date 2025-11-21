@@ -45,18 +45,27 @@ fn spawn_commit_details<'scope>(
     let path = ctx.repo_path.clone();
     s.spawn(move || {
         let repo = Repository::at(&path);
-        // TODO: Handle errors - for now, simplest thing is to skip on error
-        if let (Ok(timestamp), Ok(commit_message)) =
-            (repo.commit_timestamp(&sha), repo.commit_message(&sha))
-        {
-            let _ = tx.send(CellUpdate::CommitDetails {
-                item_idx,
-                commit: CommitDetails {
-                    timestamp,
-                    commit_message,
-                },
-            });
-        }
+        let timestamp = match repo.commit_timestamp(&sha) {
+            Ok(ts) => ts,
+            Err(e) => {
+                log::warn!("commit_timestamp failed for {}: {}", sha, e);
+                0
+            }
+        };
+        let commit_message = match repo.commit_message(&sha) {
+            Ok(msg) => msg,
+            Err(e) => {
+                log::warn!("commit_message failed for {}: {}", sha, e);
+                String::new()
+            }
+        };
+        let _ = tx.send(CellUpdate::CommitDetails {
+            item_idx,
+            commit: CommitDetails {
+                timestamp,
+                commit_message,
+            },
+        });
     });
 }
 
@@ -73,13 +82,17 @@ fn spawn_ahead_behind<'scope>(
         let base = base.to_string();
         s.spawn(move || {
             let repo = Repository::at(&path);
-            // TODO: Handle errors
-            if let Ok((ahead, behind)) = repo.ahead_behind(&base, &sha) {
-                let _ = tx.send(CellUpdate::AheadBehind {
-                    item_idx,
-                    counts: AheadBehind { ahead, behind },
-                });
-            }
+            let (ahead, behind) = match repo.ahead_behind(&base, &sha) {
+                Ok((a, b)) => (a, b),
+                Err(e) => {
+                    log::warn!("ahead_behind failed for {} vs {}: {}", sha, base, e);
+                    (0, 0)
+                }
+            };
+            let _ = tx.send(CellUpdate::AheadBehind {
+                item_idx,
+                counts: AheadBehind { ahead, behind },
+            });
         });
     }
 }
@@ -97,13 +110,17 @@ fn spawn_branch_diff<'scope>(
         let base = base.to_string();
         s.spawn(move || {
             let repo = Repository::at(&path);
-            // TODO: Handle errors
-            if let Ok(diff) = repo.branch_diff_stats(&base, &sha) {
-                let _ = tx.send(CellUpdate::BranchDiff {
-                    item_idx,
-                    branch_diff: BranchDiffTotals { diff },
-                });
-            }
+            let diff = match repo.branch_diff_stats(&base, &sha) {
+                Ok(d) => d,
+                Err(e) => {
+                    log::warn!("branch_diff_stats failed for {} vs {}: {}", sha, base, e);
+                    LineDiff::default()
+                }
+            };
+            let _ = tx.send(CellUpdate::BranchDiff {
+                item_idx,
+                branch_diff: BranchDiffTotals { diff },
+            });
         });
     }
 }
@@ -119,34 +136,48 @@ fn spawn_working_tree_diff<'scope>(
     let base = ctx.base_branch.clone();
     s.spawn(move || {
         let repo = Repository::at(&path);
-        // TODO: Handle errors
-        if let Ok(status_output) = repo.run_command(&["status", "--porcelain"]) {
-            // Parse status to get symbols and is_dirty
-            let (working_tree_symbols, is_dirty, has_conflicts) =
-                parse_status_for_symbols(&status_output);
+        let status_output = match repo.run_command(&["status", "--porcelain"]) {
+            Ok(output) => output,
+            Err(e) => {
+                log::warn!("git status failed for {}: {}", path.display(), e);
+                // Send default values on error
+                let _ = tx.send(CellUpdate::WorkingTreeDiff {
+                    item_idx,
+                    working_tree_diff: LineDiff::default(),
+                    working_tree_diff_with_main: None,
+                    working_tree_symbols: String::new(),
+                    is_dirty: false,
+                    has_conflicts: false,
+                });
+                return;
+            }
+        };
 
-            // Get working tree diff
-            let working_tree_diff = if is_dirty {
-                repo.working_tree_diff_stats().unwrap_or_default()
-            } else {
-                LineDiff::default()
-            };
+        // Parse status to get symbols and is_dirty
+        let (working_tree_symbols, is_dirty, has_conflicts) =
+            parse_status_for_symbols(&status_output);
 
-            // Get diff with main
-            let working_tree_diff_with_main = repo
-                .working_tree_diff_with_base(base.as_deref(), is_dirty)
-                .ok()
-                .flatten();
+        // Get working tree diff
+        let working_tree_diff = if is_dirty {
+            repo.working_tree_diff_stats().unwrap_or_default()
+        } else {
+            LineDiff::default()
+        };
 
-            let _ = tx.send(CellUpdate::WorkingTreeDiff {
-                item_idx,
-                working_tree_diff,
-                working_tree_diff_with_main,
-                working_tree_symbols,
-                is_dirty,
-                has_conflicts,
-            });
-        }
+        // Get diff with main
+        let working_tree_diff_with_main = repo
+            .working_tree_diff_with_base(base.as_deref(), is_dirty)
+            .ok()
+            .flatten();
+
+        let _ = tx.send(CellUpdate::WorkingTreeDiff {
+            item_idx,
+            working_tree_diff,
+            working_tree_diff_with_main,
+            working_tree_symbols,
+            is_dirty,
+            has_conflicts,
+        });
     });
 }
 
