@@ -961,16 +961,6 @@ Commands from project hooks and LLM configuration require approval on first run.
 
 Use `--force` to bypass prompts (useful for CI/automation).
 
-### Installation fails with C compilation errors
-
-If you encounter errors related to tree-sitter or C compilation (like "error: 'for' loop initial declarations are only allowed in C99 mode" or "undefined reference to le16toh"), install without syntax highlighting:
-
-```bash
-cargo install worktrunk --no-default-features
-```
-
-This disables bash syntax highlighting in command output but keeps all core functionality. The syntax highlighting feature requires C99 compiler support and can fail on older systems or minimal Docker images.
-
 ### How does Worktrunk compare to alternatives?
 
 #### vs. Branch Switching
@@ -1023,3 +1013,13 @@ These tools can be used together—run git-machete or git-town inside individual
 #### vs. Git TUIs (lazygit, gh-dash, etc.)
 
 Git TUIs operate on a single repository. Worktrunk manages multiple worktrees, runs automation hooks, and aggregates status across branches (`wt list --full`). Use your preferred TUI inside each worktree directory.
+
+### Installation fails with C compilation errors
+
+If you encounter errors related to tree-sitter or C compilation (like "error: 'for' loop initial declarations are only allowed in C99 mode" or "undefined reference to le16toh"), install without syntax highlighting:
+
+```bash
+cargo install worktrunk --no-default-features
+```
+
+This disables bash syntax highlighting in command output but keeps all core functionality. The syntax highlighting feature requires C99 compiler support and can fail on older systems or minimal Docker images.
