@@ -30,6 +30,8 @@ fn test_configure_shell_with_yes() {
         ----- stdout -----
         ✅ Added [1mzsh[0m ~/.zshrc
         [107m [0m  [1m[35mif[0m [1m[34mcommand[0m [36m-v[0m wt [36m>[0m/dev/null [33m2[0m>&1; [1m[35mthen[0m [1m[34meval[0m [32m"$([1m[34mcommand[0m wt config shell init zsh)"[0m; [1m[35mfi[0m[0m
+        💡 [2mbash ~/.bash_profile (not found)[0m
+        💡 [2mfish ~/.config/fish/conf.d (not found)[0m
 
         ✅ [32mConfigured 1 shell[0m
 
@@ -116,6 +118,7 @@ fn test_configure_shell_already_exists() {
         success: true
         exit_code: 0
         ----- stdout -----
+        ⚪ Already configured [1mzsh[0m ~/.zshrc
         ✅ [32mAll shells already configured[0m
 
         ----- stderr -----
@@ -200,7 +203,10 @@ fn test_configure_shell_no_files() {
         success: false
         exit_code: 1
         ----- stdout -----
-        ❌ [31mNo shell config files found in $HOME. Checked: [TEMP_HOME]/.bash_profile, [TEMP_HOME]/.zshrc, and more. Create a config file or use --shell to specify a shell.[0m
+        💡 [2mbash ~/.bash_profile (not found)[0m
+        💡 [2mzsh ~/.zshrc (not found)[0m
+        💡 [2mfish ~/.config/fish/conf.d (not found)[0m
+        ❌ [31mNo shell config files found[0m
 
         ----- stderr -----
         ");
@@ -238,6 +244,7 @@ fn test_configure_shell_multiple_configs() {
         [107m [0m  [1m[35mif[0m [1m[34mcommand[0m [36m-v[0m wt [36m>[0m/dev/null [33m2[0m>&1; [1m[35mthen[0m [1m[34meval[0m [32m"$([1m[34mcommand[0m wt config shell init bash)"[0m; [1m[35mfi[0m[0m
         ✅ Added [1mzsh[0m ~/.zshrc
         [107m [0m  [1m[35mif[0m [1m[34mcommand[0m [36m-v[0m wt [36m>[0m/dev/null [33m2[0m>&1; [1m[35mthen[0m [1m[34meval[0m [32m"$([1m[34mcommand[0m wt config shell init zsh)"[0m; [1m[35mfi[0m[0m
+        💡 [2mfish ~/.config/fish/conf.d (not found)[0m
 
         ✅ [32mConfigured 2 shells[0m
 
@@ -298,6 +305,7 @@ fn test_configure_shell_mixed_states() {
         [107m [0m  [1m[35mif[0m [1m[34mcommand[0m [36m-v[0m wt [36m>[0m/dev/null [33m2[0m>&1; [1m[35mthen[0m [1m[34meval[0m [32m"$([1m[34mcommand[0m wt config shell init bash)"[0m; [1m[35mfi[0m[0m
         ✅ Added [1mzsh[0m ~/.zshrc
         [107m [0m  [1m[35mif[0m [1m[34mcommand[0m [36m-v[0m wt [36m>[0m/dev/null [33m2[0m>&1; [1m[35mthen[0m [1m[34meval[0m [32m"$([1m[34mcommand[0m wt config shell init zsh)"[0m; [1m[35mfi[0m[0m
+        💡 [2mfish ~/.config/fish/conf.d (not found)[0m
 
         ✅ [32mConfigured 1 shell[0m
 

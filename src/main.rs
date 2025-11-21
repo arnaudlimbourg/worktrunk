@@ -196,28 +196,18 @@ fn main() {
                     // Auto-write to shell config files
                     handle_configure_shell(shell, force, command_name)
                         .map_err(|e| anyhow::anyhow!("{}", e))
-                        .map(|results| {
+                        .and_then(|scan_result| {
                             use anstyle::{AnsiColor, Color};
+                            use worktrunk::styling::{HINT, HINT_EMOJI, format_bash_with_gutter};
 
-                            // Count actual changes (not AlreadyExists)
-                            let changes_count = results
+                            let changes_count = scan_result
+                                .configured
                                 .iter()
                                 .filter(|r| !matches!(r.action, ConfigAction::AlreadyExists))
                                 .count();
 
-                            if changes_count == 0 {
-                                // All shells already configured
-                                let green =
-                                    Style::new().fg_color(Some(Color::Ansi(AnsiColor::Green)));
-                                println!(
-                                    "{SUCCESS_EMOJI} {green}All shells already configured{green:#}"
-                                );
-                                return;
-                            }
-
-                            // Show what was done (instant operations, no progress needed)
-                            for result in &results {
-                                use worktrunk::styling::format_bash_with_gutter;
+                            // Show configured shells
+                            for result in &scan_result.configured {
                                 let bold = Style::new().bold();
                                 let shell = result.shell;
                                 let path = format_path_for_display(&result.path);
@@ -227,24 +217,42 @@ fn main() {
                                     result.action.emoji(),
                                     result.action.description(),
                                 );
-                                // Show config line with gutter
-                                print!("{}", format_bash_with_gutter(&result.config_line, ""));
+                                // Show config line only for new additions
+                                if changes_count > 0 {
+                                    print!("{}", format_bash_with_gutter(&result.config_line, ""));
+                                }
                             }
 
-                            // Success summary
-                            println!();
-                            let green = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Green)));
-                            let plural = if changes_count == 1 { "" } else { "s" };
-                            println!(
-                                "{SUCCESS_EMOJI} {green}Configured {changes_count} shell{plural}{green:#}"
-                            );
+                            // Show skipped shells
+                            let dimmed = Style::new().dimmed();
+                            for (shell, path) in &scan_result.skipped {
+                                let path = format_path_for_display(path);
+                                println!("{HINT_EMOJI} {dimmed}{shell} {path} (not found){dimmed:#}");
+                            }
 
-                            // Show hint about restarting shell
-                            println!();
-                            use worktrunk::styling::{HINT, HINT_EMOJI};
-                            println!(
-                                "{HINT_EMOJI} {HINT}Restart your shell or run: source <config-file>{HINT:#}"
-                            );
+                            // Exit with error if no shells configured
+                            if scan_result.configured.is_empty() {
+                                return Err(anyhow::anyhow!("No shell config files found"));
+                            }
+
+                            // Summary
+                            let green = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Green)));
+                            if changes_count > 0 {
+                                println!();
+                                let plural = if changes_count == 1 { "" } else { "s" };
+                                println!(
+                                    "{SUCCESS_EMOJI} {green}Configured {changes_count} shell{plural}{green:#}"
+                                );
+                                println!();
+                                println!(
+                                    "{HINT_EMOJI} {HINT}Restart your shell or run: source <config-file>{HINT:#}"
+                                );
+                            } else {
+                                println!(
+                                    "{SUCCESS_EMOJI} {green}All shells already configured{green:#}"
+                                );
+                            }
+                            Ok(())
                         })
                 }
             },

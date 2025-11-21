@@ -14,6 +14,11 @@ pub struct ConfigureResult {
     pub config_line: String,
 }
 
+pub struct ScanResult {
+    pub configured: Vec<ConfigureResult>,
+    pub skipped: Vec<(Shell, PathBuf)>, // Shell + first path that was checked
+}
+
 #[derive(Debug, PartialEq)]
 pub enum ConfigAction {
     Added,
@@ -48,27 +53,28 @@ pub fn handle_configure_shell(
     shell_filter: Option<Shell>,
     skip_confirmation: bool,
     command_name: String,
-) -> Result<Vec<ConfigureResult>, String> {
+) -> Result<ScanResult, String> {
     // First, do a dry-run to see what would be changed
-    let preview_results = scan_shell_configs(shell_filter, true, &command_name)?;
+    let preview = scan_shell_configs(shell_filter, true, &command_name)?;
 
     // If nothing to do, return early
-    if preview_results.is_empty() {
-        return Ok(vec![]);
+    if preview.configured.is_empty() {
+        return Ok(preview);
     }
 
     // Check if any changes are needed (not all are AlreadyExists)
-    let needs_changes = preview_results
+    let needs_changes = preview
+        .configured
         .iter()
         .any(|r| !matches!(r.action, ConfigAction::AlreadyExists));
 
     // If nothing needs to be changed, just return the preview results
     if !needs_changes {
-        return Ok(preview_results);
+        return Ok(preview);
     }
 
     // Show what will be done and ask for confirmation (unless --force flag is used)
-    if !skip_confirmation && !prompt_for_confirmation(&preview_results)? {
+    if !skip_confirmation && !prompt_for_confirmation(&preview.configured)? {
         return Err("Cancelled by user".to_string());
     }
 
@@ -80,7 +86,7 @@ fn scan_shell_configs(
     shell_filter: Option<Shell>,
     dry_run: bool,
     command_name: &str,
-) -> Result<Vec<ConfigureResult>, String> {
+) -> Result<ScanResult, String> {
     let shells = if let Some(shell) = shell_filter {
         vec![shell]
     } else {
@@ -94,7 +100,7 @@ fn scan_shell_configs(
     };
 
     let mut results = Vec::new();
-    let mut checked_paths = Vec::new();
+    let mut skipped = Vec::new();
 
     for shell in shells {
         let paths = shell.config_paths(command_name);
@@ -114,9 +120,6 @@ fn scan_shell_configs(
         } else {
             target_path.is_some()
         };
-
-        // Track all checked paths for better error messages
-        checked_paths.extend(paths.iter().map(|p| (shell, p.clone())));
 
         // Only configure if explicitly targeting this shell OR if config file/location exists
         let should_configure = shell_filter.is_some() || has_config_location;
@@ -140,24 +143,32 @@ fn scan_shell_configs(
                     }
                 }
             }
+        } else if shell_filter.is_none() {
+            // Track skipped shells (only when not explicitly filtering)
+            // For Fish, we check for conf.d directory; for others, the config file
+            let skipped_path = if matches!(shell, Shell::Fish) {
+                paths
+                    .first()
+                    .and_then(|p| p.parent())
+                    .map(|p| p.to_path_buf())
+            } else {
+                paths.first().cloned()
+            };
+            if let Some(path) = skipped_path {
+                skipped.push((shell, path));
+            }
         }
     }
 
-    if results.is_empty() && shell_filter.is_none() {
-        // Provide helpful error message with checked locations
-        let example_paths: Vec<String> = checked_paths
-            .iter()
-            .take(3)
-            .map(|(_, p)| p.display().to_string())
-            .collect();
-
-        return Err(format!(
-            "No shell config files found in $HOME. Checked: {}, and more. Create a config file or use --shell to specify a shell.",
-            example_paths.join(", ")
-        ));
+    if results.is_empty() && shell_filter.is_none() && skipped.is_empty() {
+        // No shells checked at all (shouldn't happen normally)
+        return Err("No shell config files found".to_string());
     }
 
-    Ok(results)
+    Ok(ScanResult {
+        configured: results,
+        skipped,
+    })
 }
 
 fn configure_shell_file(
