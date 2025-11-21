@@ -22,6 +22,10 @@ Commands:
   install  Write shell integration to config files
 
 Options:
+  -h, --help
+      Print help
+
+Global Options:
   -C <path>
       Change working directory
 
@@ -30,8 +34,5 @@ Options:
 
   -v, --verbose
       Show commands and debug info
-
-  -h, --help
-      Print help
 
 ----- stderr -----

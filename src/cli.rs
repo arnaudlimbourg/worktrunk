@@ -49,19 +49,14 @@ const HELP_TEMPLATE: &str = "\
 {before-help}{name} - {about-with-newline}\
 Usage: {usage}
 
-Options:
-{options}{after-help}";
+{all-args}{after-help}";
 
 /// Help template for commands with subcommands
 const HELP_TEMPLATE_WITH_SUBCOMMANDS: &str = "\
 {before-help}{name} - {about-with-newline}\
 Usage: {usage}
 
-Commands:
-{subcommands}
-
-Options:
-{options}{after-help}";
+{all-args}{after-help}";
 
 /// Build a clap Command for Cli with the shared help template applied recursively.
 pub fn build_command() -> Command {
@@ -114,25 +109,43 @@ pub enum OutputFormat {
 #[command(version = version_str())]
 #[command(disable_help_subcommand = true)]
 #[command(styles = help_styles())]
-#[command(after_long_help = r#"## GLOBAL OPTIONS
+#[command(
+    after_long_help = r#"-C <path>: Run as if started in <path> instead of current directory.
 
-**-C <path>**: Run as if started in `<path>` instead of current directory.
-
-**--config <path>**: Override user config file location. Without this flag,
+--config <path>: Override user config file location. Without this flag,
 config is loaded from (in order of precedence):
-1. `WORKTRUNK_CONFIG_PATH` environment variable
-2. `~/.config/worktrunk/config.toml` (Linux/macOS) or `%APPDATA%\worktrunk\config.toml` (Windows)"#)]
+1. WORKTRUNK_CONFIG_PATH environment variable
+2. ~/.config/worktrunk/config.toml (Linux/macOS) or %APPDATA%\worktrunk\config.toml (Windows)"#
+)]
 pub struct Cli {
     /// Change working directory
-    #[arg(short = 'C', global = true, value_name = "path", display_order = 100)]
+    #[arg(
+        short = 'C',
+        global = true,
+        value_name = "path",
+        display_order = 100,
+        help_heading = "Global Options"
+    )]
     pub directory: Option<std::path::PathBuf>,
 
     /// User config file path
-    #[arg(long, global = true, value_name = "path", display_order = 101)]
+    #[arg(
+        long,
+        global = true,
+        value_name = "path",
+        display_order = 101,
+        help_heading = "Global Options"
+    )]
     pub config: Option<std::path::PathBuf>,
 
     /// Show commands and debug info
-    #[arg(long, short = 'v', global = true, display_order = 102)]
+    #[arg(
+        long,
+        short = 'v',
+        global = true,
+        display_order = 102,
+        help_heading = "Global Options"
+    )]
     pub verbose: bool,
 
     /// Use internal mode (outputs directives for shell wrapper)

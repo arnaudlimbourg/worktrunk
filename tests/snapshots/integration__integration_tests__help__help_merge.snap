@@ -16,6 +16,12 @@ exit_code: 0
 wt merge - Merge worktree into target branch
 Usage: wt merge [OPTIONS] [TARGET]
 
+Arguments:
+  [TARGET]
+      Target branch              
+                                 
+      Defaults to default branch.
+
 Options:
   --no-squash              
       Skip commit squashing
@@ -35,6 +41,10 @@ Options:
   --tracked-only              
       Stage tracked files only
 
+  -h, --help
+      Print help (see a summary with '-h')
+
+Global Options:
   -C <path>
       Change working directory
 
@@ -43,9 +53,6 @@ Options:
 
   -v, --verbose
       Show commands and debug info
-
-  -h, --help
-      Print help (see a summary with '-h')
 
 [38;5;10mOPERATION[39m
 

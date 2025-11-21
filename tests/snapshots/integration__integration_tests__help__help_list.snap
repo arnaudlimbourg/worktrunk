@@ -34,6 +34,10 @@ Options:
   --progressive                              
       Force progressive (or --no-progressive)
 
+  -h, --help
+      Print help (see a summary with '-h')
+
+Global Options:
   -C <path>
       Change working directory
 
@@ -42,9 +46,6 @@ Options:
 
   -v, --verbose
       Show commands and debug info
-
-  -h, --help
-      Print help (see a summary with '-h')
 
 [38;5;10mCOLUMNS[39m
 
