@@ -117,6 +117,9 @@ impl<'a> CommitGenerator<'a> {
             "{GREEN}Committed changes @ {green_dim}{commit_hash}{green_dim:#}{GREEN:#}"
         ))?;
 
+        // Show detailed diffstat of the commit
+        super::show_diffstat(&repo, "HEAD~1..HEAD")?;
+
         Ok(())
     }
 }

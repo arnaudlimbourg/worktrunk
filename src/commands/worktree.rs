@@ -608,20 +608,13 @@ pub fn handle_push(
         ])?;
         crate::output::gutter(format_with_gutter(&log_output, "", None))?;
 
-        // Show diff statistics with color (use terminal width minus gutter overhead)
-        let term_width = crate::display::get_terminal_width();
-        let stat_width = term_width.saturating_sub(worktrunk::styling::GUTTER_OVERHEAD);
-        let diff_stat = repo.run_command(&[
-            "diff",
-            "--color=always",
-            "--stat",
-            &format!("--stat-width={}", stat_width),
-            &format!("{}..HEAD", target_branch),
-        ])?;
+        // Show diff statistics only if we didn't already show them after commit/squash
+        let already_showed_diffstat = operations
+            .map(|ops| ops.committed || ops.squashed)
+            .unwrap_or(false);
 
-        let diff_stat = diff_stat.trim_end();
-        if !diff_stat.is_empty() {
-            crate::output::gutter(format_with_gutter(diff_stat, "", None))?;
+        if !already_showed_diffstat {
+            super::show_diffstat(&repo, &format!("{}..HEAD", target_branch))?;
         }
     }
 
