@@ -24,7 +24,7 @@ Env STARSHIP_CONFIG "{{STARSHIP_CONFIG}}"
 Hide
 Type "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8"
 Enter
-Type "export PATH=$HOME/bin:$PATH"
+Type "export PATH={{TARGET_DEBUG}}:$HOME/bin:$PATH"
 Enter
 Type 'eval "$(starship init zsh)" >/dev/null 2>&1'
 Enter

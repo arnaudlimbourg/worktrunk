@@ -442,8 +442,8 @@ fn build_estimated_widths(max_branch: usize, show_full: bool, fetch_ci: bool) ->
     // Values exceeding these widths use compact notation (K suffix)
     //
     // Status column: Must match PositionMask::FULL width for consistent alignment
-    // PositionMask::FULL allocates: 5+1+1+1+1+1+2+2 = 14 chars
-    let status_fixed = fit_header(HEADER_STATUS, 14);
+    // PositionMask::FULL allocates: 1+1+1+1+1+1+1+2 = 9 chars
+    let status_fixed = fit_header(HEADER_STATUS, 9);
     let working_diff_fixed = fit_header(HEADER_WORKING_DIFF, 9); // "+999 -999"
     let ahead_behind_fixed = fit_header(HEADER_AHEAD_BEHIND, 7); // "↑99 ↓99"
     let branch_diff_fixed = fit_header(HEADER_BRANCH_DIFF, 9); // "+999 -999"
@@ -670,7 +670,7 @@ fn allocate_columns_with_priority(
 /// - Paths (with common prefix removed)
 ///
 /// Pre-allocated estimates (generous to minimize truncation):
-/// - Status: 14 chars (PositionMask::FULL)
+/// - Status: 9 chars (PositionMask::FULL)
 /// - Working diff: 9 chars ("+999 -999")
 /// - Ahead/behind: 7 chars ("↑99 ↓99")
 /// - Branch diff: 9 chars ("+999 -999")

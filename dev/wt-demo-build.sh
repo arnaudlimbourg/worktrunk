@@ -231,6 +231,9 @@ exit 1
 GH
   chmod +x "$DEMO_HOME/bin/gh"
 
+  # Build local debug binary
+  cargo build --quiet
+
   # Set up user config with LLM and pre-approved commands
   local project_id="${BARE_REMOTE%.git}"
   mkdir -p "$DEMO_HOME/.config/worktrunk"
@@ -486,6 +489,7 @@ render_tape() {
     -e "s|{{REAL_HOME}}|$HOME|g" \
     -e "s|{{STARSHIP_CONFIG}}|$STARSHIP_CONFIG_PATH|g" \
     -e "s|{{OUTPUT_GIF}}|$OUTPUT_GIF|g" \
+    -e "s|{{TARGET_DEBUG}}|$REPO_ROOT/target/debug|g" \
     "$TAPE_TEMPLATE" >"$TAPE_RENDERED"
 }
 
@@ -505,7 +509,7 @@ record_text() {
     export RUSTUP_HOME="'"$real_home"'/.rustup"
     export CARGO_HOME="'"$real_home"'/.cargo"
     export HOME="'"$DEMO_HOME"'"
-    export PATH="$HOME/bin:$PATH"
+    export PATH="'"$REPO_ROOT"'/target/debug:$HOME/bin:$PATH"
     export STARSHIP_CONFIG="'"$STARSHIP_CONFIG_PATH"'"
     export STARSHIP_CACHE="'"$DEMO_ROOT"'"/starship-cache
     mkdir -p "$STARSHIP_CACHE"
