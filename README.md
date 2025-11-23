@@ -10,13 +10,14 @@
 <!-- [![Downloads](https://img.shields.io/crates/d/worktrunk?style=for-the-badge&logo=rust)](https://crates.io/crates/worktrunk) -->
 <!-- [![Stars](https://img.shields.io/github/stars/max-sixty/worktrunk?style=for-the-badge&logo=github)](https://github.com/max-sixty/worktrunk/stargazers) -->
 
-Worktrunk is a CLI tool which handles git worktree mechanics, enabling AI agent
-parallelism.
+Worktrunk is a CLI tool which handles git worktree mechanics, enabling many
+parallel AI agents
 
-git worktrees let multiple agents work on a single repo without colliding; each
+Git worktrees let multiple agents work on a single repo without colliding; each
 agent gets a separate directory with a version of the code. But creating
 worktrees, tracking paths & statuses, cleaning up, etc, is manual. Worktrunk
-offers control, transparency & automation for this workflow.
+offers control, transparency & automation for this workflow; allowing
+scaling the number of parallel agents.
 
 ## Demo
 
