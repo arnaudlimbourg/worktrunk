@@ -48,6 +48,9 @@ pub fn handle_config_create() -> anyhow::Result<()> {
         );
         println!();
         println!("{HINT_EMOJI} {HINT}Use 'wt config list' to view existing configuration{HINT:#}");
+        println!(
+            "{HINT_EMOJI} {HINT}Use 'wt config create --help' for config format reference{HINT:#}"
+        );
         return Ok(());
     }
 

@@ -796,7 +796,7 @@ Docs: https://llm.datasette.io/ | https://github.com/sigoden/aichat
 
 **Global config** (user settings):
 - Location: `~/.config/worktrunk/config.toml` (or `WORKTRUNK_CONFIG_PATH`)
-- Run `wt config create` to generate with documented examples
+- Run `wt config create --help` to view documented examples
 
 **Project config** (repository hooks):
 - Location: `.config/wt.toml` in repository root

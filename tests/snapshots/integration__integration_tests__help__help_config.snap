@@ -77,7 +77,7 @@ Docs: https://llm.datasette.io/ | https://github.com/sigoden/aichat
 
 [1mGlobal config[0m (user settings):
 - Location: [2m~/.config/worktrunk/config.toml[0m (or [2mWORKTRUNK_CONFIG_PATH[0m)
-- Run [2mwt config create[0m to generate with documented examples
+- Run [2mwt config create --help[0m to view documented examples
 
 [1mProject config[0m (repository hooks):
 - Location: [2m.config/wt.toml[0m in repository root
