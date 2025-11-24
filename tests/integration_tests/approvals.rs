@@ -92,7 +92,7 @@ fn test_clear_approvals_with_approvals() {
         .approve_command_to(
             project_id,
             "echo 'test'".to_string(),
-            repo.test_config_path(),
+            Some(repo.test_config_path()),
         )
         .expect("Failed to save approval");
 
@@ -122,7 +122,7 @@ fn test_clear_approvals_global_with_approvals() {
         .approve_command_to(
             project_id,
             "echo 'test'".to_string(),
-            repo.test_config_path(),
+            Some(repo.test_config_path()),
         )
         .expect("Failed to save approval");
 
@@ -148,7 +148,7 @@ fn test_clear_approvals_after_clear() {
         .approve_command_to(
             project_id.clone(),
             "echo 'test'".to_string(),
-            repo.test_config_path(),
+            Some(repo.test_config_path()),
         )
         .expect("Failed to save approval");
 
@@ -182,21 +182,21 @@ lint = "echo 'third'"
         .approve_command_to(
             project_id.clone(),
             "echo 'first'".to_string(),
-            repo.test_config_path(),
+            Some(repo.test_config_path()),
         )
         .expect("Failed to save approval");
     config
         .approve_command_to(
             project_id.clone(),
             "echo 'second'".to_string(),
-            repo.test_config_path(),
+            Some(repo.test_config_path()),
         )
         .expect("Failed to save approval");
     config
         .approve_command_to(
             project_id,
             "echo 'third'".to_string(),
-            repo.test_config_path(),
+            Some(repo.test_config_path()),
         )
         .expect("Failed to save approval");
 

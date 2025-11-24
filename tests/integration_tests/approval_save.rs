@@ -19,7 +19,7 @@ fn test_approval_saves_to_disk() {
         .approve_command_to(
             "github.com/test/repo".to_string(),
             "test command".to_string(),
-            &config_path,
+            Some(&config_path),
         )
         .expect("Failed to save approval");
 
@@ -59,14 +59,14 @@ fn test_duplicate_approvals_not_saved_twice() {
         .approve_command_to(
             "github.com/test/repo".to_string(),
             "test".to_string(),
-            &config_path,
+            Some(&config_path),
         )
         .ok();
     config
         .approve_command_to(
             "github.com/test/repo".to_string(),
             "test".to_string(),
-            &config_path,
+            Some(&config_path),
         )
         .ok();
 
@@ -110,21 +110,21 @@ fn test_multiple_project_approvals() {
         .approve_command_to(
             "github.com/user1/repo1".to_string(),
             "npm install".to_string(),
-            &config_path,
+            Some(&config_path),
         )
         .unwrap();
     config
         .approve_command_to(
             "github.com/user2/repo2".to_string(),
             "cargo build".to_string(),
-            &config_path,
+            Some(&config_path),
         )
         .unwrap();
     config
         .approve_command_to(
             "github.com/user1/repo1".to_string(),
             "npm test".to_string(),
-            &config_path,
+            Some(&config_path),
         )
         .unwrap();
 
@@ -179,7 +179,7 @@ fn test_isolated_config_safety() {
         .approve_command_to(
             "github.com/safety-test/repo".to_string(),
             "THIS SHOULD NOT APPEAR IN USER CONFIG".to_string(),
-            &config_path,
+            Some(&config_path),
         )
         .unwrap();
 
@@ -246,7 +246,7 @@ fn test_force_flag_saves_to_new_config_file() {
         .approve_command_to(
             "github.com/test/nested".to_string(),
             "test command".to_string(),
-            &config_path,
+            Some(&config_path),
         )
         .unwrap();
 
@@ -301,7 +301,7 @@ args = ["-s"]
         .approve_command_to(
             "github.com/test/repo".to_string(),
             "npm install".to_string(),
-            &config_path,
+            Some(&config_path),
         )
         .unwrap();
 
@@ -381,7 +381,7 @@ fn test_permission_error_prevents_save() {
     let result = config.approve_command_to(
         "github.com/test/readonly".to_string(),
         "test command".to_string(),
-        &config_path,
+        Some(&config_path),
     );
 
     // Restore write permissions so temp_dir can be cleaned up

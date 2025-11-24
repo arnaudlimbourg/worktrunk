@@ -334,31 +334,16 @@ impl WorktrunkConfig {
 
     /// Add an approved command and save to config file
     pub fn approve_command(&mut self, project: String, command: String) -> Result<(), ConfigError> {
-        // Don't add duplicates
-        if self.is_command_approved(&project, &command) {
-            return Ok(());
-        }
-
-        self.projects
-            .entry(project)
-            .or_default()
-            .approved_commands
-            .push(command);
-        self.save()
+        self.approve_command_to(project, command, None)
     }
 
     /// Add an approved command and save to a specific config file (for testing)
-    ///
-    /// This is the same as `approve_command()` but saves to an explicit path
-    /// instead of the default user config location. Use this in tests to avoid
-    /// polluting the user's actual config.
     pub fn approve_command_to(
         &mut self,
         project: String,
         command: String,
-        config_path: &std::path::Path,
+        config_path: Option<&std::path::Path>,
     ) -> Result<(), ConfigError> {
-        // Don't add duplicates
         if self.is_command_approved(&project, &command) {
             return Ok(());
         }
@@ -368,92 +353,72 @@ impl WorktrunkConfig {
             .or_default()
             .approved_commands
             .push(command);
-        self.save_to(config_path)
+        self.save_impl(config_path)
     }
 
     /// Revoke an approved command and save to config file
-    ///
-    /// Removes the specified command from the project's approved commands list.
-    /// If this results in an empty project entry, the project is removed entirely.
     pub fn revoke_command(&mut self, project: &str, command: &str) -> Result<(), ConfigError> {
+        self.revoke_command_to(project, command, None)
+    }
+
+    /// Revoke an approved command and save to a specific config file (for testing)
+    #[doc(hidden)]
+    pub fn revoke_command_to(
+        &mut self,
+        project: &str,
+        command: &str,
+        config_path: Option<&std::path::Path>,
+    ) -> Result<(), ConfigError> {
         if let Some(project_config) = self.projects.get_mut(project) {
             let len_before = project_config.approved_commands.len();
             project_config.approved_commands.retain(|c| c != command);
             let changed = len_before != project_config.approved_commands.len();
 
-            // Clean up empty project entries
             if project_config.approved_commands.is_empty() {
                 self.projects.remove(project);
             }
 
             if changed {
-                self.save()?;
+                self.save_impl(config_path)?;
             }
         }
         Ok(())
     }
 
     /// Remove all approvals for a project and save to config file
-    ///
-    /// Removes the entire project entry from the configuration.
     pub fn revoke_project(&mut self, project: &str) -> Result<(), ConfigError> {
-        if self.projects.remove(project).is_some() {
-            self.save()?;
-        }
-        Ok(())
-    }
-
-    /// Revoke an approved command and save to a specific config file (for testing)
-    ///
-    /// This is the same as `revoke_command()` but saves to an explicit path
-    /// instead of the default user config location. Use this in tests to avoid
-    /// polluting the user's actual config.
-    #[doc(hidden)]
-    pub fn revoke_command_to(
-        &mut self,
-        project: &str,
-        command: &str,
-        config_path: &std::path::Path,
-    ) -> Result<(), ConfigError> {
-        if let Some(project_config) = self.projects.get_mut(project) {
-            let len_before = project_config.approved_commands.len();
-            project_config.approved_commands.retain(|c| c != command);
-            let changed = len_before != project_config.approved_commands.len();
-
-            // Clean up empty project entries
-            if project_config.approved_commands.is_empty() {
-                self.projects.remove(project);
-            }
-
-            if changed {
-                self.save_to(config_path)?;
-            }
-        }
-        Ok(())
+        self.revoke_project_to(project, None)
     }
 
     /// Remove all approvals for a project and save to a specific config file (for testing)
-    ///
-    /// This is the same as `revoke_project()` but saves to an explicit path
-    /// instead of the default user config location. Use this in tests to avoid
-    /// polluting the user's actual config.
     #[doc(hidden)]
     pub fn revoke_project_to(
         &mut self,
         project: &str,
-        config_path: &std::path::Path,
+        config_path: Option<&std::path::Path>,
     ) -> Result<(), ConfigError> {
         if self.projects.remove(project).is_some() {
-            self.save_to(config_path)?;
+            self.save_impl(config_path)?;
         }
         Ok(())
     }
 
     /// Save the current configuration to the default config file location
     pub fn save(&self) -> Result<(), ConfigError> {
-        let config_path = get_config_path()
-            .ok_or_else(|| ConfigError::Message("Could not determine config path".to_string()))?;
-        self.save_to(&config_path)
+        self.save_impl(None)
+    }
+
+    /// Internal save implementation that handles both default and custom paths
+    fn save_impl(&self, config_path: Option<&std::path::Path>) -> Result<(), ConfigError> {
+        match config_path {
+            Some(path) => self.save_to(path),
+            None => {
+                let path = get_config_path().ok_or_else(|| {
+                    ConfigError::Message("Could not determine config path".to_string())
+                })?;
+                self.save_to(&path)
+            }
+        }
     }
 
     /// Save the current configuration to a specific file path
