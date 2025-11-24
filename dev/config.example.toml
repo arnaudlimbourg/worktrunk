@@ -37,7 +37,7 @@ full = false       # Show CI, conflicts, diffs by default
 branches = false   # Include branches without worktrees by default
 remotes = false    # Include remote branches by default
 
-# Commit Defaults (shared by `wt beta commit`, `wt beta squash`, and `wt merge`)
+# Commit Defaults (shared by `wt step commit`, `wt step squash`, and `wt merge`)
 [commit]
 stage = "all"          # What to stage: "all", "tracked", or "none"
 

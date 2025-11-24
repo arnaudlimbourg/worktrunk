@@ -73,7 +73,7 @@ Creates [2m~/.config/worktrunk/config.toml[0m with the following content:
   [2mbranches = false   # Include branches without worktrees by default[0m
   [2mremotes = false    # Include remote branches by default[0m
   [2m[0m
-  [2m# Commit Defaults (shared by `wt beta commit`, `wt beta squash`, and `wt merge`)[0m
+  [2m# Commit Defaults (shared by `wt step commit`, `wt step squash`, and `wt merge`)[0m
   [2m[commit][0m
   [2mstage = "all"          # What to stage: "all", "tracked", or "none"[0m
   [2m[0m

@@ -110,7 +110,7 @@ pub struct WorktrunkConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub list: Option<ListConfig>,
 
-    /// Configuration for the `wt beta commit` command (also used by merge)
+    /// Configuration for the `wt step commit` command (also used by merge)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub commit: Option<CommitConfig>,
 
@@ -204,7 +204,7 @@ pub struct ListConfig {
     pub remotes: Option<bool>,
 }
 
-/// Configuration for the `wt beta commit` command
+/// Configuration for the `wt step commit` command
 ///
 /// Also used by `wt merge` for shared settings like `stage`.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
