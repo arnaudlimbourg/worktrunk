@@ -364,6 +364,9 @@ pub(crate) fn execute_streaming(
         .stdin(std::process::Stdio::null()) // Null stdin - child gets EOF immediately
         .stdout(std::process::Stdio::inherit()) // Preserve TTY for output
         .stderr(std::process::Stdio::inherit()) // Preserve TTY for errors
+        // Prevent vergen "overridden" warning in nested cargo builds when run via `cargo run`.
+        // Add more VERGEN_* variables here if we expand build.rs and hit similar issues.
+        .env_remove("VERGEN_GIT_DESCRIBE")
         .spawn()
         .map_err(|e| anyhow::anyhow!("Failed to execute command: {}", e))?;
 
