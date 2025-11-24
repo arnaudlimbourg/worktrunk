@@ -53,24 +53,21 @@ if command -v {{ cmd_prefix }} >/dev/null 2>&1 || [[ -n "${WORKTRUNK_BIN:-}" ]];
         return $result
     }
 
-    # Lazy completions via compdef - no fpath setup needed
-    # Regenerates on first TAB in each shell session
+    # Lazy completions - generate on first TAB, then delegate to clap's completer
+    # NOTE: This must come AFTER compinit in your .zshrc
+    _{{ cmd_prefix }}_lazy_complete() {
+        # Generate completions function once (check if clap's function exists)
+        if ! (( $+functions[_clap_dynamic_completer_{{ cmd_prefix }}] )); then
+            eval "$(COMPLETE=zsh "$_WORKTRUNK_CMD" 2>/dev/null)" || return
+        fi
+        _clap_dynamic_completer_{{ cmd_prefix }} "$@"
+    }
+
+    # Register completion (requires compinit to have run first)
     if (( $+functions[compdef] )); then
-        _{{ cmd_prefix }}_lazy_complete() {
-            # Load dynamic completion script once
-            unfunction _{{ cmd_prefix }}_lazy_complete 2>/dev/null || true
-
-            # Generate & eval the real completer from the binary
-            local _script
-            _script="$(COMPLETE=zsh "$_WORKTRUNK_CMD" 2>/dev/null)" || return
-            eval "$_script"
-
-            # Delegate to clap's generated function
-            if (( $+functions[_clap_dynamic_completer_{{ cmd_prefix }}] )); then
-                _clap_dynamic_completer_{{ cmd_prefix }} "$@"
-            fi
-        }
-
         compdef _{{ cmd_prefix }}_lazy_complete {{ cmd_prefix }}
+    else
+        echo "{{ cmd_prefix }}: completions disabled (compinit not loaded yet)" >&2
+        echo "{{ cmd_prefix }}: move 'eval \"\$({{ cmd_prefix }} config shell init zsh)\"' after compinit in your .zshrc" >&2
     fi
 fi

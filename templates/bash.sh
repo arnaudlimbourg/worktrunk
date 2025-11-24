@@ -53,6 +53,14 @@ if command -v {{ cmd_prefix }} >/dev/null 2>&1 || [[ -n "${WORKTRUNK_BIN:-}" ]];
         return $result
     }
 
-    # Completions are loaded from ~/.local/share/bash-completion/completions/wt
-    # Install with: wt config shell install
+    # Lazy completions - generate on first TAB, then delegate to clap's completer
+    _{{ cmd_prefix }}_lazy_complete() {
+        # Generate completions function once (check if clap's function exists)
+        if ! declare -F _clap_complete_{{ cmd_prefix }} >/dev/null; then
+            eval "$(COMPLETE=bash "$_WORKTRUNK_CMD" 2>/dev/null)" || return
+        fi
+        _clap_complete_{{ cmd_prefix }} "$@"
+    }
+
+    complete -o nospace -o bashdefault -F _{{ cmd_prefix }}_lazy_complete {{ cmd_prefix }}
 fi

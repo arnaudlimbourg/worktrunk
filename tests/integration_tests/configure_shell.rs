@@ -29,8 +29,7 @@ fn test_configure_shell_with_yes() {
         success: true
         exit_code: 0
         ----- stdout -----
-        ✅ Added shell extension for [1mzsh[0m @ [1m~/.zshrc[0m
-        ⚪ Completions for [1mzsh[0m via lazy compdef (no file needed)
+        ✅ Added shell extension & completions for [1mzsh[0m @ [1m~/.zshrc[0m
         💡 [2mSkipped [1mbash[0m; ~/.bashrc not found[0m
         💡 [2mSkipped [1mfish[0m; ~/.config/fish/conf.d not found[0m
 
@@ -73,8 +72,7 @@ fn test_configure_shell_specific_shell() {
         success: true
         exit_code: 0
         ----- stdout -----
-        ✅ Added shell extension for [1mzsh[0m @ [1m~/.zshrc[0m
-        ⚪ Completions for [1mzsh[0m via lazy compdef (no file needed)
+        ✅ Added shell extension & completions for [1mzsh[0m @ [1m~/.zshrc[0m
 
         ✅ Configured 1 shell
         💡 [2mRestart shell or run: source ~/.zshrc[0m
@@ -119,7 +117,7 @@ fn test_configure_shell_already_exists() {
         success: true
         exit_code: 0
         ----- stdout -----
-        ⚪ Already configured shell extension for [1mzsh[0m @ [1m~/.zshrc[0m
+        ⚪ Already configured shell extension & completions for [1mzsh[0m @ [1m~/.zshrc[0m
         ✅ All shells already configured
 
         ----- stderr -----
@@ -158,8 +156,8 @@ fn test_configure_shell_fish() {
         ✅ Created shell extension for [1mfish[0m @ [1m~/.config/fish/conf.d/wt.fish[0m
         ✅ Created completions for [1mfish[0m @ [1m~/.config/fish/completions/wt.fish[0m
 
-        ✅ Configured 2 shells
-        💡 [2mRestart shell or run: source ~/.config/fish/conf.d/wt.fish[0m
+        ✅ Configured 1 shell
+        💡 [2mRestart shell to activate[0m
 
         ----- stderr -----
         ");
@@ -237,13 +235,11 @@ fn test_configure_shell_multiple_configs() {
         success: true
         exit_code: 0
         ----- stdout -----
-        ✅ Added shell extension for [1mbash[0m @ [1m~/.bashrc[0m
-        ✅ Created completions for [1mbash[0m @ [1m~/.local/share/bash-completion/completions/wt[0m
-        ✅ Added shell extension for [1mzsh[0m @ [1m~/.zshrc[0m
-        ⚪ Completions for [1mzsh[0m via lazy compdef (no file needed)
+        ✅ Added shell extension & completions for [1mbash[0m @ [1m~/.bashrc[0m
+        ✅ Added shell extension & completions for [1mzsh[0m @ [1m~/.zshrc[0m
         💡 [2mSkipped [1mfish[0m; ~/.config/fish/conf.d not found[0m
 
-        ✅ Configured 3 shells
+        ✅ Configured 2 shells
         💡 [2mRestart shell or run: source ~/.zshrc[0m
 
         ----- stderr -----
@@ -298,13 +294,11 @@ fn test_configure_shell_mixed_states() {
         success: true
         exit_code: 0
         ----- stdout -----
-        ⚪ Already configured shell extension for [1mbash[0m @ [1m~/.bashrc[0m
-        ✅ Created completions for [1mbash[0m @ [1m~/.local/share/bash-completion/completions/wt[0m
-        ✅ Added shell extension for [1mzsh[0m @ [1m~/.zshrc[0m
-        ⚪ Completions for [1mzsh[0m via lazy compdef (no file needed)
+        ⚪ Already configured shell extension & completions for [1mbash[0m @ [1m~/.bashrc[0m
+        ✅ Added shell extension & completions for [1mzsh[0m @ [1m~/.zshrc[0m
         💡 [2mSkipped [1mfish[0m; ~/.config/fish/conf.d not found[0m
 
-        ✅ Configured 2 shells
+        ✅ Configured 1 shell
         💡 [2mRestart shell or run: source ~/.zshrc[0m
 
         ----- stderr -----
@@ -357,10 +351,10 @@ fn test_uninstall_shell() {
         success: true
         exit_code: 0
         ----- stdout -----
-        ✅ Removed shell extension for [1mzsh[0m @ [1m~/.zshrc[0m
-        ⚪ Completions for [1mzsh[0m were via lazy compdef (no file to remove)
-        💡 [2mNo bash integration in ~/.bashrc[0m
-        💡 [2mNo fish integration in ~/.config/fish/conf.d/wt.fish[0m
+        ✅ Removed shell extension & completions for [1mzsh[0m @ [1m~/.zshrc[0m
+        💡 [2mNo bash shell extension & completions in ~/.bashrc[0m
+        💡 [2mNo fish shell extension in ~/.config/fish/conf.d/wt.fish[0m
+        💡 [2mNo fish completions in ~/.config/fish/completions/wt.fish[0m
 
         ✅ Removed integration from 1 shell
         💡 [2mRestart shell to complete uninstall[0m
@@ -417,10 +411,10 @@ fn test_uninstall_shell_multiple() {
         success: true
         exit_code: 0
         ----- stdout -----
-        ✅ Removed shell extension for [1mbash[0m @ [1m~/.bashrc[0m
-        ✅ Removed shell extension for [1mzsh[0m @ [1m~/.zshrc[0m
-        ⚪ Completions for [1mzsh[0m were via lazy compdef (no file to remove)
-        💡 [2mNo fish integration in ~/.config/fish/conf.d/wt.fish[0m
+        ✅ Removed shell extension & completions for [1mbash[0m @ [1m~/.bashrc[0m
+        ✅ Removed shell extension & completions for [1mzsh[0m @ [1m~/.zshrc[0m
+        💡 [2mNo fish shell extension in ~/.config/fish/conf.d/wt.fish[0m
+        💡 [2mNo fish completions in ~/.config/fish/completions/wt.fish[0m
 
         ✅ Removed integration from 2 shells
         💡 [2mRestart shell to complete uninstall[0m
@@ -470,7 +464,7 @@ fn test_uninstall_shell_not_found() {
         success: true
         exit_code: 0
         ----- stdout -----
-        🟡 No shell integration found in ~/.zshrc
+        🟡 No shell extension & completions found in ~/.zshrc
 
         ----- stderr -----
         ");

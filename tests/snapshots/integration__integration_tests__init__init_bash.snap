@@ -165,8 +165,16 @@ wt_exec() {
         return $result
     }
 
-    # Completions are loaded from ~/.local/share/bash-completion/completions/wt
-    # Install with: wt config shell install
+    # Lazy completions - generate on first TAB, then delegate to clap's completer
+    _wt_lazy_complete() {
+        # Generate completions function once (check if clap's function exists)
+        if ! declare -F _clap_complete_wt >/dev/null; then
+            eval "$(COMPLETE=bash "$_WORKTRUNK_CMD" 2>/dev/null)" || return
+        fi
+        _clap_complete_wt "$@"
+    }
+
+    complete -o nospace -o bashdefault -F _wt_lazy_complete wt
 fi
 
 ----- stderr -----

@@ -103,10 +103,11 @@ impl Shell {
 
     /// Returns the path to the native completion directory for this shell
     ///
-    /// These are the standard locations where shells look for lazy-loaded completions:
-    /// - Bash: `~/.local/share/bash-completion/completions/`
-    /// - Zsh: `~/.zfunc/` (for manual setup only; install uses lazy compdef)
-    /// - Fish: `~/.config/fish/completions/`
+    /// Note: Only Fish uses static completion files. Bash and Zsh use inline
+    /// lazy loading in the init script, so these paths are for reference only:
+    /// - Bash: `~/.local/share/bash-completion/completions/` (not used by install)
+    /// - Zsh: `~/.zfunc/` (not used by install)
+    /// - Fish: `~/.config/fish/completions/` (used by install)
     pub fn completion_path(&self) -> Result<PathBuf, std::io::Error> {
         let home = home_dir()?;
 

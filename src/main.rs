@@ -226,8 +226,14 @@ fn main() {
                             for result in &scan_result.configured {
                                 let shell = result.shell;
                                 let path = format_path_for_display(&result.path);
+                                // For bash/zsh, completions are inline in the init script
+                                let what = if matches!(shell, worktrunk::shell::Shell::Bash | worktrunk::shell::Shell::Zsh) {
+                                    "shell extension & completions"
+                                } else {
+                                    "shell extension"
+                                };
                                 let message = format!(
-                                    "{} shell extension for {bold}{shell}{bold:#} @ {bold}{path}{bold:#}",
+                                    "{} {what} for {bold}{shell}{bold:#} @ {bold}{path}{bold:#}",
                                     result.action.description()
                                 );
 
@@ -276,14 +282,6 @@ fn main() {
                                             crate::output::progress(comp_message)?;
                                         }
                                     }
-                                } else if matches!(shell, worktrunk::shell::Shell::Zsh)
-                                    && !matches!(result.action, ConfigAction::AlreadyExists)
-                                {
-                                    // Zsh completions are handled via lazy compdef in the init script
-                                    // Only show this message for new installations
-                                    crate::output::info(format!(
-                                        "Completions for {bold}zsh{bold:#} via lazy compdef (no file needed)"
-                                    ))?;
                                 }
                             }
 
@@ -300,19 +298,12 @@ fn main() {
                                 return Err(anyhow::anyhow!("No shell config files found"));
                             }
 
-                            // Count total changes (config + completions)
-                            let completion_changes = scan_result.completion_results
-                                .iter()
-                                .filter(|r| !matches!(r.action, ConfigAction::AlreadyExists))
-                                .count();
-                            let total_changes = changes_count + completion_changes;
-
-                            // Summary
-                            if total_changes > 0 {
+                            // Summary (count shells, not files - fish has both conf.d and completions)
+                            if changes_count > 0 {
                                 crate::output::blank()?;
-                                let plural = if total_changes == 1 { "" } else { "s" };
+                                let plural = if changes_count == 1 { "" } else { "s" };
                                 crate::output::success(format!(
-                                    "Configured {total_changes} shell{plural}"
+                                    "Configured {changes_count} shell{plural}"
                                 ))?;
                             } else {
                                 crate::output::success("All shells already configured")?;
@@ -324,7 +315,7 @@ fn main() {
                                     .ok()
                                     .and_then(|s| s.rsplit('/').next().map(String::from));
 
-                                let current_shell_path =
+                                let current_shell_result =
                                     current_shell.as_ref().and_then(|shell_name| {
                                         scan_result
                                             .configured
@@ -335,13 +326,19 @@ fn main() {
                                             .find(|r| {
                                                 r.shell.to_string().eq_ignore_ascii_case(shell_name)
                                             })
-                                            .map(|r| format_path_for_display(&r.path))
                                     });
 
-                                if let Some(path) = current_shell_path {
-                                    crate::output::hint(format!(
-                                        "Restart shell or run: source {path}"
-                                    ))?;
+                                if let Some(result) = current_shell_result {
+                                    // Fish auto-sources from conf.d, so just say "Restart shell"
+                                    // Bash/Zsh can source directly for immediate activation
+                                    if matches!(result.shell, worktrunk::shell::Shell::Fish) {
+                                        crate::output::hint("Restart shell to activate")?;
+                                    } else {
+                                        let path = format_path_for_display(&result.path);
+                                        crate::output::hint(format!(
+                                            "Restart shell or run: source {path}"
+                                        ))?;
+                                    }
                                 }
                             }
                             Ok(())
@@ -361,9 +358,15 @@ fn main() {
                                     let bold = Style::new().bold();
                                     let shell = result.shell;
                                     let path = format_path_for_display(&result.path);
+                                    // For bash/zsh, completions are inline in the init script
+                                    let what = if matches!(shell, worktrunk::shell::Shell::Bash | worktrunk::shell::Shell::Zsh) {
+                                        "shell extension & completions"
+                                    } else {
+                                        "shell extension"
+                                    };
 
                                     crate::output::success(format!(
-                                        "{} shell extension for {bold}{shell}{bold:#} @ {bold}{path}{bold:#}",
+                                        "{} {what} for {bold}{shell}{bold:#} @ {bold}{path}{bold:#}",
                                         result.action.description(),
                                     ))?;
                                 }
@@ -380,38 +383,50 @@ fn main() {
                                     ))?;
                                 }
 
-                                // Show zsh lazy compdef message if zsh shell extension was removed
-                                // but no completion file was removed (because zsh uses lazy compdef)
-                                let bold = Style::new().bold();
-                                let zsh_shell_removed = scan_result.results.iter().any(|r| {
-                                    matches!(r.shell, worktrunk::shell::Shell::Zsh)
-                                });
-                                let zsh_completion_removed = scan_result.completion_results.iter().any(|r| {
-                                    matches!(r.shell, worktrunk::shell::Shell::Zsh)
-                                });
-                                if zsh_shell_removed && !zsh_completion_removed {
-                                    crate::output::info(format!(
-                                        "Completions for {bold}zsh{bold:#} were via lazy compdef (no file to remove)"
-                                    ))?;
-                                }
-
                                 // Show not found - warning if explicit shell, hint if auto-scan
                                 for (shell, path) in &scan_result.not_found {
                                     let path = format_path_for_display(path);
+                                    // Use consistent terminology matching install/uninstall messages
+                                    let what = if matches!(shell, worktrunk::shell::Shell::Bash | worktrunk::shell::Shell::Zsh) {
+                                        "shell extension & completions"
+                                    } else {
+                                        "shell extension"
+                                    };
                                     if explicit_shell {
                                         crate::output::warning(format!(
-                                            "No shell integration found in {path}"
+                                            "No {what} found in {path}"
                                         ))?;
                                     } else {
                                         crate::output::hint(format!(
-                                            "No {shell} integration in {path}"
+                                            "No {shell} {what} in {path}"
+                                        ))?;
+                                    }
+                                }
+
+                                // Show completion files not found (only fish has separate completion files)
+                                // Only show this if the shell extension was ALSO not found - if we removed
+                                // the shell extension, no need to warn about missing completions
+                                for (shell, path) in &scan_result.completion_not_found {
+                                    let shell_was_removed = scan_result.results.iter().any(|r| r.shell == *shell);
+                                    if shell_was_removed {
+                                        continue; // Shell extension was removed, don't warn about completions
+                                    }
+                                    let path = format_path_for_display(path);
+                                    if explicit_shell {
+                                        crate::output::warning(format!(
+                                            "No completions found in {path}"
+                                        ))?;
+                                    } else {
+                                        crate::output::hint(format!(
+                                            "No {shell} completions in {path}"
                                         ))?;
                                     }
                                 }
 
                                 // Exit with info if nothing was found
+                                let all_not_found = scan_result.not_found.len() + scan_result.completion_not_found.len();
                                 if total_changes == 0 {
-                                    if scan_result.not_found.is_empty() {
+                                    if all_not_found == 0 {
                                         crate::output::blank()?;
                                         crate::output::hint(
                                             "No shell integration found to remove",

@@ -232,15 +232,15 @@ Detects various forms of the integration pattern regardless of:
     /// Generate shell completion script
     #[command(after_long_help = r#"## Usage
 
-Generate completions for your shell:
+Generate completions for manual shell setup:
 
 ```console
-wt config shell completions zsh > ~/.zfunc/_wt
+wt config shell completions fish > ~/.config/fish/completions/wt.fish
 ```
 
-This outputs a script that calls back to `wt` for dynamic completions
-(branch names, worktrees, etc.). The script is designed for fpath
-autoloading - zsh loads it only on first completion attempt."#)]
+Note: Bash and Zsh completions are automatically included via
+`wt config shell install` using inline lazy loading. This command
+is primarily for Fish or manual configuration."#)]
     Completions {
         /// Shell to generate completions for
         #[arg(value_enum)]

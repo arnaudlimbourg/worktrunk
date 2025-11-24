@@ -1607,6 +1607,7 @@ approved-commands = ["echo 'bash background'"]
     // ========================================================================
 
     /// Test that bash completions are properly registered
+    /// Note: Completions are inline in the wrapper script (lazy loading)
     #[test]
     fn test_bash_completions_registered() {
         let repo = TestRepo::new();
@@ -1614,22 +1615,20 @@ approved-commands = ["echo 'bash background'"]
 
         let wt_bin = get_cargo_bin("wt");
         let wrapper_script = generate_wrapper(&repo, "bash");
-        let completions_script = generate_completions(&repo, "bash");
 
-        // Script that sources wrapper, completions, and checks if completion is registered
+        // Script that sources wrapper and checks if completion is registered
+        // (completions are inline in the wrapper via lazy loading)
         let script = format!(
             r#"
             export WORKTRUNK_BIN='{}'
             export WORKTRUNK_CONFIG_PATH='{}'
-            {}
             {}
             # Check if wt completion is registered
             complete -p wt 2>/dev/null && echo "__COMPLETION_REGISTERED__" || echo "__NO_COMPLETION__"
             "#,
             wt_bin.display(),
             repo.test_config_path().display(),
-            wrapper_script,
-            completions_script
+            wrapper_script
         );
 
         let final_script = format!("( {} ) 2>&1", script);
@@ -1695,7 +1694,7 @@ approved-commands = ["echo 'bash background'"]
     }
 
     /// Test that zsh wrapper function is properly defined
-    /// Note: Completions come from fpath (~/.zfunc/_wt), not from the wrapper
+    /// Note: Completions are inline in the wrapper script (lazy loading via compdef)
     #[test]
     fn test_zsh_wrapper_function_registered() {
         let repo = TestRepo::new();
