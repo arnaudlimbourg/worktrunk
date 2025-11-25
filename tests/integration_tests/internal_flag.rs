@@ -40,11 +40,11 @@ fn test_list_with_internal_flag() {
     });
 }
 
-/// Test that `config list` command works with --internal flag
+/// Test that `config show` command works with --internal flag
 ///
-/// Config list doesn't emit directives, but should work fine with --internal.
+/// Config show doesn't emit directives, but should work fine with --internal.
 #[test]
-fn test_config_list_with_internal_flag() {
+fn test_config_show_with_internal_flag() {
     let repo = TestRepo::new();
     repo.commit("Initial commit");
     let temp_home = TempDir::new().unwrap();
@@ -66,7 +66,7 @@ fn test_config_list_with_internal_flag() {
         set_temp_home_env(&mut cmd, temp_home.path());
         cmd.arg("--internal")
             .arg("config")
-            .arg("list")
+            .arg("show")
             .current_dir(repo.root_path());
 
         assert_cmd_snapshot!(cmd);

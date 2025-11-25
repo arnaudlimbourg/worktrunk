@@ -3,10 +3,13 @@ use etcetera::base_strategy::{BaseStrategy, choose_base_strategy};
 use std::path::PathBuf;
 use worktrunk::git::{Repository, detached_head};
 use worktrunk::path::format_path_for_display;
+use worktrunk::shell::Shell;
 use worktrunk::styling::{
     AnstyleStyle, CYAN, GREEN, GREEN_BOLD, HINT, HINT_EMOJI, INFO_EMOJI, SUCCESS_EMOJI,
     format_toml, print, println,
 };
+
+use super::configure_shell::{ConfigAction, process_shell_completions, scan_shell_configs};
 
 /// Example configuration file content (displayed in help with values uncommented)
 const CONFIG_EXAMPLE: &str = include_str!("../../dev/config.example.toml");
@@ -47,7 +50,7 @@ pub fn handle_config_create() -> anyhow::Result<()> {
             format_path_for_display(&config_path)
         );
         println!();
-        println!("{HINT_EMOJI} {HINT}Use 'wt config list' to view existing configuration{HINT:#}");
+        println!("{HINT_EMOJI} {HINT}Use 'wt config show' to view existing configuration{HINT:#}");
         println!(
             "{HINT_EMOJI} {HINT}Use 'wt config create --help' for config format reference{HINT:#}"
         );
@@ -78,14 +81,18 @@ pub fn handle_config_create() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Handle the config list command
-pub fn handle_config_list() -> anyhow::Result<()> {
+/// Handle the config show command
+pub fn handle_config_show() -> anyhow::Result<()> {
     // Display global config
     display_global_config()?;
     println!();
 
     // Display project config if in a git repository
     display_project_config()?;
+    println!();
+
+    // Display shell integration status
+    display_shell_status()?;
 
     Ok(())
 }
@@ -165,6 +172,136 @@ fn display_project_config() -> anyhow::Result<()> {
     print!("{}", format_toml(&contents, ""));
 
     Ok(())
+}
+
+fn display_shell_status() -> anyhow::Result<()> {
+    use worktrunk::styling::{WARNING, WARNING_EMOJI, format_with_gutter};
+
+    let bold = AnstyleStyle::new().bold();
+    let dim = AnstyleStyle::new().dimmed();
+
+    // Use the same detection logic as `wt config shell install`
+    let scan_result = match scan_shell_configs(None, true) {
+        Ok(r) => r,
+        Err(e) => {
+            println!("{HINT_EMOJI} {HINT}Could not determine shell status: {e}{HINT:#}");
+            return Ok(());
+        }
+    };
+
+    // Get completion status for fish (bash/zsh completions are inline in init script)
+    let shells: Vec<_> = scan_result.configured.iter().map(|r| r.shell).collect();
+    let completion_results = process_shell_completions(&shells, true).unwrap_or_default();
+
+    let mut any_configured = false;
+    let mut any_not_configured = false;
+
+    // Show configured and not-configured shells (matching `config shell install` format exactly)
+    for result in &scan_result.configured {
+        let shell = result.shell;
+        let path = format_path_for_display(&result.path);
+        // Match the format from `wt config shell install`
+        let what = if matches!(shell, Shell::Bash | Shell::Zsh) {
+            "shell extension & completions"
+        } else {
+            "shell extension"
+        };
+
+        match result.action {
+            ConfigAction::AlreadyExists => {
+                any_configured = true;
+                println!(
+                    "{INFO_EMOJI} Already configured {what} for {bold}{shell}{bold:#} @ {path}"
+                );
+
+                // Check if zsh has compinit enabled (required for completions)
+                if matches!(shell, Shell::Zsh) && check_zsh_compinit_missing() {
+                    println!(
+                        "{WARNING_EMOJI} {WARNING}Completions won't work; add to ~/.zshrc before the wt line:{WARNING:#}"
+                    );
+                    print!(
+                        "{}",
+                        format_with_gutter("autoload -Uz compinit && compinit", "", None)
+                    );
+                }
+            }
+            ConfigAction::WouldAdd | ConfigAction::WouldCreate => {
+                any_not_configured = true;
+                println!(
+                    "{HINT_EMOJI} {HINT}Not configured {what} for {bold}{shell}{bold:#} @ {path}{HINT:#}"
+                );
+            }
+            _ => {} // Added/Created won't appear in dry_run mode
+        }
+    }
+
+    // Show fish completions separately (fish has separate completion files)
+    for result in &completion_results {
+        let shell = result.shell;
+        let path = format_path_for_display(&result.path);
+
+        match result.action {
+            ConfigAction::AlreadyExists => {
+                any_configured = true;
+                println!(
+                    "{INFO_EMOJI} Already configured completions for {bold}{shell}{bold:#} @ {path}"
+                );
+            }
+            ConfigAction::WouldAdd | ConfigAction::WouldCreate => {
+                any_not_configured = true;
+                println!(
+                    "{HINT_EMOJI} {HINT}Not configured completions for {bold}{shell}{bold:#} @ {path}{HINT:#}"
+                );
+            }
+            _ => {}
+        }
+    }
+
+    // Show skipped (not installed) shells
+    for (shell, path) in &scan_result.skipped {
+        let path = format_path_for_display(path);
+        println!("{dim}⚪ Skipped {shell}; {path} not found{dim:#}");
+    }
+
+    // Summary hint
+    if any_not_configured && !any_configured {
+        println!();
+        println!(
+            "{HINT_EMOJI} {HINT}Run 'wt config shell install' to enable shell integration{HINT:#}"
+        );
+    }
+
+    Ok(())
+}
+
+/// Check if zsh has compinit enabled by spawning an interactive shell
+///
+/// Returns true if compinit is NOT enabled (i.e., user needs to add it).
+/// Returns false if compinit is enabled or we can't determine (fail-safe: don't warn).
+fn check_zsh_compinit_missing() -> bool {
+    use std::process::{Command, Stdio};
+
+    // Probe zsh to check if compdef function exists (indicates compinit has run)
+    // Use --no-globalrcs to skip system files (like /etc/zshrc on macOS which enables compinit)
+    // This ensures we're checking the USER's configuration, not system defaults
+    // Suppress stderr to avoid noise like "can't change option: zle"
+    let output = Command::new("zsh")
+        .args([
+            "--no-globalrcs",
+            "-ic",
+            r#"(( $+functions[compdef] )) && echo "__WT_COMPINIT_YES__" || echo "__WT_COMPINIT_NO__""#,
+        ])
+        .stderr(Stdio::null())
+        .output()
+        .ok();
+
+    match output {
+        Some(out) => {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            stdout.contains("__WT_COMPINIT_NO__")
+        }
+        None => false, // Can't determine, don't warn
+    }
 }
 
 fn get_global_config_path() -> Option<PathBuf> {

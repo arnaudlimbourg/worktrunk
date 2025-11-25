@@ -4,7 +4,7 @@ info:
   program: wt
   args:
     - config
-    - list
+    - show
     - "--help"
   env:
     CLICOLOR_FORCE: "1"
@@ -15,8 +15,8 @@ info:
 success: true
 exit_code: 0
 ----- stdout -----
-wt config list - List configuration files & locations
-Usage: wt config list [OPTIONS]
+wt config show - Show configuration files & locations
+Usage: wt config show [OPTIONS]
 
 Options:
   -h, --help

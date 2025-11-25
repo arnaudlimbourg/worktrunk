@@ -802,7 +802,7 @@ Usage: config <COMMAND>
 Commands:
   shell          Shell integration setup
   create         Create global configuration file
-  list           List configuration files & locations
+  show           Show configuration files & locations
   refresh-cache  Refresh default branch from remote
   status         Manage branch status markers
   approvals      Manage command approvals
@@ -863,7 +863,7 @@ For OpenAI:
 llm keys set openai
 ```
 
-Use `wt config list` to view your current configuration.
+Use `wt config show` to view your current configuration.
 Docs: <https://llm.datasette.io/> | <https://github.com/sigoden/aichat>
 
 ## Configuration Files

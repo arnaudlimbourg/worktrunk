@@ -18,7 +18,7 @@ pub mod statusline;
 pub mod worktree;
 
 pub use config::{
-    handle_config_create, handle_config_list, handle_config_refresh_cache,
+    handle_config_create, handle_config_refresh_cache, handle_config_show,
     handle_config_status_set, handle_config_status_unset,
 };
 pub use configure_shell::{ConfigAction, handle_configure_shell, handle_unconfigure_shell};

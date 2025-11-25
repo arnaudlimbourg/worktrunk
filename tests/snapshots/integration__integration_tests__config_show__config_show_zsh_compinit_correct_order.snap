@@ -1,11 +1,10 @@
 ---
-source: tests/integration_tests/internal_flag.rs
+source: tests/integration_tests/config_show.rs
 info:
   program: wt
   args:
-    - "--internal"
     - config
-    - list
+    - show
   env:
     CLICOLOR_FORCE: "1"
     COLUMNS: "150"
@@ -25,9 +24,13 @@ success: true
 exit_code: 0
 ----- stdout -----
 ⚪ Global Config: [1m~/.config/worktrunk/config.toml[0m
-[107m [0m  worktree-path = [32m"../{{ main_worktree }}.{{ branch }}"[0m
+💡 [2mEmpty file (using defaults)[0m
 
 ⚪ Project Config: [1m[REPO]/.config/wt.toml[0m
 💡 [2mNot found[0m
+
+⚪ Already configured shell extension & completions for [1mzsh[0m @ ~/.zshrc
+[2m⚪ Skipped bash; ~/.bashrc not found[0m
+[2m⚪ Skipped fish; ~/.config/fish/conf.d not found[0m
 
 ----- stderr -----

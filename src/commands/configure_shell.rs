@@ -191,7 +191,10 @@ pub fn handle_configure_shell(
     })
 }
 
-fn scan_shell_configs(shell_filter: Option<Shell>, dry_run: bool) -> Result<ScanResult, String> {
+pub fn scan_shell_configs(
+    shell_filter: Option<Shell>,
+    dry_run: bool,
+) -> Result<ScanResult, String> {
     let shells = if let Some(shell) = shell_filter {
         vec![shell]
     } else {
@@ -564,7 +567,7 @@ fn prompt_yes_no() -> Result<bool, String> {
 /// Note: Bash and Zsh completions are handled via lazy loading in the init script,
 /// so we only write static completion files for Fish (which uses native lazy loading
 /// from ~/.config/fish/completions/).
-fn process_shell_completions(
+pub fn process_shell_completions(
     shells: &[Shell],
     dry_run: bool,
 ) -> Result<Vec<CompletionResult>, String> {

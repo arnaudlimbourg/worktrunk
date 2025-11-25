@@ -63,8 +63,8 @@ fn help_config_create() {
 }
 
 #[test]
-fn help_config_list() {
-    snapshot_help("help_config_list", &["config", "list", "--help"]);
+fn help_config_show() {
+    snapshot_help("help_config_show", &["config", "show", "--help"]);
 }
 
 #[test]

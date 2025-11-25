@@ -298,14 +298,14 @@ pub enum ConfigCommand {
     )]
     Create,
 
-    /// List configuration files & locations
+    /// Show configuration files & locations
     #[command(
         after_long_help = r#"Shows location and contents of global config (`~/.config/worktrunk/config.toml`)
 and project config (`.config/wt.toml`).
 
 If a config file doesn't exist, shows defaults that would be used."#
     )]
-    List,
+    Show,
 
     /// Refresh default branch from remote
     #[command(
@@ -577,7 +577,7 @@ For OpenAI:
 llm keys set openai
 ```
 
-Use `wt config list` to view your current configuration.
+Use `wt config show` to view your current configuration.
 Docs: <https://llm.datasette.io/> | <https://github.com/sigoden/aichat>
 
 ## Configuration Files
