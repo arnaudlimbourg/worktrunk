@@ -13,16 +13,18 @@ use std::process::Command;
 use std::sync::LazyLock;
 
 /// Regex to find README snapshot markers
+/// Format: <!-- ⚠️ AUTO-GENERATED from path.snap — edit source to update -->
 static SNAPSHOT_MARKER_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
-        r"(?s)<!-- README:snapshot:([^\s]+) -->\n```\w*\n(?:\$ [^\n]+\n)?(.*?)```\n<!-- README:end -->",
+        r"(?s)<!-- ⚠️ AUTO-GENERATED from ([^\s]+\.snap) — edit source to update -->\n+```\w*\n(?:\$ [^\n]+\n)?(.*?)```\n+<!-- END AUTO-GENERATED -->",
     )
     .unwrap()
 });
 
 /// Regex to find README help markers (no wrapper - content is rendered markdown)
+/// Format: <!-- ⚠️ AUTO-GENERATED from `wt command --help-md` — edit source to update -->
 static HELP_MARKER_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?s)<!-- README:help:(.+?) -->\n(.*?)\n<!-- README:end -->").unwrap()
+    Regex::new(r"(?s)<!-- ⚠️ AUTO-GENERATED from `([^`]+)` — edit source to update -->\n+(.*?)\n+<!-- END AUTO-GENERATED -->").unwrap()
 });
 
 /// Regex to strip ANSI escape codes (actual escape sequences)
@@ -261,19 +263,19 @@ fn update_readme_section(
         };
 
         if current != expected {
-            // Build replacement
+            // Build replacement with new AUTO-GENERATED format
             // Include blank lines after opening marker and before closing marker
             // to match markdown formatter expectations
             let replacement = if wrapper.0.is_empty() {
                 // No wrapper (help sections - rendered markdown)
                 format!(
-                    "<!-- README:help:{} -->\n\n{}\n\n<!-- README:end -->",
+                    "<!-- ⚠️ AUTO-GENERATED from `{}` — edit source to update -->\n\n{}\n\n<!-- END AUTO-GENERATED -->",
                     id, expected
                 )
             } else {
                 // With wrapper (snapshot sections)
                 format!(
-                    "<!-- README:snapshot:{} -->\n\n{}\n{}\n{}\n\n<!-- README:end -->",
+                    "<!-- ⚠️ AUTO-GENERATED from {} — edit source to update -->\n\n{}\n{}\n{}\n\n<!-- END AUTO-GENERATED -->",
                     id, wrapper.0, expected, wrapper.1
                 )
             };

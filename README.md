@@ -30,20 +30,20 @@ List worktrees, create a worktree, make a trivial change, merge the change:
 
 **Create a worktree:**
 
-<!-- README:snapshot:tests/integration_tests/snapshots/integration__integration_tests__shell_wrapper__tests__readme_example_simple_switch.snap -->
+<!-- ⚠️ AUTO-GENERATED from tests/integration_tests/snapshots/integration__integration_tests__shell_wrapper__tests__readme_example_simple_switch.snap — edit source to update -->
 
 ```console
 $ wt switch --create fix-auth
 ✅ Created new worktree for fix-auth from main at ../repo.fix-auth
 ```
 
-<!-- README:end -->
+<!-- END AUTO-GENERATED -->
 
 ...then do work. When ready:
 
 **Merge it:**
 
-<!-- README:snapshot:tests/snapshots/integration__integration_tests__merge__readme_example_simple.snap -->
+<!-- ⚠️ AUTO-GENERATED from tests/snapshots/integration__integration_tests__merge__readme_example_simple.snap — edit source to update -->
 
 ```console
 $ wt merge
@@ -55,13 +55,13 @@ $ wt merge
 🔄 Removing fix-auth worktree & branch in background
 ```
 
-<!-- README:end -->
+<!-- END AUTO-GENERATED -->
 
 See [`wt merge`](#wt-merge) for all options.
 
 **List worktrees:**
 
-<!-- README:snapshot:tests/snapshots/integration__integration_tests__list__readme_example_simple_list.snap -->
+<!-- ⚠️ AUTO-GENERATED from tests/snapshots/integration__integration_tests__list__readme_example_simple_list.snap — edit source to update -->
 
 ```console
 $ wt list
@@ -73,7 +73,7 @@ $ wt list
 ⚪ Showing 3 worktrees, 1 with changes, 2 ahead
 ```
 
-<!-- README:end -->
+<!-- END AUTO-GENERATED -->
 
 See [`wt list`](#wt-list) for all options.
 
@@ -125,7 +125,7 @@ args = ["-m", "claude-haiku-4-5-20251001"]
 
 Then `wt merge` will generate commit messages automatically:
 
-<!-- README:snapshot:tests/snapshots/integration__integration_tests__merge__readme_example_complex.snap -->
+<!-- ⚠️ AUTO-GENERATED from tests/snapshots/integration__integration_tests__merge__readme_example_complex.snap — edit source to update -->
 
 ```console
 $ wt merge
@@ -157,7 +157,7 @@ $ wt merge
    cargo install --path .
 ```
 
-<!-- README:end -->
+<!-- END AUTO-GENERATED -->
 
 Use `wt step commit` to commit changes with LLM commit messages without the full merge workflow.
 
@@ -190,7 +190,7 @@ Automate tasks at different points in the worktree lifecycle. Configure hooks in
 "lint" = "uv run ruff check"
 ```
 
-<!-- README:snapshot:tests/integration_tests/snapshots/integration__integration_tests__shell_wrapper__tests__readme_example_hooks_post_create.snap -->
+<!-- ⚠️ AUTO-GENERATED from tests/integration_tests/snapshots/integration__integration_tests__shell_wrapper__tests__readme_example_hooks_post_create.snap — edit source to update -->
 
 ```console
 $ wt switch --create feature-x
@@ -204,12 +204,12 @@ $ wt switch --create feature-x
    uv run dev
 ```
 
-<!-- README:end -->
+<!-- END AUTO-GENERATED -->
 
 <details>
 <summary>Merging with pre-merge hooks</summary>
 
-<!-- README:snapshot:tests/integration_tests/snapshots/integration__integration_tests__shell_wrapper__tests__readme_example_hooks_pre_merge.snap -->
+<!-- ⚠️ AUTO-GENERATED from tests/integration_tests/snapshots/integration__integration_tests__shell_wrapper__tests__readme_example_hooks_pre_merge.snap — edit source to update -->
 
 ```console
 $ wt merge
@@ -246,7 +246,7 @@ All checks passed!
 🔄 Removing feature-auth worktree & branch in background
 ```
 
-<!-- README:end -->
+<!-- END AUTO-GENERATED -->
 
 </details>
 
@@ -326,7 +326,7 @@ instead of duplicating logic:
 <details>
 <summary><strong><code>wt switch [branch]</code></strong> - Switch to existing worktree or create a new one</summary>
 
-<!-- README:help:wt switch --help-md -->
+<!-- ⚠️ AUTO-GENERATED from `wt switch --help-md` — edit source to update -->
 
 ```text
 wt switch — Switch to a worktree
@@ -449,14 +449,14 @@ wt switch --create bugfix --base=@       # Branch from current HEAD
 wt remove @                              # Remove current worktree
 ```
 
-<!-- README:end -->
+<!-- END AUTO-GENERATED -->
 
 </details>
 
 <details id="wt-merge">
 <summary><strong><code>wt merge [target]</code></strong> - Merge, push, and cleanup</summary>
 
-<!-- README:help:wt merge --help-md -->
+<!-- ⚠️ AUTO-GENERATED from `wt merge --help-md` — edit source to update -->
 
 ```text
 wt merge — Merge worktree into target branch
@@ -560,14 +560,14 @@ Skip all hooks:
 wt merge --no-verify
 ```
 
-<!-- README:end -->
+<!-- END AUTO-GENERATED -->
 
 </details>
 
 <details>
 <summary><strong><code>wt remove [worktree]</code></strong> - Remove worktree and branch</summary>
 
-<!-- README:help:wt remove --help-md -->
+<!-- ⚠️ AUTO-GENERATED from `wt remove --help-md` — edit source to update -->
 
 ```text
 wt remove — Remove worktree and branch
@@ -654,14 +654,14 @@ Switch to default in main:
 wt remove  # (when already in main worktree)
 ```
 
-<!-- README:end -->
+<!-- END AUTO-GENERATED -->
 
 </details>
 
 <details id="wt-list">
 <summary><strong><code>wt list</code></strong> - Show all worktrees and branches</summary>
 
-<!-- README:help:wt list --help-md -->
+<!-- ⚠️ AUTO-GENERATED from `wt list --help-md` — edit source to update -->
 
 ```text
 wt list — List worktrees and optionally branches
@@ -786,14 +786,14 @@ jq '.[] | select(.locked != null)'
 jq '.[] | select(.is_current == true)'
 ```
 
-<!-- README:end -->
+<!-- END AUTO-GENERATED -->
 
 </details>
 
 <details>
 <summary><strong><code>wt config</code></strong> - Manage configuration</summary>
 
-<!-- README:help:wt config --help-md -->
+<!-- ⚠️ AUTO-GENERATED from `wt config --help-md` — edit source to update -->
 
 ```text
 wt config — Manage configuration and shell integration
@@ -878,14 +878,14 @@ Docs: <https://llm.datasette.io/> | <https://github.com/sigoden/aichat>
 - Location: `.config/wt.toml` in repository root
 - Contains: post-create, post-start, pre-commit, pre-merge, post-merge hooks
 
-<!-- README:end -->
+<!-- END AUTO-GENERATED -->
 
 </details>
 
 <details>
 <summary><strong><code>wt step</code></strong> - Building blocks for workflows</summary>
 
-<!-- README:help:wt step --help-md -->
+<!-- ⚠️ AUTO-GENERATED from `wt step --help-md` — edit source to update -->
 
 ```text
 wt step — Workflow building blocks
@@ -908,7 +908,7 @@ Options:
           Print help
 ```
 
-<!-- README:end -->
+<!-- END AUTO-GENERATED -->
 
 </details>
 
@@ -928,7 +928,7 @@ git config worktrunk.status.feature-x "💬"
 
 **Status appears in the Status column:**
 
-<!-- README:snapshot:tests/snapshots/integration__integration_tests__list__with_user_status.snap -->
+<!-- ⚠️ AUTO-GENERATED from tests/snapshots/integration__integration_tests__list__with_user_status.snap — edit source to update -->
 
 ```console
 $ wt list
@@ -942,7 +942,7 @@ $ wt list
 ⚪ Showing 5 worktrees, 1 with changes
 ```
 
-<!-- README:end -->
+<!-- END AUTO-GENERATED -->
 
 The custom emoji appears directly after the git status symbols.
 
@@ -957,7 +957,7 @@ When using Claude:
 - Changes to `💬` when Claude needs input (waiting for permission or idle)
 - Clears the status completely when the session ends
 
-<!-- README:snapshot:tests/snapshots/integration__integration_tests__list__with_user_status.snap -->
+<!-- ⚠️ AUTO-GENERATED from tests/snapshots/integration__integration_tests__list__with_user_status.snap — edit source to update -->
 
 ```console
 $ wt list
@@ -971,7 +971,7 @@ $ wt list
 ⚪ Showing 5 worktrees, 1 with changes
 ```
 
-<!-- README:end -->
+<!-- END AUTO-GENERATED -->
 
 **How it works:**
 
@@ -1008,24 +1008,24 @@ Commands from project hooks and LLM configuration require approval on first run.
 
 **Example approval prompt:**
 
-<!-- README:snapshot:tests/integration_tests/snapshots/integration__integration_tests__shell_wrapper__tests__readme_example_approval_prompt.snap -->
+<!-- ⚠️ AUTO-GENERATED from tests/integration_tests/snapshots/integration__integration_tests__shell_wrapper__tests__readme_example_approval_prompt.snap — edit source to update -->
 
 ```
 🟡 test-repo needs approval to execute 3 commands:
 
-🔄 post-create install:
+⚪ post-create install:
    echo 'Installing dependencies...'
 
-🔄 post-create build:
+⚪ post-create build:
    echo 'Building project...'
 
-🔄 post-create test:
+⚪ post-create test:
    echo 'Running tests...'
 
 💡 Allow and remember? [y/N]
 ```
 
-<!-- README:end -->
+<!-- END AUTO-GENERATED -->
 
 Use `--force` to bypass prompts (useful for CI/automation).
 
