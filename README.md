@@ -287,7 +287,7 @@ launches Claude Code in that directory.
 messages during merge. See [LLM Commit Messages](#llm-commit-messages).
 
 **Automate startup with hooks** — Use `post-create` for environment
-setup, `post-start` for non-blocking tasks. For example, the worktrunk project uses
+setup, `post-start` for non-blocking tasks. For example, the Worktrunk project uses
 `post-start` to bootstrap build caches from main via copy-on-write,
 eliminating cold compiles (see [`worktrunk`'s config](.config/wt.toml)). See
 [Project Hooks](#project-hooks) for details.
