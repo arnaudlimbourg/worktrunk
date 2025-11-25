@@ -417,6 +417,118 @@ fn exec_in_pty_interactive(
     (normalize_newlines(&buf), status.exit_code() as i32)
 }
 
+/// Execute bash in true interactive mode by writing commands to the PTY
+///
+/// Unlike `exec_in_pty_interactive` which uses `bash -i -c "script"`, this function
+/// starts bash without `-c` and writes commands directly to the PTY. This captures
+/// job control notifications (`[1]+ Done`) that only appear at prompt-time in bash.
+///
+/// The setup_script is written to a temp file and sourced. Then final_cmd is run
+/// directly at the prompt (where job notifications appear).
+#[cfg(test)]
+fn exec_bash_truly_interactive(
+    setup_script: &str,
+    final_cmd: &str,
+    working_dir: &std::path::Path,
+    env_vars: &[(&str, &str)],
+) -> (String, i32) {
+    use portable_pty::{CommandBuilder, PtySize, native_pty_system};
+    use std::io::{Read, Write};
+    use std::thread;
+    use std::time::Duration;
+
+    // Write setup script to a temp file
+    let tmp_dir = tempfile::tempdir().unwrap();
+    let script_path = tmp_dir.path().join("setup.sh");
+    fs::write(&script_path, setup_script).unwrap();
+
+    let pty_system = native_pty_system();
+    let pair = pty_system
+        .openpty(PtySize {
+            rows: 48,
+            cols: 200,
+            pixel_width: 0,
+            pixel_height: 0,
+        })
+        .unwrap();
+
+    // Spawn bash in true interactive mode using env to pass flags
+    // (portable_pty's CommandBuilder can have issues with flag parsing)
+    let mut cmd = CommandBuilder::new("env");
+    cmd.arg("bash");
+    cmd.arg("--norc");
+    cmd.arg("--noprofile");
+    cmd.arg("-i");
+
+    // Clear inherited environment for test isolation
+    cmd.env_clear();
+
+    // Set minimal required environment for shells to function
+    cmd.env(
+        "HOME",
+        home::home_dir().unwrap().to_string_lossy().to_string(),
+    );
+    cmd.env(
+        "PATH",
+        std::env::var("PATH").unwrap_or_else(|_| "/usr/bin:/bin".to_string()),
+    );
+    cmd.env("USER", "testuser");
+    cmd.env("SHELL", "bash");
+
+    // Simple prompt to make output cleaner ($ followed by space)
+    cmd.env("PS1", "$ ");
+    cmd.cwd(working_dir);
+
+    // Add test-specific environment variables
+    for (key, value) in env_vars {
+        cmd.env(key, value);
+    }
+
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    drop(pair.slave); // Close slave in parent
+
+    // Get both reader and writer
+    let reader = pair.master.try_clone_reader().unwrap();
+    let mut writer = pair.master.take_writer().unwrap();
+
+    // Give bash time to start up. Unlike async operations, bash startup is deterministic
+    // and fast (<50ms typical), so a fixed sleep is acceptable here. We use 200ms for CI margin.
+    thread::sleep(Duration::from_millis(200));
+
+    // Write setup and command (but not exit yet)
+    let commands = format!("source '{}'\n{}\n", script_path.display(), final_cmd);
+    writer.write_all(commands.as_bytes()).unwrap();
+    writer.flush().unwrap();
+
+    // Wait for the command to complete and bash to show job notifications.
+    // The `[1]+ Done` message appears when bash prepares to show the next prompt.
+    // Without this delay, bash might receive `exit` before it reports job completion.
+    thread::sleep(Duration::from_millis(500));
+
+    // Now send exit
+    writer.write_all(b"exit\n").unwrap();
+    writer.flush().unwrap();
+    drop(writer); // Close writer after sending all commands
+
+    // Read output in a thread. This is necessary because bash outputs the `[1]+ Done`
+    // notification between command completion and the next prompt, and we need to
+    // capture that output while waiting for the child to exit.
+    let reader_thread = thread::spawn(move || {
+        let mut reader = reader;
+        let mut buf = String::new();
+        reader.read_to_string(&mut buf).unwrap();
+        buf
+    });
+
+    // Wait for bash to exit
+    let status = child.wait().unwrap();
+
+    // Get the captured output
+    let buf = reader_thread.join().unwrap();
+
+    (normalize_newlines(&buf), status.exit_code() as i32)
+}
+
 /// Execute a command through a shell wrapper
 ///
 /// This simulates what actually happens when users run `wt switch`, etc. in their shell:
@@ -1556,11 +1668,17 @@ approved-commands = ["echo 'background job'"]
         );
     }
 
-    /// Test bash background job behavior
-    /// Note: Bash shows [1] + done at the next prompt, which we can't fully suppress
-    /// in functions. This test documents the behavior.
+    /// Test that bash job control messages are suppressed in true interactive mode
+    ///
+    /// Bash shows `[1]+ Done` notifications at prompt-time, not during script execution.
+    /// To detect if they leak, we use `exec_bash_truly_interactive` which runs bash without
+    /// `-c` and writes commands to the PTY, triggering prompts where notifications appear.
+    ///
+    /// The shell wrapper suppresses these via two mechanisms (see posix_directives.sh):
+    /// - START notifications (`[1] 12345`): stderr redirection around `&`
+    /// - DONE notifications (`[1]+ Done`): `set +m` before backgrounding
     #[test]
-    fn test_bash_job_control_behavior() {
+    fn test_bash_job_control_suppression() {
         let repo = TestRepo::new();
         repo.commit("Initial commit");
 
@@ -1586,19 +1704,55 @@ approved-commands = ["echo 'bash background'"]
         )
         .unwrap();
 
-        let output = exec_through_wrapper("bash", &repo, "switch", &["--create", "bash-job-test"]);
+        // Build the setup script that defines the wt function
+        let wt_bin = get_cargo_bin("wt");
+        let wrapper_script = generate_wrapper(&repo, "bash");
+        let setup_script = format!(
+            "export WORKTRUNK_BIN='{}'\n\
+             export WORKTRUNK_CONFIG_PATH='{}'\n\
+             export CLICOLOR_FORCE=1\n\
+             {}",
+            wt_bin.display(),
+            repo.test_config_path().display(),
+            wrapper_script
+        );
 
-        assert_eq!(output.exit_code, 0, "Command should succeed");
-        output.assert_no_directive_leaks();
+        let config_path = repo.test_config_path().to_string_lossy().to_string();
+        let env_vars: Vec<(&str, &str)> = vec![
+            ("CLICOLOR_FORCE", "1"),
+            ("WORKTRUNK_CONFIG_PATH", &config_path),
+            ("TERM", "xterm"),
+            ("GIT_AUTHOR_NAME", "Test User"),
+            ("GIT_AUTHOR_EMAIL", "test@example.com"),
+            ("GIT_COMMITTER_NAME", "Test User"),
+            ("GIT_COMMITTER_EMAIL", "test@example.com"),
+        ];
 
-        // Bash may show job notifications - this test documents current behavior
-        // The key is that directives don't leak (checked above)
-        // Job notifications at next prompt are acceptable (less intrusive than inline)
+        // Run wt at the prompt (where job notifications appear)
+        let (output, exit_code) = exec_bash_truly_interactive(
+            &setup_script,
+            "wt switch --create bash-job-test",
+            repo.root_path(),
+            &env_vars,
+        );
+
+        assert_eq!(exit_code, 0, "Command should succeed.\nOutput:\n{}", output);
 
         // Verify the command completed successfully
         assert!(
-            output.combined.contains("Created new worktree"),
-            "Should show success message"
+            output.contains("Created new worktree"),
+            "Should show success message.\nOutput:\n{}",
+            output
+        );
+
+        // Verify no job control messages leak through.
+        // The shell wrapper suppresses both START notifications (`[1] 12345` via stderr
+        // redirection) and DONE notifications (`[1]+ Done` via `set +m`).
+        // This test uses true interactive mode to ensure we'd see them if they leaked.
+        assert!(
+            !JOB_CONTROL_REGEX.is_match(&output),
+            "Output contains job control messages (e.g., '[1] 12345' or '[1]+ Done'):\n{}",
+            output
         );
     }
 
