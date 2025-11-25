@@ -292,10 +292,9 @@ setup, `post-start` for non-blocking tasks. For example, the Worktrunk project u
 eliminating cold compiles (see [`worktrunk`'s config](.config/wt.toml)). See
 [Project Hooks](#project-hooks) for details.
 
-**Use `pre-merge` as a "local CI"** — Running `wt merge` with pre-merge
-hooks is like having a local CI pipeline. Tests run after squashing but before
-pushing to main, and failures abort the merge. This protects `main` from one
-agent forgetting to run tests, without having to babysit it.
+**Use `pre-merge` for auto-merge with local CI** — `wt merge` runs pre-merge
+hooks after squashing, before merging to main. Failures abort. This protects
+`main` when agents forget to test, without having to babysit them.
 
 **View Claude Code status from `wt list`** — The Claude Code integration shows
 which branches have active sessions in `wt list`. When the agent is working, the
