@@ -400,7 +400,7 @@ fn test_permission_error_prevents_save() {
     // In the actual code (approve_command_batch), when this error occurs:
     // 1. It's caught with `if let Err(e) = fresh_config.save()`
     // 2. Warning is printed: "🟡 Failed to save command approval: {error}"
-    // 3. Hint is printed: "💡 You will be prompted again next time."
+    // 3. Hint is printed: "💡 Approval will be requested again next time."
     // 4. Function returns Ok(true) - execution continues!
     //
     // The approval succeeds (commands execute) even though saving failed.

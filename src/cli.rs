@@ -142,7 +142,7 @@ pub enum ConfigShellCommand {
     /// Generate shell integration code
     #[command(after_long_help = r#"## Manual Setup
 
-Add one line to your shell config:
+Add one line to the shell config:
 
 Bash (~/.bashrc):
 ```console
@@ -161,7 +161,7 @@ eval "$(wt config shell init zsh)"
 
 ## Auto Setup
 
-Use `wt config shell install` to automatically add to your shell config."#)]
+Use `wt config shell install` to add to the shell config automatically."#)]
     Init {
         /// Shell to generate code for
         #[arg(value_enum)]
@@ -511,7 +511,7 @@ pub enum Commands {
    wt config shell install
    ```
 
-   Or manually add to your shell config:
+   Or manually add to the shell config:
 
    ```console
    eval "$(wt config shell init bash)"
@@ -552,7 +552,7 @@ For OpenAI:
 llm keys set openai
 ```
 
-Use `wt config show` to view your current configuration.
+Use `wt config show` to view the current configuration.
 Docs: <https://llm.datasette.io/> | <https://github.com/sigoden/aichat>
 
 ## Configuration Files
@@ -843,7 +843,7 @@ Removes worktree directory, git metadata, and branch. Requires clean working tre
 
 ### Background removal (default)
 
-- Returns immediately so you can continue working
+- Returns immediately for continued work
 - Logs: `.git/wt-logs/{branch}-remove.log`
 - Use `--no-background` for foreground (blocking)
 

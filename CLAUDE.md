@@ -94,6 +94,20 @@ Output messages should acknowledge user-supplied arguments (flags, options, valu
 "Created new worktree for feature at /path/to/worktree"
 ```
 
+**Avoid second-person ("you", "your"):** Messages should describe actions and state, not address the user directly.
+
+```rust
+// ❌ BAD - second-person
+"Use 'wt merge' to rebase your changes onto main"
+// ✅ GOOD - describes the action
+"Use 'wt merge' to rebase onto main"
+
+// ❌ BAD - second-person
+"Add one line to your shell config"
+// ✅ GOOD - refers to the thing
+"Add one line to the shell config"
+```
+
 **Avoid redundant parenthesized content:** Parenthesized text should add new information, not restate what's already said.
 
 ```rust

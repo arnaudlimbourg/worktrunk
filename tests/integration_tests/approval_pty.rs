@@ -253,8 +253,8 @@ fn test_approval_prompt_permission_error() {
         "Should show permission error warning"
     );
     assert!(
-        normalized.contains("You will be prompted again next time"),
-        "Should show hint about being prompted again"
+        normalized.contains("Approval will be requested again next time"),
+        "Should show hint about approval being requested again"
     );
     assert!(
         normalized.contains("test command"),

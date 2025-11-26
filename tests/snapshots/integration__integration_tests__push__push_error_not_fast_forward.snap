@@ -17,6 +17,7 @@ info:
     LANG: C
     LC_ALL: C
     SOURCE_DATE_EPOCH: "1761609600"
+    WORKTRUNK_BIN: ""
     WORKTRUNK_CONFIG_PATH: "[TEST_CONFIG]"
 ---
 success: false
@@ -25,6 +26,6 @@ exit_code: 1
 ❌ [31mCan't push to local [1m[31mmain[0m[31m branch: it has newer commits[0m
 [107m [0m  * [SHA] Main commit
 
-💡 [2mUse 'wt merge' to rebase your changes onto main[0m
+💡 [2mUse 'wt merge' to rebase onto main[0m
 
 ----- stderr -----

@@ -63,7 +63,7 @@ Removes worktree directory, git metadata, and branch. Requires clean working tre
 
 ### Background removal (default)
 
-- Returns immediately so you can continue working
+- Returns immediately for continued work
 - Logs: [2m.git/wt-logs/{branch}-remove.log[0m
 - Use [2m--no-background[0m for foreground (blocking)
 

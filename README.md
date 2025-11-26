@@ -580,7 +580,7 @@ Removes worktree directory, git metadata, and branch. Requires clean working tre
 
 ### Background removal (default)
 
-- Returns immediately so you can continue working
+- Returns immediately for continued work
 - Logs: `.git/wt-logs/{branch}-remove.log`
 - Use `--no-background` for foreground (blocking)
 
@@ -792,7 +792,7 @@ Options:
    wt config shell install
    ```
 
-   Or manually add to your shell config:
+   Or manually add to the shell config:
 
    ```console
    eval "$(wt config shell init bash)"
@@ -833,7 +833,7 @@ For OpenAI:
 llm keys set openai
 ```
 
-Use `wt config show` to view your current configuration.
+Use `wt config show` to view the current configuration.
 Docs: <https://llm.datasette.io/> | <https://github.com/sigoden/aichat>
 
 ## Configuration Files

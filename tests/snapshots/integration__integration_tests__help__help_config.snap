@@ -48,7 +48,7 @@ Global Options:
 
   [2m   wt config shell install[0m
 
-   Or manually add to your shell config:
+   Or manually add to the shell config:
 
   [2m   eval "$(wt config shell init bash)"[0m
 
@@ -79,7 +79,7 @@ For OpenAI:
 
   [2mllm keys set openai[0m
 
-Use [2mwt config show[0m to view your current configuration.
+Use [2mwt config show[0m to view the current configuration.
 Docs: <https://llm.datasette.io/> | <https://github.com/sigoden/aichat>
 
 [32mConfiguration Files[0m

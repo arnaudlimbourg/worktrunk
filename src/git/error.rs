@@ -187,7 +187,7 @@ pub fn not_fast_forward(target_branch: &str, commits_formatted: &str) -> anyhow:
     }
 
     msg.push_str(&format!(
-        "\n{HINT_EMOJI} {HINT}Use 'wt merge' to rebase your changes onto {target_branch}{HINT:#}"
+        "\n{HINT_EMOJI} {HINT}Use 'wt merge' to rebase onto {target_branch}{HINT:#}"
     ));
     anyhow::anyhow!("{}", msg)
 }
