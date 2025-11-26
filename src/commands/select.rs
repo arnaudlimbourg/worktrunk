@@ -549,8 +549,21 @@ pub fn handle_select(is_directive_mode: bool) -> anyhow::Result<()> {
         .no_info(true) // Hide info line (matched/total counter)
         .preview(Some("".to_string())) // Enable preview (empty string means use SkimItem::preview())
         .preview_window("right:50%".to_string())
+        // Color scheme using fzf's --color=light values: dark text (237) on light gray bg (251)
+        //
+        // Terminal color compatibility is tricky:
+        // - current_bg:254 (original): too bright on dark terminals, washes out text
+        // - current_bg:236 (fzf dark): too dark on light terminals, jarring contrast
+        // - current_bg:251 + current:-1: light bg works on both, but unstyled text
+        //   becomes unreadable on dark terminals (light-on-light)
+        // - current_bg:251 + current:237: fzf's light theme, best compromise
+        //
+        // The light theme works universally because:
+        // - On dark terminals: light gray highlight stands out clearly
+        // - On light terminals: light gray is subtle but visible
+        // - Dark text (237) ensures readability regardless of terminal theme
         .color(Some(
-            "fg:-1,bg:-1,header:-1,matched:108,current:-1,current_bg:254,current_match:108"
+            "fg:-1,bg:-1,header:-1,matched:108,current:237,current_bg:251,current_match:108"
                 .to_string(),
         ))
         .bind(vec![
