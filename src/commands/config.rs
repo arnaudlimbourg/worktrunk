@@ -2,12 +2,13 @@ use anyhow::Context;
 use etcetera::base_strategy::{BaseStrategy, choose_base_strategy};
 use std::fmt::Write as _;
 use std::path::PathBuf;
+use worktrunk::config::{find_unknown_project_keys, find_unknown_user_keys};
 use worktrunk::git::Repository;
 use worktrunk::path::format_path_for_display;
 use worktrunk::shell::Shell;
 use worktrunk::styling::{
-    AnstyleStyle, CYAN, GREEN, GREEN_BOLD, HINT, HINT_EMOJI, INFO_EMOJI, WARNING, WARNING_EMOJI,
-    format_toml, format_with_gutter,
+    AnstyleStyle, CYAN, GREEN, GREEN_BOLD, HINT, HINT_EMOJI, INFO_EMOJI, WARNING, WARNING_BOLD,
+    WARNING_EMOJI, format_toml, format_with_gutter,
 };
 
 use super::configure_shell::{ConfigAction, scan_shell_configs};
@@ -144,9 +145,23 @@ fn render_global_config(out: &mut String) -> anyhow::Result<()> {
         return Ok(());
     }
 
+    // Check for unknown keys and warn
+    warn_unknown_keys(out, &find_unknown_user_keys(&contents))?;
+
     // Display TOML with syntax highlighting (gutter at column 0)
     write!(out, "{}", format_toml(&contents, ""))?;
 
+    Ok(())
+}
+
+/// Write warnings for any unknown config keys
+fn warn_unknown_keys(out: &mut String, unknown_keys: &[String]) -> anyhow::Result<()> {
+    for key in unknown_keys {
+        writeln!(
+            out,
+            "{WARNING_EMOJI} {WARNING}Unknown key {WARNING_BOLD}{key}{WARNING_BOLD:#}{WARNING} will be ignored{WARNING:#}"
+        )?;
+    }
     Ok(())
 }
 
@@ -187,6 +202,9 @@ fn render_project_config(out: &mut String) -> anyhow::Result<()> {
         writeln!(out, "{HINT_EMOJI} {HINT}Empty file{HINT:#}")?;
         return Ok(());
     }
+
+    // Check for unknown keys and warn
+    warn_unknown_keys(out, &find_unknown_project_keys(&contents))?;
 
     // Display TOML with syntax highlighting (gutter at column 0)
     write!(out, "{}", format_toml(&contents, ""))?;

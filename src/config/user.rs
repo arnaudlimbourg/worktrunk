@@ -10,6 +10,18 @@ use std::sync::OnceLock;
 #[cfg(not(test))]
 use etcetera::base_strategy::{BaseStrategy, choose_base_strategy};
 
+/// Valid top-level keys for user config
+// TODO: Replace with #[serde(flatten)] HashMap<String, toml::Value> on the struct
+// to capture unknown fields automatically during deserialization
+const VALID_USER_KEYS: &[&str] = &[
+    "worktree-path",
+    "commit-generation",
+    "projects",
+    "list",
+    "commit",
+    "merge",
+];
+
 /// Global override for config path, set via --config CLI flag
 static CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
 
@@ -523,4 +535,19 @@ pub fn get_config_path() -> Option<PathBuf> {
         let strategy = choose_base_strategy().ok()?;
         Some(strategy.config_dir().join("worktrunk").join("config.toml"))
     }
+}
+
+/// Find unknown keys in user config TOML content
+///
+/// Returns a list of unrecognized top-level keys that will be silently ignored.
+pub fn find_unknown_keys(contents: &str) -> Vec<String> {
+    let Ok(table) = contents.parse::<toml::Table>() else {
+        return vec![];
+    };
+
+    table
+        .keys()
+        .filter(|key| !VALID_USER_KEYS.contains(&key.as_str()))
+        .cloned()
+        .collect()
 }

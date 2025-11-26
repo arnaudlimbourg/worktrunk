@@ -46,10 +46,10 @@ mod user;
 // Re-export public types
 pub use commands::{Command, CommandConfig, CommandPhase};
 pub use expansion::{expand_command_template, expand_template};
-pub use project::ProjectConfig;
+pub use project::{ProjectConfig, find_unknown_keys as find_unknown_project_keys};
 pub use user::{
-    CommitGenerationConfig, StageMode, UserProjectConfig, WorktrunkConfig, get_config_path,
-    set_config_path,
+    CommitGenerationConfig, StageMode, UserProjectConfig, WorktrunkConfig,
+    find_unknown_keys as find_unknown_user_keys, get_config_path, set_config_path,
 };
 
 #[cfg(test)]
@@ -748,5 +748,52 @@ squash-template-file = "~/file.txt"
         let toml = toml::to_string(&config).unwrap();
         assert!(toml.contains("llm"));
         assert!(toml.contains("template"));
+    }
+
+    #[test]
+    fn test_find_unknown_project_keys_with_typo() {
+        let toml_str = "[post-merge-command]\ndeploy = \"task deploy\"";
+        let unknown = find_unknown_project_keys(toml_str);
+        assert_eq!(unknown, vec!["post-merge-command"]);
+    }
+
+    #[test]
+    fn test_find_unknown_project_keys_valid() {
+        let toml_str =
+            "[post-merge]\ndeploy = \"task deploy\"\n\n[pre-merge]\ntest = \"cargo test\"";
+        let unknown = find_unknown_project_keys(toml_str);
+        assert!(unknown.is_empty());
+    }
+
+    #[test]
+    fn test_find_unknown_project_keys_multiple() {
+        let toml_str = "[post-merge-command]\ndeploy = \"task deploy\"\n\n[after-create]\nsetup = \"npm install\"";
+        let unknown = find_unknown_project_keys(toml_str);
+        assert_eq!(unknown.len(), 2);
+        assert!(unknown.contains(&"post-merge-command".to_string()));
+        assert!(unknown.contains(&"after-create".to_string()));
+    }
+
+    #[test]
+    fn test_find_unknown_user_keys_with_typo() {
+        let toml_str = "worktree-path = \"../test\"\n\n[commit-gen]\ncommand = \"llm\"";
+        let unknown = find_unknown_user_keys(toml_str);
+        assert_eq!(unknown, vec!["commit-gen"]);
+    }
+
+    #[test]
+    fn test_find_unknown_user_keys_valid() {
+        let toml_str = "worktree-path = \"../test\"\n\n[commit-generation]\ncommand = \"llm\"\n\n[list]\nfull = true";
+        let unknown = find_unknown_user_keys(toml_str);
+        assert!(unknown.is_empty());
+    }
+
+    #[test]
+    fn test_find_unknown_keys_invalid_toml() {
+        let toml = "this is not valid toml {{{";
+        let unknown_project = find_unknown_project_keys(toml);
+        let unknown_user = find_unknown_user_keys(toml);
+        assert!(unknown_project.is_empty());
+        assert!(unknown_user.is_empty());
     }
 }

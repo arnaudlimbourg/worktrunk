@@ -19,9 +19,8 @@ fn test_config_show_with_project_config() {
         global_config_dir.join("config.toml"),
         r#"worktree-path = "../{{ main_worktree }}.{{ branch }}"
 
-[[approved-commands]]
-project = "test-project"
-command = "npm install"
+[projects."test-project"]
+approved-commands = ["npm install"]
 "#,
     )
     .unwrap();
@@ -55,9 +54,8 @@ server = "npm run dev"
         ⚪ Global Config: [1m~/.config/worktrunk/config.toml[0m
         [107m [0m  worktree-path = [32m"../{{ main_worktree }}.{{ branch }}"[0m
         [107m [0m  
-        [107m [0m  [1m[36m[[approved-commands]][0m
-        [107m [0m  project = [32m"test-project"[0m
-        [107m [0m  command = [32m"npm install"[0m
+        [107m [0m  [1m[36m[projects."test-project"][0m
+        [107m [0m  approved-commands = [[32m"npm install"[0m]
 
         ⚪ Project Config: [1m[REPO]/.config/wt.toml[0m
         [107m [0m  post-create = [32m"npm install"[0m
@@ -258,5 +256,102 @@ if command -v wt >/dev/null 2>&1; then eval "$(command wt config shell init zsh)
         cmd.env("WT_ASSUME_COMPINIT", "1"); // Bypass zsh subprocess check (unreliable on CI)
 
         assert_cmd_snapshot!(cmd);
+    });
+}
+
+/// Test `wt config show` warns about unknown/misspelled keys in project config
+#[test]
+fn test_config_show_warns_unknown_project_keys() {
+    let repo = TestRepo::new();
+    let temp_home = TempDir::new().unwrap();
+
+    // Create global config
+    let global_config_dir = temp_home.path().join(".config").join("worktrunk");
+    fs::create_dir_all(&global_config_dir).unwrap();
+    fs::write(
+        global_config_dir.join("config.toml"),
+        "worktree-path = \"../{{ main_worktree }}.{{ branch }}\"",
+    )
+    .unwrap();
+
+    // Create project config with typo: post-merge-command instead of post-merge
+    let config_dir = repo.root_path().join(".config");
+    fs::create_dir_all(&config_dir).unwrap();
+    fs::write(
+        config_dir.join("wt.toml"),
+        "[post-merge-command]\ndeploy = \"task deploy\"",
+    )
+    .unwrap();
+
+    let settings = setup_snapshot_settings_with_home(&repo, &temp_home);
+    settings.bind(|| {
+        let mut cmd = wt_command();
+        repo.clean_cli_env(&mut cmd);
+        cmd.arg("config").arg("show").current_dir(repo.root_path());
+        set_temp_home_env(&mut cmd, temp_home.path());
+
+        assert_cmd_snapshot!(cmd, @r#"
+        success: true
+        exit_code: 0
+        ----- stdout -----
+
+        ----- stderr -----
+        ⚪ Global Config: [1m~/.config/worktrunk/config.toml[0m
+        [107m [0m  worktree-path = [32m"../{{ main_worktree }}.{{ branch }}"[0m
+
+        ⚪ Project Config: [1m[REPO]/.config/wt.toml[0m
+        🟡 [33mUnknown key [1m[33mpost-merge-command[0m[33m will be ignored[0m
+        [107m [0m  [1m[36m[post-merge-command][0m
+        [107m [0m  deploy = [32m"task deploy"[0m
+
+        [2m⚪ Skipped bash; ~/.bashrc not found[0m
+        [2m⚪ Skipped zsh; ~/.zshrc not found[0m
+        [2m⚪ Skipped fish; ~/.config/fish/conf.d not found[0m
+        "#);
+    });
+}
+
+/// Test `wt config show` warns about unknown keys in user config
+#[test]
+fn test_config_show_warns_unknown_user_keys() {
+    let repo = TestRepo::new();
+    let temp_home = TempDir::new().unwrap();
+
+    // Create global config with typo: commit-gen instead of commit-generation
+    let global_config_dir = temp_home.path().join(".config").join("worktrunk");
+    fs::create_dir_all(&global_config_dir).unwrap();
+    fs::write(
+        global_config_dir.join("config.toml"),
+        "worktree-path = \"../{{ main_worktree }}.{{ branch }}\"\n\n[commit-gen]\ncommand = \"llm\"",
+    )
+    .unwrap();
+
+    let settings = setup_snapshot_settings_with_home(&repo, &temp_home);
+    settings.bind(|| {
+        let mut cmd = wt_command();
+        repo.clean_cli_env(&mut cmd);
+        cmd.arg("config").arg("show").current_dir(repo.root_path());
+        set_temp_home_env(&mut cmd, temp_home.path());
+
+        assert_cmd_snapshot!(cmd, @r#"
+        success: true
+        exit_code: 0
+        ----- stdout -----
+
+        ----- stderr -----
+        ⚪ Global Config: [1m~/.config/worktrunk/config.toml[0m
+        🟡 [33mUnknown key [1m[33mcommit-gen[0m[33m will be ignored[0m
+        [107m [0m  worktree-path = [32m"../{{ main_worktree }}.{{ branch }}"[0m
+        [107m [0m  
+        [107m [0m  [1m[36m[commit-gen][0m
+        [107m [0m  command = [32m"llm"[0m
+
+        ⚪ Project Config: [1m[REPO]/.config/wt.toml[0m
+        💡 [2mNot found[0m
+
+        [2m⚪ Skipped bash; ~/.bashrc not found[0m
+        [2m⚪ Skipped zsh; ~/.zshrc not found[0m
+        [2m⚪ Skipped fish; ~/.config/fish/conf.d not found[0m
+        "#);
     });
 }
