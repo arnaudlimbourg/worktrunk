@@ -87,6 +87,8 @@ pub fn show_help_in_pager(help_text: &str) -> std::io::Result<()> {
 
     // Always send pager output to stderr (standard for help text, like git)
     // This works in all cases: direct invocation, shell wrapper, piping, etc.
+    // Note: pager_cmd is expected to be valid shell code (like git's core.pager).
+    // Users with paths containing special chars must quote them in their config.
     let final_cmd = format!("{} >&2", pager_cmd);
 
     // Spawn pager with TTY access (interactive, unlike detached diff renderer)

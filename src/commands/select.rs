@@ -85,6 +85,9 @@ const PAGER_TIMEOUT: Duration = Duration::from_millis(2000);
 /// `--paging=never` to prevent them from spawning less.
 /// Returns None if pipeline fails or times out (caller should fall back to raw diff).
 fn run_git_diff_with_pager(git_args: &[&str], pager_cmd: &str) -> Option<String> {
+    // Note: pager_cmd is expected to be valid shell code (like git's core.pager).
+    // Users with paths containing special chars must quote them in their config.
+
     // Some pagers spawn `less` by default which hangs in non-TTY contexts
     let pager_with_args = if pager_needs_paging_disabled(pager_cmd) {
         format!("{} --paging=never", pager_cmd)
