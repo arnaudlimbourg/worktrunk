@@ -26,4 +26,4 @@ exit_code: 0
 
 ----- stderr -----
 🔄 [36mRemoving worktree for [1m[36mfeature-fg[0m[36m...[0m
-✅ [32mRemoved worktree & branch for [1m[32mfeature-fg[0m[0m
+✅ [32mRemoved worktree & branch for [1m[32mfeature-fg[0m[32m[0m

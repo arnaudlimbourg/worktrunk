@@ -209,7 +209,7 @@ pub fn handle_squash(
         )
     } else {
         format!(
-            "{CYAN}Squashing {commit_count} {commit_text}{with_changes} into a single commit{CYAN:#} ({})...",
+            "{CYAN}Squashing {commit_count} {commit_text}{with_changes} into a single commit ({})...{CYAN:#}",
             parts.join(", ")
         )
     };

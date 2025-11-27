@@ -2,7 +2,7 @@
 source: tests/integration_tests/shell_wrapper.rs
 expression: output.normalized()
 ---
-🔄 [36mSquashing 3 commits into a single commit[0m (2 files, [32m+45[0m)...
+🔄 [36mSquashing 3 commits into a single commit (2 files, [32m+45[0m)...[0m
 🔄 [36mGenerating squash commit message...[0m
 [107m [0m  [1mfeat(api): Add user authentication endpoints[0m
 [107m [0m  
@@ -26,10 +26,10 @@ tests/test_auth.py::test_token_validation PASSED                         [100%]
 
 All checks passed!
 
-🔄 [36mMerging 1 commit to [1m[36mmain[0m[36m @ [2m[36m[HASH][0m[0m (no rebase needed)
+🔄 [36mMerging 1 commit to [1m[36mmain[0m[36m @ [2m[36m[HASH][0m[36m (no rebase needed)[0m
 [107m [0m  * [33m[HASH][m feat(api): Add user authentication endpoints
 [107m [0m   api/auth.py        | 31 [32m+++++++++++++++++++++++++++++++[m
 [107m [0m   tests/test_auth.py | 14 [32m++++++++++++++[m
 [107m [0m   2 files changed, 45 insertions(+)
-✅ [32mMerged to [1m[32mmain[0m[0m (1 commit, 2 files, [32m+45[0m)
+✅ [32mMerged to [1m[32mmain[0m[32m (1 commit, 2 files, [32m+45[0m)[0m
 🔄 [36mRemoving [1m[36mfeature-auth[0m[36m worktree & branch in background[0m

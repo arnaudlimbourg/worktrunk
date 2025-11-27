@@ -105,7 +105,7 @@ impl<'a> CommitGenerator<'a> {
         let full_progress_msg = if parts.is_empty() {
             format!("{CYAN}{action}{CYAN:#}")
         } else {
-            format!("{CYAN}{action}{CYAN:#} ({})", parts.join(", "))
+            format!("{CYAN}{action} ({}){CYAN:#}", parts.join(", "))
         };
 
         crate::output::progress(full_progress_msg)?;

@@ -124,19 +124,19 @@ fn format_remove_worktree_message(
         if let Some(b) = branch_display {
             // Re-establish GREEN after each green_bold reset to prevent color leak
             format!(
-                "{GREEN}{action} for {GREEN_BOLD}{b}{GREEN_BOLD:#}{GREEN}, changed directory to {GREEN_BOLD}{}{GREEN_BOLD:#}{GREEN:#}{flag_note}",
+                "{GREEN}{action} for {GREEN_BOLD}{b}{GREEN_BOLD:#}{GREEN}, changed directory to {GREEN_BOLD}{}{GREEN_BOLD:#}{GREEN}{flag_note}{GREEN:#}",
                 format_path_for_display(main_path)
             )
         } else {
             format!(
-                "{GREEN}{action}, changed directory to {GREEN_BOLD}{}{GREEN_BOLD:#}{GREEN:#}{flag_note}",
+                "{GREEN}{action}, changed directory to {GREEN_BOLD}{}{GREEN_BOLD:#}{GREEN}{flag_note}{GREEN:#}",
                 format_path_for_display(main_path)
             )
         }
     } else if let Some(b) = branch_display {
-        format!("{GREEN}{action} for {GREEN_BOLD}{b}{GREEN_BOLD:#}{GREEN:#}{flag_note}")
+        format!("{GREEN}{action} for {GREEN_BOLD}{b}{GREEN_BOLD:#}{GREEN}{flag_note}{GREEN:#}")
     } else {
-        format!("{GREEN}{action}{GREEN:#}{flag_note}")
+        format!("{GREEN}{action}{flag_note}{GREEN:#}")
     }
 }
 
@@ -325,7 +325,7 @@ fn handle_branch_only_output(
             ""
         };
         super::success(format!(
-            "{GREEN}Removed branch {GREEN_BOLD}{branch_name}{GREEN_BOLD:#}{GREEN:#}{flag_note}"
+            "{GREEN}Removed branch {GREEN_BOLD}{branch_name}{GREEN_BOLD:#}{GREEN}{flag_note}{GREEN:#}"
         ))?;
     }
 
