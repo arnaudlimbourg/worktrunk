@@ -17,10 +17,6 @@ use crate::styling::{
     ERROR, ERROR_BOLD, ERROR_EMOJI, HINT, HINT_BOLD, HINT_EMOJI, INFO_EMOJI, format_with_gutter,
 };
 
-// =============================================================================
-// GitError - Typed domain errors
-// =============================================================================
-
 /// Domain errors for git and worktree operations.
 ///
 /// This enum provides structured error data that can be pattern-matched and tested.
@@ -40,113 +36,77 @@ use crate::styling::{
 /// ```
 #[derive(Debug, Clone)]
 pub enum GitError {
-    // -------------------------------------------------------------------------
     // Git state errors
-    // -------------------------------------------------------------------------
-    /// HEAD is detached (not on a branch)
     DetachedHead {
-        /// Action that was blocked (e.g., "merge", "push")
         action: Option<String>,
     },
-
-    /// Working tree has uncommitted changes
     UncommittedChanges {
-        /// Action that was blocked (e.g., "remove worktree")
         action: Option<String>,
     },
+    BranchAlreadyExists {
+        branch: String,
+    },
 
-    /// Branch already exists
-    BranchAlreadyExists { branch: String },
-
-    // -------------------------------------------------------------------------
     // Worktree errors
-    // -------------------------------------------------------------------------
-    /// Worktree directory is missing from filesystem
-    WorktreeMissing { branch: String },
-
-    /// No worktree exists for the given branch
-    NoWorktreeFound { branch: String },
-
-    /// Target path for worktree is already occupied
+    WorktreeMissing {
+        branch: String,
+    },
+    NoWorktreeFound {
+        branch: String,
+    },
     WorktreePathOccupied {
         branch: String,
         path: PathBuf,
-        /// Branch currently using this path, if known
         occupant: Option<String>,
     },
-
-    /// Directory already exists at target path
-    WorktreePathExists { path: PathBuf },
-
-    /// Failed to create worktree
+    WorktreePathExists {
+        path: PathBuf,
+    },
     WorktreeCreationFailed {
         branch: String,
         base_branch: Option<String>,
         error: String,
     },
-
-    /// Failed to remove worktree
     WorktreeRemovalFailed {
         branch: String,
         path: PathBuf,
         error: String,
     },
 
-    // -------------------------------------------------------------------------
     // Merge/push errors
-    // -------------------------------------------------------------------------
-    /// Conflicting uncommitted changes prevent operation
     ConflictingChanges {
         files: Vec<String>,
         worktree_path: PathBuf,
     },
-
-    /// Push is not fast-forward
     NotFastForward {
         target_branch: String,
-        /// Formatted commit list for display
         commits_formatted: String,
-        /// Whether this error occurred during a merge operation (affects hint message)
         in_merge_context: bool,
     },
-
-    /// Merge commits found in push range
     MergeCommitsFound,
-
-    /// Rebase stopped due to conflicts
     RebaseConflict {
         target_branch: String,
         git_output: String,
     },
-
-    /// Push operation failed
-    PushFailed { error: String },
-
-    // -------------------------------------------------------------------------
-    // Validation errors
-    // -------------------------------------------------------------------------
-    /// Cannot prompt in non-interactive environment
-    NotInteractive,
-
-    /// Parse error (for git output parsing failures)
-    ParseError { message: String },
-
-    /// LLM command failed during commit generation
-    LlmCommandFailed {
-        /// The full command string (e.g., "llm --model claude")
-        command: String,
-        /// The stderr output from the command
+    PushFailed {
         error: String,
     },
 
-    /// Project configuration file not found
+    // Validation/other errors
+    NotInteractive,
+    ParseError {
+        message: String,
+    },
+    LlmCommandFailed {
+        command: String,
+        error: String,
+    },
     ProjectConfigNotFound {
-        /// Path where config file was expected
         config_path: PathBuf,
     },
-
-    /// Generic error with custom message
-    Other { message: String },
+    Other {
+        message: String,
+    },
 }
 
 impl std::error::Error for GitError {}
@@ -358,10 +318,6 @@ impl std::fmt::Display for GitError {
     }
 }
 
-// =============================================================================
-// WorktrunkError - Semantic errors with special handling
-// =============================================================================
-
 /// Semantic errors that require special handling in main.rs
 ///
 /// Most errors use anyhow::bail! with formatted messages. This enum is only
@@ -427,10 +383,6 @@ pub fn is_command_not_approved(err: &anyhow::Error) -> bool {
         .is_some_and(|e| matches!(e, WorktrunkError::CommandNotApproved))
 }
 
-// =============================================================================
-// Error formatting helpers
-// =============================================================================
-
 /// Format an error with header and gutter content
 fn format_error_block(header: String, error: &str) -> String {
     let trimmed = error.trim();
@@ -440,10 +392,6 @@ fn format_error_block(header: String, error: &str) -> String {
         format!("{header}\n{}", format_with_gutter(trimmed, "", None))
     }
 }
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {
