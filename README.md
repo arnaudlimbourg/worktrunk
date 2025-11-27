@@ -348,7 +348,7 @@ HEAD.
 
 ```text
 wt switch — Switch to a worktree
-Usage: switch [OPTIONS] <BRANCH>
+Usage: wt switch [OPTIONS] <BRANCH>
 
 Arguments:
   <BRANCH>
@@ -374,6 +374,16 @@ Options:
 
   -h, --help
           Print help (see a summary with '-h')
+
+Global Options:
+  -C <path>
+          Working directory for this command
+
+      --config <path>
+          User config file path
+
+  -v, --verbose
+          Show commands and debug info
 
 ```
 
@@ -478,7 +488,7 @@ wt remove @                              # Remove current worktree
 
 ```text
 wt merge — Merge worktree into target branch
-Usage: merge [OPTIONS] [TARGET]
+Usage: wt merge [OPTIONS] [TARGET]
 
 Arguments:
   [TARGET]
@@ -512,6 +522,16 @@ Options:
 
   -h, --help
           Print help (see a summary with '-h')
+
+Global Options:
+  -C <path>
+          Working directory for this command
+
+      --config <path>
+          User config file path
+
+  -v, --verbose
+          Show commands and debug info
 
 ```
 
@@ -589,7 +609,7 @@ wt merge --no-verify
 
 ```text
 wt remove — Remove worktree and branch
-Usage: remove [OPTIONS] [WORKTREES]...
+Usage: wt remove [OPTIONS] [WORKTREES]...
 
 Arguments:
   [WORKTREES]...
@@ -607,6 +627,16 @@ Options:
 
   -h, --help
           Print help (see a summary with '-h')
+
+Global Options:
+  -C <path>
+          Working directory for this command
+
+      --config <path>
+          User config file path
+
+  -v, --verbose
+          Show commands and debug info
 
 ```
 
@@ -694,7 +724,7 @@ wt remove  # (when already in main worktree)
 
 ```text
 wt list — List worktrees and optionally branches
-Usage: list [OPTIONS]
+Usage: wt list [OPTIONS]
 
 Options:
       --format <FORMAT>
@@ -718,6 +748,16 @@ Options:
 
   -h, --help
           Print help (see a summary with '-h')
+
+Global Options:
+  -C <path>
+          Working directory for this command
+
+      --config <path>
+          User config file path
+
+  -v, --verbose
+          Show commands and debug info
 
 ```
 
@@ -824,7 +864,7 @@ jq '.[] | select(.is_current == true)'
 
 ```text
 wt config — Manage configuration and shell integration
-Usage: config <COMMAND>
+Usage: wt config [OPTIONS] <COMMAND>
 
 Commands:
   shell      Shell integration setup
@@ -833,11 +873,20 @@ Commands:
   cache      Manage caches (CI status, default branch)
   status     Manage branch status markers
   approvals  Manage command approvals
-  help       Print this message or the help of the given subcommand(s)
 
 Options:
   -h, --help
           Print help (see a summary with '-h')
+
+Global Options:
+  -C <path>
+          Working directory for this command
+
+      --config <path>
+          User config file path
+
+  -v, --verbose
+          Show commands and debug info
 
 ```
 
@@ -916,7 +965,7 @@ Docs: <https://llm.datasette.io/> | <https://github.com/sigoden/aichat>
 
 ```text
 wt step — Workflow building blocks
-Usage: step <COMMAND>
+Usage: wt step [OPTIONS] <COMMAND>
 
 Commands:
   commit       Commit changes with LLM commit message
@@ -928,11 +977,14 @@ Commands:
   pre-commit   Run pre-commit hook
   pre-merge    Run pre-merge hook
   post-merge   Run post-merge hook
-  help         Print this message or the help of the given subcommand(s)
 
 Options:
-  -h, --help
-          Print help
+  -h, --help  Print help
+
+Global Options:
+  -C <path>            Working directory for this command
+      --config <path>  User config file path
+  -v, --verbose        Show commands and debug info
 ```
 
 <!-- END AUTO-GENERATED -->

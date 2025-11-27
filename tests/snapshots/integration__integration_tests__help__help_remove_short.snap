@@ -3,9 +3,8 @@ source: tests/integration_tests/help.rs
 info:
   program: wt
   args:
-    - config
-    - shell
-    - "--help"
+    - remove
+    - "-h"
   env:
     CLICOLOR_FORCE: "1"
     COLUMNS: "150"
@@ -19,16 +18,17 @@ exit_code: 0
 ----- stdout -----
 
 ----- stderr -----
-wt config shell - Shell integration setup
-Usage: wt config shell [OPTIONS] <COMMAND>
+wt remove - Remove worktree and branch
+Usage: wt remove [OPTIONS] [WORKTREES]...
 
-Commands:
-  init       Generate shell integration code
-  install    Write shell integration to config files
-  uninstall  Remove shell integration from config files
+Arguments:
+  [WORKTREES]...  Worktree or branch (@ for current)
 
 Options:
-  -h, --help  Print help
+      --no-delete-branch  Keep branch after removal
+  -D, --force-delete      Delete unmerged branches
+      --no-background     Run removal in foreground
+  -h, --help              Print help (see more with '--help')
 
 Global Options:
   -C <path>            Working directory for this command

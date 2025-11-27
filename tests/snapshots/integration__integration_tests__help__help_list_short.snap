@@ -3,9 +3,8 @@ source: tests/integration_tests/help.rs
 info:
   program: wt
   args:
-    - config
-    - shell
-    - "--help"
+    - list
+    - "-h"
   env:
     CLICOLOR_FORCE: "1"
     COLUMNS: "150"
@@ -19,16 +18,16 @@ exit_code: 0
 ----- stdout -----
 
 ----- stderr -----
-wt config shell - Shell integration setup
-Usage: wt config shell [OPTIONS] <COMMAND>
-
-Commands:
-  init       Generate shell integration code
-  install    Write shell integration to config files
-  uninstall  Remove shell integration from config files
+wt list - List worktrees and optionally branches
+Usage: wt list [OPTIONS]
 
 Options:
-  -h, --help  Print help
+      --format <FORMAT>  Output format (table, json) [default: table]
+      --branches         Include branches without worktrees
+      --remotes          Include remote branches
+      --full             Show CI, conflicts, diffs
+      --progressive      Show fast info immediately, update with slow info
+  -h, --help             Print help (see more with '--help')
 
 Global Options:
   -C <path>            Working directory for this command

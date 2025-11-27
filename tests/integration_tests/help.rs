@@ -1,7 +1,10 @@
-//! Snapshot tests for top-level `--help` output.
+//! Snapshot tests for `-h` (short) and `--help` (long) output.
 //!
-//! These ensure our compact help formatting stays stable across releases and
+//! These ensure our help formatting stays stable across releases and
 //! catches accidental regressions in wording or wrapping.
+//!
+//! - Short help (`-h`): Compact format, single-line options
+//! - Long help (`--help`): Verbose format with `after_long_help` content
 
 use crate::common::wt_command;
 use insta::Settings;
@@ -17,16 +20,93 @@ fn snapshot_help(test_name: &str, args: &[&str]) {
     });
 }
 
+// =============================================================================
+// Root command (wt)
+// =============================================================================
+
 #[test]
-fn help_root() {
-    snapshot_help("help_root", &["--help"]);
+fn help_root_short() {
+    snapshot_help("help_root_short", &["-h"]);
+}
+
+#[test]
+fn help_root_long() {
+    snapshot_help("help_root_long", &["--help"]);
 }
 
 #[test]
 fn help_no_args() {
-    // Running `wt` with no args should show help and exit 0
+    // Running `wt` with no args should show short help and exit 0
     snapshot_help("help_no_args", &[]);
 }
+
+// =============================================================================
+// Major commands - short and long variants
+// =============================================================================
+
+#[test]
+fn help_config_short() {
+    snapshot_help("help_config_short", &["config", "-h"]);
+}
+
+#[test]
+fn help_config_long() {
+    snapshot_help("help_config_long", &["config", "--help"]);
+}
+
+#[test]
+fn help_list_short() {
+    snapshot_help("help_list_short", &["list", "-h"]);
+}
+
+#[test]
+fn help_list_long() {
+    snapshot_help("help_list_long", &["list", "--help"]);
+}
+
+#[test]
+fn help_switch_short() {
+    snapshot_help("help_switch_short", &["switch", "-h"]);
+}
+
+#[test]
+fn help_switch_long() {
+    snapshot_help("help_switch_long", &["switch", "--help"]);
+}
+
+#[test]
+fn help_remove_short() {
+    snapshot_help("help_remove_short", &["remove", "-h"]);
+}
+
+#[test]
+fn help_remove_long() {
+    snapshot_help("help_remove_long", &["remove", "--help"]);
+}
+
+#[test]
+fn help_merge_short() {
+    snapshot_help("help_merge_short", &["merge", "-h"]);
+}
+
+#[test]
+fn help_merge_long() {
+    snapshot_help("help_merge_long", &["merge", "--help"]);
+}
+
+#[test]
+fn help_step_short() {
+    snapshot_help("help_step_short", &["step", "-h"]);
+}
+
+#[test]
+fn help_step_long() {
+    snapshot_help("help_step_long", &["step", "--help"]);
+}
+
+// =============================================================================
+// Config subcommands (long help only - these are less frequently accessed)
+// =============================================================================
 
 #[test]
 fn help_config_shell() {
@@ -34,33 +114,8 @@ fn help_config_shell() {
 }
 
 #[test]
-fn help_config() {
-    snapshot_help("help_config", &["config", "--help"]);
-}
-
-#[test]
 fn help_beta() {
     snapshot_help("help_beta", &["beta", "--help"]);
-}
-
-#[test]
-fn help_list() {
-    snapshot_help("help_list", &["list", "--help"]);
-}
-
-#[test]
-fn help_switch() {
-    snapshot_help("help_switch", &["switch", "--help"]);
-}
-
-#[test]
-fn help_remove() {
-    snapshot_help("help_remove", &["remove", "--help"]);
-}
-
-#[test]
-fn help_merge() {
-    snapshot_help("help_merge", &["merge", "--help"]);
 }
 
 #[test]

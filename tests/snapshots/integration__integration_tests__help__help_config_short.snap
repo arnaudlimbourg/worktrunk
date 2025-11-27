@@ -4,8 +4,7 @@ info:
   program: wt
   args:
     - config
-    - shell
-    - "--help"
+    - "-h"
   env:
     CLICOLOR_FORCE: "1"
     COLUMNS: "150"
@@ -19,16 +18,19 @@ exit_code: 0
 ----- stdout -----
 
 ----- stderr -----
-wt config shell - Shell integration setup
-Usage: wt config shell [OPTIONS] <COMMAND>
+wt config - Manage configuration and shell integration
+Usage: wt config [OPTIONS] <COMMAND>
 
 Commands:
-  init       Generate shell integration code
-  install    Write shell integration to config files
-  uninstall  Remove shell integration from config files
+  shell      Shell integration setup
+  create     Create global configuration file
+  show       Show configuration files & locations
+  cache      Manage caches (CI status, default branch)
+  status     Manage branch status markers
+  approvals  Manage command approvals
 
 Options:
-  -h, --help  Print help
+  -h, --help  Print help (see more with '--help')
 
 Global Options:
   -C <path>            Working directory for this command

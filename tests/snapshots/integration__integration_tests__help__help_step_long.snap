@@ -3,8 +3,7 @@ source: tests/integration_tests/help.rs
 info:
   program: wt
   args:
-    - config
-    - shell
+    - step
     - "--help"
   env:
     CLICOLOR_FORCE: "1"
@@ -19,13 +18,19 @@ exit_code: 0
 ----- stdout -----
 
 ----- stderr -----
-wt config shell - Shell integration setup
-Usage: wt config shell [OPTIONS] <COMMAND>
+wt step - Workflow building blocks
+Usage: wt step [OPTIONS] <COMMAND>
 
 Commands:
-  init       Generate shell integration code
-  install    Write shell integration to config files
-  uninstall  Remove shell integration from config files
+  commit       Commit changes with LLM commit message
+  squash       Squash commits with LLM commit message
+  push         Push changes to local target branch
+  rebase       Rebase onto target
+  post-create  Run post-create hook
+  post-start   Run post-start hook
+  pre-commit   Run pre-commit hook
+  pre-merge    Run pre-merge hook
+  post-merge   Run post-merge hook
 
 Options:
   -h, --help  Print help

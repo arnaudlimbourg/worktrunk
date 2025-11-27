@@ -12,7 +12,6 @@ mod commands;
 mod completion;
 mod display;
 pub(crate) mod help_pager;
-mod help_resolver;
 mod llm;
 mod md_help;
 mod output;
@@ -39,7 +38,14 @@ use cli::{
 };
 use worktrunk::HookType;
 
-/// Try to handle --help flag with pager before clap processes it
+/// Custom help handling for pager support and markdown rendering.
+///
+/// We intercept help requests to provide:
+/// 1. **Pager support**: Help is shown through `less` (like git)
+/// 2. **Markdown rendering**: `## Headers` become green, code blocks are dimmed
+///
+/// Uses `Error::render()` to get clap's pre-formatted help, which already
+/// respects `-h` (short) vs `--help` (long) distinction.
 fn maybe_handle_help_with_pager() -> bool {
     use clap::ColorChoice;
     use clap::error::ErrorKind;
@@ -49,7 +55,9 @@ fn maybe_handle_help_with_pager() -> bool {
     // Check for --help-md flag (output raw markdown without ANSI rendering)
     if args.iter().any(|a| a == "--help-md") {
         let mut cmd = cli::build_command();
-        // Filter out --help-md and add --help for clap
+        cmd = cmd.color(ColorChoice::Never); // No ANSI codes for raw markdown
+
+        // Replace --help-md with --help for clap
         let filtered_args: Vec<String> = args
             .iter()
             .map(|a| {
@@ -60,29 +68,33 @@ fn maybe_handle_help_with_pager() -> bool {
                 }
             })
             .collect();
-        let target = help_resolver::resolve_target_command(&mut cmd, filtered_args);
-        let help = target.render_long_help().to_string(); // Raw markdown, no ANSI
-        println!("{}", help);
-        process::exit(0);
+
+        if let Err(err) = cmd.try_get_matches_from_mut(filtered_args)
+            && matches!(
+                err.kind(),
+                ErrorKind::DisplayHelp | ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
+            )
+        {
+            // err.render() returns the help text clap already built
+            println!("{}", err.render());
+            process::exit(0);
+        }
+        // Fall through if not a help request
     }
 
     let mut cmd = cli::build_command();
-    cmd = cmd.color(ColorChoice::Always); // Force clap to always emit ANSI codes
-
-    // DON'T render markdown yet - let clap generate help first
+    cmd = cmd.color(ColorChoice::Always); // Force clap to emit ANSI codes
 
     match cmd.try_get_matches_from_mut(args) {
         Ok(_) => false, // Normal args, not help
         Err(err) => {
             match err.kind() {
-                ErrorKind::DisplayHelp
-                | ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
-                | ErrorKind::MissingSubcommand => {
-                    // Re-resolve which subcommand's help user asked for
-                    let target = help_resolver::resolve_target_command(&mut cmd, std::env::args());
-                    let mut help = target.render_long_help().to_string(); // StyledStr -> string (contains raw markdown)
+                ErrorKind::DisplayHelp | ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand => {
+                    // err.render() contains the correctly formatted help
+                    // (short for -h, long for --help) - no need to re-parse argv
+                    let mut help = err.render().to_string();
 
-                    // NOW render markdown sections to ANSI
+                    // Render markdown sections to ANSI
                     help = md_help::render_markdown_in_help(&help);
 
                     if let Err(e) = help_pager::show_help_in_pager(&help) {
@@ -92,13 +104,11 @@ fn maybe_handle_help_with_pager() -> bool {
                     process::exit(0);
                 }
                 ErrorKind::DisplayVersion => {
-                    // Version display
                     println!("{}", err);
                     process::exit(0);
                 }
                 _ => {
-                    // Not help or version - this will be re-parsed by Cli::parse() below
-                    // which will handle the error with proper ANSI formatting
+                    // Not help or version - will be re-parsed by Cli::parse()
                     false
                 }
             }
