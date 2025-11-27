@@ -5,6 +5,23 @@
 
 use minijinja::Environment;
 
+/// Sanitize a branch name for use in filesystem paths.
+///
+/// Replaces path separators (`/` and `\`) with dashes to prevent directory traversal
+/// and ensure the branch name is a single path component.
+///
+/// # Examples
+/// ```
+/// use worktrunk::config::sanitize_branch_name;
+///
+/// assert_eq!(sanitize_branch_name("feature/foo"), "feature-foo");
+/// assert_eq!(sanitize_branch_name("user\\task"), "user-task");
+/// assert_eq!(sanitize_branch_name("simple-branch"), "simple-branch");
+/// ```
+pub fn sanitize_branch_name(branch: &str) -> String {
+    branch.replace(['/', '\\'], "-")
+}
+
 /// Expand template variables using minijinja
 ///
 /// All templates support:
@@ -40,7 +57,7 @@ pub fn expand_template(
     use std::borrow::Cow;
 
     // Sanitize branch name by replacing path separators
-    let safe_branch = branch.replace(['/', '\\'], "-");
+    let safe_branch = sanitize_branch_name(branch);
 
     // Shell-escape all variables
     let escaped_worktree = escape(Cow::Borrowed(main_worktree)).to_string();

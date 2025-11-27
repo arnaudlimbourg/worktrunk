@@ -166,7 +166,9 @@ pub fn run(claude_code: bool) -> Result<()> {
         let status_to_show = if let Some(ref dir) = dir_str {
             // status_line format: "branch  rest..." - check if dir ends with .branch
             if let Some((branch, rest)) = status_line.split_once("  ") {
-                let pattern = format!(".{branch}");
+                // Normalize branch name for comparison (slashes become dashes in paths)
+                let normalized_branch = worktrunk::config::sanitize_branch_name(branch);
+                let pattern = format!(".{normalized_branch}");
                 if dir.ends_with(&pattern) {
                     // Directory already shows branch via worktrunk template, skip it
                     rest.to_string()
@@ -351,5 +353,25 @@ mod tests {
     fn test_claude_code_context_parse_invalid_json() {
         assert!(ClaudeCodeContext::parse("not json").is_none());
         assert!(ClaudeCodeContext::parse("{invalid}").is_none());
+    }
+
+    #[test]
+    fn test_branch_deduplication_with_slashes() {
+        // Simulate the actual scenario:
+        // - Directory: ~/w/insta.claude-fix-snapshot-merge-conflicts-xyz
+        // - Branch: claude/fix-snapshot-merge-conflicts-xyz
+        let dir = "~/w/insta.claude-fix-snapshot-merge-conflicts-xyz";
+        let branch = "claude/fix-snapshot-merge-conflicts-xyz";
+
+        let normalized_branch = worktrunk::config::sanitize_branch_name(branch);
+        let pattern = format!(".{normalized_branch}");
+
+        assert!(
+            dir.ends_with(&pattern),
+            "Directory '{}' should end with pattern '{}' (normalized from branch '{}')",
+            dir,
+            pattern,
+            branch
+        );
     }
 }
