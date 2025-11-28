@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD014 MD024 MD033 -->
+
 # Worktrunk
 
 <!-- User badges -->
@@ -18,23 +20,23 @@ switch`.
 
 ## December 2025 Project Status
 
-I've been using Worktrunk as my daily driver while building it for the past
-couple of months, and am releasing it as Open Source this week. It's built with love
-(no slop!). If some social proof is helpful: I also created
-[PRQL](https://github.com/PRQL/prql) (10k stars) and am a maintainer of
-[Xarray](https://github.com/pydata/xarray) (4k stars),
+I've been using Worktrunk as my daily driver, and am releasing it as Open Source
+this week. It's built with love (no slop!). If some social proof is helpful: I
+also created [PRQL](https://github.com/PRQL/prql) (10k stars) and am a
+maintainer of [Xarray](https://github.com/pydata/xarray) (4k stars),
 [Insta](https://github.com/mitsuhiko/insta), &
 [Numbagg](https://github.com/numbagg/numbagg).
 
 Currently, Worktrunk:
 
-- simplifies standard worktree workflows — an easier way to create / navigate /
-  list / clean up git worktrees.
+- simplifies standard worktree workflows — an easier, simple way to create /
+  navigate / list / clean up git worktrees.
 - can be used for more advanced workflows, such as [LLM commit
   messages](#llm-commit-messages), or [local merging of worktrees gated on
   CI-like checks](#local-merging-with-wt-merge)
-- also comes with optional QoL features, such as listing branches' CI status or
-  Claude Code status, or a great [Claude Code statusline](#wt-list-statusline).
+- also comes with optional QoL features, such as listing the CI status & the
+  Claude Code status for all branches, or a great [Claude Code
+  statusline](#wt-list-statusline).
 
 ...there's no need to use the more advanced features to get the simpler
 benefits, and everything is fully compatible with standard git worktrees.
@@ -92,8 +94,8 @@ After doing some work:
 ```console
 $ wt list
   Branch       Status         HEAD±    main↕  Path                Remote⇅  Commit    Age   Message
-@ feature-api  +   ↑        +3        ↑4      ./repo.feature-api           5b01afca  30m   Add API tests
-^ main             ^|                         ./repo                 |     b834638e  1d    Initial commit
+@ feature-api  +   ↑⇡      +36  -11   ↑4      ./repo.feature-api   ⇡3      b1554967  30m   Add API tests
+^ main             ^⇣                         ./repo                   ⇣1  b834638e  1d    Initial commit
 + fix-auth        _                           ./repo.fix-auth              b834638e  1d    Initial commit
 
 ⚪ Showing 3 worktrees, 1 with changes, 1 ahead
@@ -130,7 +132,10 @@ So we use git worktrees: multiple working directories backed by a single reposit
 
 ## Why Worktrunk?
 
-Git's built-in `worktree` commands give you the primitives but not the lifecycle. Worktrunk bundles creation, navigation, status, and cleanup into simple commands. A few examples:
+Git's built-in `worktree` commands offers primitives, but requires the user
+to remember worktree's location, and compose commands together. Worktrunk
+bundles creation, navigation, status, and cleanup into simple commands. A few
+examples:
 
 <table>
 <tr>
@@ -139,43 +144,70 @@ Git's built-in `worktree` commands give you the primitives but not the lifecycle
 <th>Plain git</th>
 </tr>
 <tr>
-<td>Create + start Claude</td>
-<td><pre lang="bash">wt switch -c feature -x claude</pre></td>
-<td><pre lang="bash">git worktree add -b feature ../repo.feature main
-cd ../repo.feature && claude</pre></td>
+<td>Switch worktrees</td>
+<td><pre lang="bash">wt switch feature</pre></td>
+<td><pre lang="bash">cd ../repo.feature</pre></td>
 </tr>
 <tr>
+<td>Create + start Claude</td>
+<td><pre lang="bash">wt switch -c -x claude feature</pre>
+...or with an <a href="#alias">alias</a>:
+<pre lang="bash">
+wsc feature
+</pre></td>
+<td><pre lang="bash">git worktree add -b feature ../repo.feature main
+cd ../repo.feature
+claude</pre></td>
+</tr>
+
+<tr>
 <td>Clean up</td>
-<td><pre lang="bash">wt remove feature</pre></td>
-<td><pre lang="bash">git worktree remove ../repo.feature
+<td><pre lang="bash">wt remove</pre></td>
+<td><pre lang="bash">cd ../repo
+git worktree remove ../repo.feature
 git branch -d feature</pre></td>
 </tr>
 <tr>
-<td>Full workflow</td>
-<td><pre lang="bash"># after configuring hooks
-wt merge</pre></td>
-<td><pre lang="bash">git add -A
-git reset --soft $(git merge-base HEAD main)
-# commit-generation
-git diff --staged | llm "msg" | git commit -F -
-git rebase main
-# pre-merge hook
-cargo test
-cd ../repo && git merge --ff-only feature
-git worktree remove ../repo.feature
-git branch -d feature
-# post-merge hook
-cargo install --path .</pre></td>
+<td>List worktrees</td>
+<td><pre lang="bash">wt list</pre>
+...including diffstats & status
+</td>
+<td><pre lang="bash">git worktree list</pre>
+...just branch names & paths
+</td>
+</tr>
+<tr>
+<td>List with CI status</td>
+<td><pre lang="bash">wt list --full</pre>
+...including CI status & diffstat downstream of <code>main</code>, add <code>--branches</code> or <code>--remotes</code> for more
+</td>
+<td>N/A</td>
 </tr>
 </table>
+
+...and check out examples below for more advanced workflows.
 
 ## Advanced
 
 Most Worktrunk users just use the commands above. But I've found these features really helpful too:
 
+### Shell integration
+
+Shell integration lets `wt switch`, `wt merge`, and `wt remove` change
+directories:
+
+```console
+wt config shell install  # Bash, Zsh, Fish
+```
+
+Manual setup: `wt config shell --help`.
+
 ### Local merging with `wt merge`
 
-`wt merge` handles the full merge workflow: stage, commit, squash, rebase, run hooks, merge, cleanup.
+`wt merge` handles the full merge workflow: stage, commit, squash, rebase,
+merge, cleanup. Includes [LLM commit messages](#llm-commit-messages),
+[project hooks](#project-hooks), and [config](#wt-config)/[flags](#wt-merge)
+for skipping steps.
 
 <table>
 <tr>
@@ -188,13 +220,15 @@ Most Worktrunk users just use the commands above. But I've found these features 
 <td><pre lang="bash">wt merge</pre></td>
 <td><pre lang="bash">git add -A
 git reset --soft $(git merge-base HEAD main)
-git diff --staged | llm "msg" | git commit -F -
+git diff --staged | llm "Write a commit message based on this diff" | git commit -F -
 git rebase main
-cargo test  # pre-merge hook
+# pre-merge hook
+cargo test
 cd ../repo && git merge --ff-only feature
 git worktree remove ../repo.feature
 git branch -d feature
-cargo install --path .  # post-merge hook</pre></td>
+# post-merge hook
+cargo install --path .  </pre></td>
 </tr>
 </table>
 
@@ -211,7 +245,9 @@ command = "llm"
 args = ["-m", "claude-haiku-4-5-20251001"]
 ```
 
-`wt merge` generates commit messages automatically:
+`wt merge` generates commit messages automatically or `wt step commit` runs just the commit step.
+
+For custom prompt templates: `wt config --help`.
 
 <!-- ⚠️ AUTO-GENERATED from tests/snapshots/integration__integration_tests__merge__readme_example_complex.snap — edit source to update -->
 
@@ -263,8 +299,6 @@ test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
 ```
 
 <!-- END AUTO-GENERATED -->
-
-`wt step commit` runs just the commit step. Custom prompt templates: `wt config --help`.
 
 ### Project hooks
 
@@ -355,24 +389,101 @@ All checks passed!
 
 See `wt switch --help` and `wt merge --help` for skipping hooks, template variables, security details.
 
-### Shell integration
+### Custom Worktree Status
 
-Shell integration lets `wt switch`, `wt merge`, and `wt remove` change
-directories:
+Add emoji status markers to branches that appear in `wt list`.
 
 ```console
-wt config shell install  # Bash, Zsh, Fish
+# Set status for current branch
+wt config status set "🤖"
+
+# Or use git config directly
+git config worktrunk.status.feature-x "💬"
 ```
 
-Manual setup: `wt config shell --help`.
+**Status appears in the Status column:**
+
+<!-- ⚠️ AUTO-GENERATED from tests/snapshots/integration__integration_tests__list__with_user_status.snap — edit source to update -->
+
+```console
+$ wt list
+  Branch       Status         HEAD±    main↕  Path                Remote⇅  Commit    Age   Message
+@ main             ^                          ./repo                       b834638e  1d    Initial commit
++ feature-api      ↑  🤖              ↑1      ./repo.feature-api           9606cd0f  1d    Add REST API endpoints
++ review-ui      ? ↑  💬              ↑1      ./repo.review-ui             afd3b353  1d    Add dashboard component
++ wip-docs       ?_                           ./repo.wip-docs              b834638e  1d    Initial commit
+
+⚪ Showing 4 worktrees, 2 ahead
+```
+
+<!-- END AUTO-GENERATED -->
+
+The custom emoji appears directly after the git status symbols.
+
+<details>
+<summary>Automation with Claude Code Hooks</summary>
+
+Claude Code can automatically set/clear emoji status when coding sessions start and end.
+
+When using Claude:
+
+- Sets status to `🤖` for the current branch when submitting a prompt (working)
+- Changes to `💬` when Claude needs input (waiting for permission or idle)
+- Clears the status completely when the session ends
+
+**How it works:**
+
+- Status is stored as `worktrunk.status.<branch>` in `.git/config`
+- Each branch can have its own status emoji
+- The hooks automatically detect the current branch and set/clear its status
+- Works with any git repository, no special configuration needed
+
+</details>
+
+### `wt select`
+
+Interactive worktree selector with fuzzy search and diff preview. Unix only.
+
+Preview tabs (toggle with `1`/`2`/`3`):
+
+- **Tab 1**: Working tree changes (uncommitted)
+- **Tab 2**: History (commits not on main highlighted)
+- **Tab 3**: Branch diff (changes ahead of main)
+
+### `wt list statusline`
+
+Single-line status for shell prompts, starship, or editor integrations.
+
+**Claude Code integration** (`--claude-code`): Reads workspace context from
+stdin, outputs directory, branch status, and model name.
+
+```text
+~/w/myproject.feature-auth  !🤖  ±+42 -8  ↑3  ⇡1  ●  | Opus
+```
+
+<details>
+<summary>Claude Code configuration</summary>
+
+Add to `~/.claude/settings.json`:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "wt list statusline --claude-code"
+  }
+}
+```
+
+</details>
 
 ## Tips & patterns
 
-**Alias for new worktree + agent:**
+<a id="alias"></a>**Alias for new worktree + agent:**
 
 ```console
-alias wsl='wt switch --create --execute=claude'
-wsl new-feature  # Creates worktree, runs hooks, launches Claude
+alias wsc='wt switch --create --execute=claude'
+wsc new-feature  # Creates worktree, runs hooks, launches Claude
 ```
 
 **Eliminate cold starts** — `post-create` hooks install deps and copy caches.
@@ -405,7 +516,7 @@ in terminals with hyperlink support.
 worktree. Example: `wt switch --create hotfix --base=@` branches from current
 HEAD.
 
-## Commands
+## Commands Reference
 
 <details>
 <summary><strong><code>wt switch [branch]</code></strong> - Switch to existing worktree or create a new one</summary>
@@ -1096,96 +1207,6 @@ Global Options:
 
 </details>
 
-## Advanced Features
-
-### Custom Worktree Status
-
-Add emoji status markers to branches that appear in `wt list`.
-
-```console
-# Set status for current branch
-wt config status set "🤖"
-
-# Or use git config directly
-git config worktrunk.status.feature-x "💬"
-```
-
-**Status appears in the Status column:**
-
-<!-- ⚠️ AUTO-GENERATED from tests/snapshots/integration__integration_tests__list__with_user_status.snap — edit source to update -->
-
-```console
-$ wt list
-  Branch       Status         HEAD±    main↕  Path                Remote⇅  Commit    Age   Message
-@ main             ^                          ./repo                       b834638e  1d    Initial commit
-+ feature-api      ↑  🤖              ↑1      ./repo.feature-api           9606cd0f  1d    Add REST API endpoints
-+ review-ui      ? ↑  💬              ↑1      ./repo.review-ui             afd3b353  1d    Add dashboard component
-+ wip-docs       ?_                           ./repo.wip-docs              b834638e  1d    Initial commit
-
-⚪ Showing 4 worktrees, 2 ahead
-```
-
-<!-- END AUTO-GENERATED -->
-
-The custom emoji appears directly after the git status symbols.
-
-<details>
-<summary>Automation with Claude Code Hooks</summary>
-
-Claude Code can automatically set/clear emoji status when coding sessions start and end.
-
-When using Claude:
-
-- Sets status to `🤖` for the current branch when submitting a prompt (working)
-- Changes to `💬` when Claude needs input (waiting for permission or idle)
-- Clears the status completely when the session ends
-
-**How it works:**
-
-- Status is stored as `worktrunk.status.<branch>` in `.git/config`
-- Each branch can have its own status emoji
-- The hooks automatically detect the current branch and set/clear its status
-- Works with any git repository, no special configuration needed
-
-</details>
-
-### `wt select`
-
-Interactive worktree selector with fuzzy search and diff preview. Unix only.
-
-Preview tabs (toggle with `1`/`2`/`3`):
-
-- **Tab 1**: Working tree changes (uncommitted)
-- **Tab 2**: History (commits not on main highlighted)
-- **Tab 3**: Branch diff (changes ahead of main)
-
-### `wt list statusline`
-
-Single-line status for shell prompts, starship, or editor integrations.
-
-**Claude Code integration** (`--claude-code`): Reads workspace context from
-stdin, outputs directory, branch status, and model name.
-
-```
-~/w/myproject.feature-auth  !🤖  ±+42 -8  ↑3  ⇡1  ●  | Opus
-```
-
-<details>
-<summary>Claude Code configuration</summary>
-
-Add to `~/.claude/settings.json`:
-
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "wt list statusline --claude-code"
-  }
-}
-```
-
-</details>
-
 ## FAQ
 
 <details>
@@ -1203,7 +1224,7 @@ Commands from project hooks and LLM configuration require approval on first run.
 
 <!-- ⚠️ AUTO-GENERATED from tests/integration_tests/snapshots/integration__integration_tests__shell_wrapper__tests__readme_example_approval_prompt.snap — edit source to update -->
 
-```
+```text
 🟡 repo needs approval to execute 3 commands:
 
 ⚪ post-create install:

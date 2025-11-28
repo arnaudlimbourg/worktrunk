@@ -970,8 +970,9 @@ fn test_list_user_status_with_special_characters() {
 /// Generate README example: List output for Quick Start narrative
 ///
 /// Shows main + fix-auth + feature-api worktrees (matches the Quick Start flow):
+/// - main: behind remote (teammate pushed while we were working)
 /// - fix-auth: just created, no commits ahead (same as main)
-/// - feature-api: where we switched to and did work (commits ahead + staged changes)
+/// - feature-api: commits ahead of main and remote, plus staged changes
 ///
 /// Output: tests/snapshots/integration__integration_tests__list__readme_example_simple_list.snap
 #[test]
@@ -981,25 +982,76 @@ fn test_readme_example_simple_list() {
     repo.commit_with_age("Initial commit", DAY);
     repo.setup_remote("main");
 
+    // Make main behind its remote: push a commit, then reset local
+    // (simulates a teammate pushing while we work on feature-api)
+    repo.commit_with_age("Teammate's fix", 2 * HOUR);
+    let mut cmd = Command::new("git");
+    repo.configure_git_cmd(&mut cmd);
+    cmd.args(["push", "origin", "main"])
+        .current_dir(repo.root_path())
+        .output()
+        .unwrap();
+    // Reset local main back one commit (so it's behind origin/main)
+    let mut cmd = Command::new("git");
+    repo.configure_git_cmd(&mut cmd);
+    cmd.args(["reset", "--hard", "HEAD~1"])
+        .current_dir(repo.root_path())
+        .output()
+        .unwrap();
+
     // Create fix-auth worktree (just created, no work yet - same commit as main)
     let _fix_auth = repo.add_worktree("fix-auth");
 
     // Create feature-api worktree (existing work - we switched here and did work)
     let feature_api = repo.add_worktree("feature-api");
 
-    // feature-api: several commits ahead with staged changes (a morning's work)
-    repo.commit_with_age_in("Add REST endpoints", 3 * HOUR, &feature_api);
-    repo.commit_with_age_in("Add authentication middleware", 2 * HOUR, &feature_api);
-    repo.commit_with_age_in("Add request validation", HOUR, &feature_api);
-    repo.commit_with_age_in("Add API tests", 30 * MINUTE, &feature_api);
-
-    // Staged changes: a few more files in progress
-    std::fs::write(feature_api.join("api.rs"), "// WIP: rate limiting\n").unwrap();
-    std::fs::write(feature_api.join("middleware.rs"), "// WIP: caching\n").unwrap();
-    std::fs::write(feature_api.join("tests.rs"), "// WIP: edge cases\n").unwrap();
+    // Push feature-api to establish tracking, then make more local commits
+    repo.commit_with_age_in("Add REST endpoints", 4 * HOUR, &feature_api);
     let mut cmd = Command::new("git");
     repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "api.rs", "middleware.rs", "tests.rs"])
+    cmd.args(["push", "-u", "origin", "feature-api"])
+        .current_dir(&feature_api)
+        .output()
+        .unwrap();
+
+    // More local commits (ahead of remote)
+    repo.commit_with_age_in("Add authentication middleware", 3 * HOUR, &feature_api);
+    repo.commit_with_age_in("Add request validation", 2 * HOUR, &feature_api);
+
+    // Create a file with content that we'll modify (to get deletions in HEAD±)
+    std::fs::write(
+        feature_api.join("validation.rs"),
+        "// Request validation\npub fn validate(req: &Request) -> Result<(), Error> {\n    if req.body.is_empty() {\n        return Err(Error::EmptyBody);\n    }\n    if req.body.len() > MAX_SIZE {\n        return Err(Error::TooLarge);\n    }\n    if !req.headers.contains_key(\"Authorization\") {\n        return Err(Error::Unauthorized);\n    }\n    Ok(())\n}\n",
+    )
+    .unwrap();
+    let mut cmd = Command::new("git");
+    repo.configure_git_cmd(&mut cmd);
+    cmd.args(["add", "validation.rs"])
+        .current_dir(&feature_api)
+        .output()
+        .unwrap();
+    repo.commit_with_age_in("Add API tests", 30 * MINUTE, &feature_api);
+
+    // Staged changes: new files (additions) + modify existing file (mixed +/-)
+    std::fs::write(
+        feature_api.join("api.rs"),
+        "// Rate limiting implementation\nuse std::time::Duration;\n\npub struct RateLimiter {\n    requests_per_second: u32,\n    window: Duration,\n}\n\nimpl RateLimiter {\n    pub fn new(rps: u32) -> Self {\n        Self { requests_per_second: rps, window: Duration::from_secs(1) }\n    }\n}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        feature_api.join("middleware.rs"),
+        "// Caching middleware\nuse std::collections::HashMap;\n\npub struct Cache<T> {\n    store: HashMap<String, T>,\n    ttl_seconds: u64,\n}\n\nimpl<T> Cache<T> {\n    pub fn get(&self, key: &str) -> Option<&T> {\n        self.store.get(key)\n    }\n}\n",
+    )
+    .unwrap();
+    // Modify validation.rs: remove some lines, add others (creates both + and -)
+    std::fs::write(
+        feature_api.join("validation.rs"),
+        "// Request validation (refactored)\npub fn validate(req: &Request) -> Result<(), ValidationError> {\n    validate_body(&req.body)?;\n    validate_auth(&req.headers)?;\n    Ok(())\n}\n\nfn validate_body(body: &[u8]) -> Result<(), ValidationError> {\n    if body.is_empty() { return Err(ValidationError::Empty); }\n    if body.len() > MAX_SIZE { return Err(ValidationError::TooLarge); }\n    Ok(())\n}\n",
+    )
+    .unwrap();
+    let mut cmd = Command::new("git");
+    repo.configure_git_cmd(&mut cmd);
+    cmd.args(["add", "api.rs", "middleware.rs", "validation.rs"])
         .current_dir(&feature_api)
         .output()
         .unwrap();
