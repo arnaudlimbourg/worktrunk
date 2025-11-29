@@ -294,30 +294,15 @@ pub fn handle_switch(
 ) -> anyhow::Result<(SwitchResult, String)> {
     let repo = Repository::current();
 
-    // Get current history (current, previous) before resolving
-    let history_before = repo.get_switch_history();
+    // Get the actual current branch BEFORE switching.
+    // This is what we'll record as "previous" in history for `wt switch -` support.
+    let actual_current_branch = repo.current_branch().ok().flatten();
 
     // Resolve special branch names ("@" for current, "-" for previous)
     let resolved_branch = repo.resolve_worktree_name(branch)?;
 
-    // Calculate what to record in history after the switch
-    // History stores (current_location, previous_location) for ping-pong behavior
-    let (new_current, new_previous) = if branch == "-" {
-        // Switching back: swap current and previous
-        // history_before contains (A, B), we're switching from A to B
-        // After switch, record (B, A) so we can switch back to A
-        if let Some(history) = history_before {
-            (resolved_branch.clone(), Some(history.current))
-        } else {
-            // No history - shouldn't happen since "-" requires history
-            // But handle gracefully: just record where we're going
-            (resolved_branch.clone(), None)
-        }
-    } else {
-        // Normal switch: record new location as current, old current as previous
-        let previous = history_before.map(|h| h.current);
-        (resolved_branch.clone(), previous)
-    };
+    // Record actual current branch as new "previous" for ping-pong behavior
+    let new_previous = actual_current_branch;
 
     // Resolve base if provided
     let resolved_base = if let Some(base_str) = base {
@@ -378,7 +363,7 @@ pub fn handle_switch(
     // Path-first lookup: check if a worktree exists at the expected path
     if let Some((existing_path, path_branch)) = repo.worktree_at_path(&expected_path)? {
         // Worktree exists at expected path - switch to it regardless of its branch
-        let _ = repo.record_switch_history(&new_current, new_previous.as_deref());
+        let _ = repo.record_switch_previous(new_previous.as_deref());
         let actual_branch = path_branch.unwrap_or_else(|| resolved_branch.clone());
         return Ok(switch_to_existing(existing_path, actual_branch));
     }
@@ -386,7 +371,7 @@ pub fn handle_switch(
     // Fallback: check if branch has a worktree at a different path
     match repo.worktree_for_branch(&resolved_branch)? {
         Some(existing_path) if existing_path.exists() => {
-            let _ = repo.record_switch_history(&new_current, new_previous.as_deref());
+            let _ = repo.record_switch_previous(new_previous.as_deref());
             return Ok(switch_to_existing(existing_path, resolved_branch));
         }
         Some(_) => {
@@ -518,7 +503,7 @@ pub fn handle_switch(
     // (see main.rs switch handler for temporal locality)
 
     // Record successful switch in history for `wt switch -` support
-    let _ = repo.record_switch_history(&new_current, new_previous.as_deref());
+    let _ = repo.record_switch_previous(new_previous.as_deref());
 
     Ok((
         SwitchResult::Created {

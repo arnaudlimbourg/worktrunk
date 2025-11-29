@@ -397,7 +397,7 @@ pub fn collect(
         .cloned()
         .unwrap_or_else(|| worktrees.main().clone());
     let current_worktree_path = repo.worktree_root().ok();
-    let previous_branch = repo.get_switch_history().and_then(|h| h.previous);
+    let previous_branch = repo.get_switch_previous();
 
     // Sort worktrees: current first, main second, then by timestamp descending
     let sorted_worktrees = sort_worktrees(

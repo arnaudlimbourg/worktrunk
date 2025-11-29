@@ -6,8 +6,8 @@ use anyhow::{Context, bail};
 
 // Import types and functions from parent module (mod.rs)
 use super::{
-    BranchCategory, CompletionBranch, DefaultBranchName, DiffStats, GitError, LineDiff,
-    SwitchHistory, Worktree, WorktreeList,
+    BranchCategory, CompletionBranch, DefaultBranchName, DiffStats, GitError, LineDiff, Worktree,
+    WorktreeList,
 };
 
 /// Result of resolving a worktree name.
@@ -285,43 +285,25 @@ impl Repository {
         branch.and_then(|branch| self.branch_keyed_status(branch))
     }
 
-    /// Record branch history in worktrunk.history for `wt switch -` support.
+    /// Record the previous branch in worktrunk.history for `wt switch -` support.
     ///
-    /// Stores "current,previous" to enable ping-pong switching.
-    /// This enables `wt switch -` to work after `wt switch` operations,
-    /// which don't create git reflog entries.
-    pub fn record_switch_history(
-        &self,
-        current: &str,
-        previous: Option<&str>,
-    ) -> anyhow::Result<()> {
-        let value = if let Some(prev) = previous {
-            format!("{},{}", current, prev)
-        } else {
-            current.to_string()
-        };
-        self.run_command(&["config", "worktrunk.history", &value])?;
+    /// Stores the branch we're switching FROM, so `wt switch -` can return to it.
+    pub fn record_switch_previous(&self, previous: Option<&str>) -> anyhow::Result<()> {
+        if let Some(prev) = previous {
+            self.run_command(&["config", "worktrunk.history", prev])?;
+        }
+        // If previous is None (detached HEAD), don't update history
         Ok(())
     }
 
-    /// Get the previous branch from worktrunk.history.
+    /// Get the previous branch from worktrunk.history for `wt switch -`.
     ///
-    /// Returns history if recorded, where `current` is the branch we switched to
-    /// and `previous` is where we came from (for ping-pong "-" behavior).
-    pub fn get_switch_history(&self) -> Option<SwitchHistory> {
+    /// Returns the branch we came from, enabling ping-pong switching.
+    pub fn get_switch_previous(&self) -> Option<String> {
         self.run_command(&["config", "--get", "worktrunk.history"])
             .ok()
-            .and_then(|output| {
-                let trimmed = output.trim();
-                if trimmed.is_empty() {
-                    return None;
-                }
-                let parts: Vec<&str> = trimmed.splitn(2, ',').collect();
-                Some(SwitchHistory {
-                    current: parts[0].to_string(),
-                    previous: parts.get(1).map(|s| s.to_string()),
-                })
-            })
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
     }
 
     /// Resolve a worktree name, expanding "@" to current, "-" to previous, and "^" to main.
@@ -350,17 +332,14 @@ impl Repository {
             }),
             "-" => {
                 // Read from worktrunk.history (recorded by wt switch operations)
-                // History stores (current, previous), we want previous
-                self.get_switch_history()
-                    .and_then(|h| h.previous)
-                    .ok_or_else(|| {
-                        GitError::Other {
-                            message:
-                                "No previous branch found in history. Use 'wt list' to see available worktrees."
-                                    .into(),
-                        }
-                        .into()
-                    })
+                self.get_switch_previous().ok_or_else(|| {
+                    GitError::Other {
+                        message:
+                            "No previous branch found in history. Use 'wt list' to see available worktrees."
+                                .into(),
+                    }
+                    .into()
+                })
             }
             "^" => self.default_branch(),
             _ => Ok(name.to_string()),

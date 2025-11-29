@@ -4,7 +4,7 @@ info:
   program: wt
   args:
     - switch
-    - feature-x
+    - "-"
   env:
     CLICOLOR_FORCE: "1"
     COLUMNS: "150"
@@ -25,5 +25,5 @@ exit_code: 0
 ----- stdout -----
 
 ----- stderr -----
-✅ [32m[32mSwitched to worktree for [1mfeature-x[22m at [1m[REPO].feature-x[39m[22m[39m
+🟡 [33m[33mWorktree for [1mbranch-a[22m at [1m[REPO].branch-a[22m; cannot cd (no shell integration)[39m[39m
 💡 [2m[2mRun `wt config shell install` to enable automatic cd[22m[22m

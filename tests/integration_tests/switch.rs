@@ -447,83 +447,11 @@ fn test_switch_primary_on_different_branch() {
 }
 
 #[test]
-fn test_switch_previous_branch() {
-    use std::process::Command;
-
-    let repo = setup_switch_repo();
-
-    // Create two branches
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["branch", "feature-a"])
-        .current_dir(repo.root_path())
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["branch", "feature-b"])
-        .current_dir(repo.root_path())
-        .output()
-        .unwrap();
-
-    // Use wt switch to establish worktrunk.history
-    snapshot_switch("switch_previous_branch_first", &repo, &["feature-a"]);
-    snapshot_switch("switch_previous_branch_second", &repo, &["feature-b"]);
-
-    // Now wt switch - should resolve to feature-b (the previous wt switch)
-    snapshot_switch("switch_previous_branch", &repo, &["-"]);
-}
-
-#[test]
 fn test_switch_previous_branch_no_history() {
     let repo = setup_switch_repo();
 
     // No checkout history, so wt switch - should fail with helpful error
     snapshot_switch("switch_previous_branch_no_history", &repo, &["-"]);
-}
-
-#[test]
-fn test_switch_previous_branch_with_worktrunk_history() {
-    use std::process::Command;
-
-    let repo = setup_switch_repo();
-
-    // Create two branches
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["branch", "feature-x"])
-        .current_dir(repo.root_path())
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["branch", "feature-y"])
-        .current_dir(repo.root_path())
-        .output()
-        .unwrap();
-
-    // Use wt switch to switch to feature-x (this records history)
-    snapshot_switch(
-        "switch_previous_branch_with_worktrunk_history_first",
-        &repo,
-        &["feature-x"],
-    );
-
-    // Switch to feature-y (this records feature-x in history)
-    snapshot_switch(
-        "switch_previous_branch_with_worktrunk_history_second",
-        &repo,
-        &["feature-y"],
-    );
-
-    // Now wt switch - should resolve to feature-x (from worktrunk.history)
-    snapshot_switch(
-        "switch_previous_branch_with_worktrunk_history_back",
-        &repo,
-        &["-"],
-    );
 }
 
 #[test]
@@ -635,4 +563,124 @@ fn test_switch_error_path_occupied() {
 
     // Cleanup
     std::fs::remove_dir_all(&expected_path).ok();
+}
+
+/// Test that `wt switch -` uses actual current branch for recording history.
+///
+/// Bug scenario: If user changes worktrees without using `wt switch` (e.g., cd directly),
+/// history becomes stale. The fix ensures we always use the actual current branch
+/// when recording new history, not any previously stored value.
+#[test]
+fn test_switch_previous_with_stale_history() {
+    use std::process::Command;
+
+    let repo = setup_switch_repo();
+
+    // Create branches with worktrees
+    for branch in ["branch-a", "branch-b", "branch-c"] {
+        let mut cmd = Command::new("git");
+        repo.configure_git_cmd(&mut cmd);
+        cmd.args(["branch", branch])
+            .current_dir(repo.root_path())
+            .output()
+            .unwrap();
+    }
+
+    // Switch to branch-a, then branch-b to establish history
+    snapshot_switch("switch_stale_history_to_a", &repo, &["branch-a"]);
+    snapshot_switch("switch_stale_history_to_b", &repo, &["branch-b"]);
+
+    // Now manually set history to simulate user changing worktrees without wt switch.
+    // History stores just the previous branch (branch-a from the earlier switches).
+    // If user manually cd'd to branch-c's worktree, history would still say branch-a.
+    let mut cmd = Command::new("git");
+    repo.configure_git_cmd(&mut cmd);
+    cmd.args(["config", "worktrunk.history", "branch-a"])
+        .current_dir(repo.root_path())
+        .output()
+        .unwrap();
+
+    // Run wt switch - from branch-b's worktree.
+    // Should go to branch-a (what history says), and record actual current branch as new previous.
+    snapshot_switch("switch_stale_history_first_dash", &repo, &["-"]);
+
+    // Run wt switch - again.
+    // Should go back to wherever we actually were (recorded as new previous in step above)
+    snapshot_switch("switch_stale_history_second_dash", &repo, &["-"]);
+}
+
+/// Helper to run switch from a specific working directory (simulating actual worktree location)
+fn snapshot_switch_from_dir(test_name: &str, repo: &TestRepo, args: &[&str], cwd: &Path) {
+    let default_home = TempDir::new().unwrap();
+    let settings = setup_snapshot_settings(repo);
+    settings.bind(|| {
+        let mut cmd = make_snapshot_cmd_with_global_flags(repo, "switch", args, Some(cwd), &[]);
+        cmd.env("HOME", default_home.path());
+        assert_cmd_snapshot!(test_name, cmd);
+    });
+}
+
+/// Test realistic ping-pong behavior where we actually run from the correct worktree.
+///
+/// This simulates real usage with shell integration, where each `wt switch` actually
+/// changes the working directory before the next command runs.
+#[test]
+fn test_switch_ping_pong_realistic() {
+    use std::process::Command;
+
+    let repo = setup_switch_repo();
+
+    // Create feature-a branch
+    let mut cmd = Command::new("git");
+    repo.configure_git_cmd(&mut cmd);
+    cmd.args(["branch", "feature-a"])
+        .current_dir(repo.root_path())
+        .output()
+        .unwrap();
+
+    // Step 1: From main worktree, switch to feature-a (creates worktree)
+    // History: current=feature-a, previous=main
+    snapshot_switch_from_dir(
+        "ping_pong_1_main_to_feature_a",
+        &repo,
+        &["feature-a"],
+        repo.root_path(),
+    );
+
+    // Calculate feature-a worktree path
+    let feature_a_path = repo.root_path().parent().unwrap().join(format!(
+        "{}.feature-a",
+        repo.root_path().file_name().unwrap().to_str().unwrap()
+    ));
+
+    // Step 2: From feature-a worktree, switch back to main
+    // History: current=main, previous=feature-a
+    snapshot_switch_from_dir(
+        "ping_pong_2_feature_a_to_main",
+        &repo,
+        &["main"],
+        &feature_a_path,
+    );
+
+    // Step 3: From main worktree, wt switch - should go to feature-a
+    // History: current=feature-a, previous=main
+    snapshot_switch_from_dir(
+        "ping_pong_3_dash_to_feature_a",
+        &repo,
+        &["-"],
+        repo.root_path(),
+    );
+
+    // Step 4: From feature-a worktree, wt switch - should go back to main
+    // History: current=main, previous=feature-a
+    snapshot_switch_from_dir("ping_pong_4_dash_to_main", &repo, &["-"], &feature_a_path);
+
+    // Step 5: From main worktree, wt switch - should go to feature-a again (ping-pong!)
+    // History: current=feature-a, previous=main
+    snapshot_switch_from_dir(
+        "ping_pong_5_dash_to_feature_a_again",
+        &repo,
+        &["-"],
+        repo.root_path(),
+    );
 }

@@ -222,7 +222,9 @@ fn test_list_multiple_worktrees() {
     snapshot_list("multiple_worktrees", &repo);
 }
 
-/// Test that the `-` gutter symbol appears for the previous worktree (target of `wt switch -`)
+/// Test that the `-` gutter symbol appears for the previous worktree (target of `wt switch -`).
+///
+/// Simulates realistic usage by running switch commands from the correct worktree directories.
 #[test]
 fn test_list_previous_worktree_gutter() {
     let mut repo = TestRepo::new();
@@ -230,20 +232,25 @@ fn test_list_previous_worktree_gutter() {
 
     repo.add_worktree("feature");
 
-    // Use wt switch to establish history: main -> feature -> main
-    // After this, "feature" is the previous branch
+    let feature_path = repo.root_path().parent().unwrap().join(format!(
+        "{}.feature",
+        repo.root_path().file_name().unwrap().to_str().unwrap()
+    ));
+
+    // Step 1: From main, switch to feature (history: current=feature, previous=main)
     let mut cmd = wt_command();
     repo.clean_cli_env(&mut cmd);
     cmd.args(["switch", "feature"])
         .current_dir(repo.root_path());
     cmd.output().unwrap();
 
+    // Step 2: From feature, switch back to main (history: current=main, previous=feature)
     let mut cmd = wt_command();
     repo.clean_cli_env(&mut cmd);
-    cmd.args(["switch", "main"]).current_dir(repo.root_path());
+    cmd.args(["switch", "main"]).current_dir(&feature_path);
     cmd.output().unwrap();
 
-    // Now list should show `-` for feature (the previous worktree)
+    // Now list should show `-` for feature (the previous worktree, target of `wt switch -`)
     snapshot_list("previous_worktree_gutter", &repo);
 }
 
