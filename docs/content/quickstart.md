@@ -21,31 +21,43 @@ $ wt config shell install
 
 ## Create a worktree
 
-```bash
-$ wt switch --create fix-auth
-✅ Created new worktree for fix-auth from main at ../repo.fix-auth
-```
+<!-- ⚠️ AUTO-GENERATED-HTML from tests/integration_tests/snapshots/integration__integration_tests__shell_wrapper__tests__readme_example_simple_switch.snap — edit source to update -->
+
+{% terminal() %}
+<span class="prompt">$</span> wt switch --create fix-auth
+✅ <span style='color:var(--green,#0a0)'>Created new worktree for <b>fix-auth</b> from <b>main</b> at <b>../repo.fix-auth</b></span>
+{% end %}
+
+<!-- END AUTO-GENERATED -->
 
 This creates `../repo.fix-auth` on branch `fix-auth`.
 
 ## Switch between worktrees
 
-```bash
-$ wt switch feature-api
-✅ Switched to worktree for feature-api at ../repo.feature-api
-```
+<!-- ⚠️ AUTO-GENERATED-HTML from tests/integration_tests/snapshots/integration__integration_tests__shell_wrapper__tests__readme_example_switch_back.snap — edit source to update -->
+
+{% terminal() %}
+<span class="prompt">$</span> wt switch feature-api
+✅ <span style='color:var(--green,#0a0)'>Switched to worktree for <b>feature-api</b> at <b>../repo.feature-api</b></span>
+{% end %}
+
+<!-- END AUTO-GENERATED -->
 
 ## List worktrees
 
-```bash
-$ wt list
-  Branch       Status         HEAD±    main↕  Path                Remote⇅  Commit    Age   Message
-@ feature-api  +   ↑⇡      +36  -11   ↑4      ./repo.feature-api   ⇡3      b1554967  30m   Add API tests
-^ main             ^⇣                         ./repo                   ⇣1  b834638e  1d    Initial commit
-+ fix-auth        _                           ./repo.fix-auth              b834638e  1d    Initial commit
+<!-- ⚠️ AUTO-GENERATED-HTML from tests/snapshots/integration__integration_tests__list__readme_example_simple_list.snap — edit source to update -->
 
-⚪ Showing 3 worktrees, 1 with changes, 1 ahead
-```
+{% terminal() %}
+<span class="prompt">$</span> wt list
+  <b>Branch</b>       <b>Status</b>         <b>HEAD±</b>    <b>main↕</b>  <b>Path</b>                <b>Remote⇅</b>  <b>Commit</b>    <b>Age</b>   <b>Message</b>
+@ <b>feature-api</b>  <span style='color:var(--cyan,#0aa)'>+</span>   <span style='opacity:0.67'>↑</span><span style='opacity:0.67'>⇡</span>      <span style='color:var(--green,#0a0)'>+36</span>  <span style='color:var(--red,#a00)'>-11</span>   <span style='color:var(--green,#0a0)'>↑4</span>      <b>./repo.feature-api</b>   <span style='color:var(--green,#0a0)'>⇡3</span>      <span style='opacity:0.67'>b1554967</span>  <span style='opacity:0.67'>30m</span>   <span style='opacity:0.67'>Add API tests</span>
+^ main             <span style='opacity:0.67'>^</span><span style='opacity:0.67'>⇣</span>                         ./repo                   <span style='opacity:0.67'><span style='color:var(--red,#a00)'>⇣1</span></span>  <span style='opacity:0.67'>b834638e</span>  <span style='opacity:0.67'>1d</span>    <span style='opacity:0.67'>Initial commit</span>
++ <span style='opacity:0.67'>fix-auth</span>        <span style='opacity:0.67'>_</span>                           <span style='opacity:0.67'>./repo.fix-auth</span>              <span style='opacity:0.67'>b834638e</span>  <span style='opacity:0.67'>1d</span>    <span style='opacity:0.67'>Initial commit</span>
+
+⚪ <span style='opacity:0.67'>Showing 3 worktrees, 1 with changes, 1 ahead</span>
+{% end %}
+
+<!-- END AUTO-GENERATED -->
 
 Add `--full` for CI status and conflicts. Add `--branches` to include all branches.
 
@@ -53,10 +65,14 @@ Add `--full` for CI status and conflicts. Add `--branches` to include all branch
 
 When you're done with a worktree (e.g., after merging via CI):
 
-```bash
-$ wt remove
-🔄 Removing feature-api worktree & branch in background (already in main)
-```
+<!-- ⚠️ AUTO-GENERATED-HTML from tests/integration_tests/snapshots/integration__integration_tests__shell_wrapper__tests__readme_example_remove.snap — edit source to update -->
+
+{% terminal() %}
+<span class="prompt">$</span> wt remove
+🔄 <span style='color:var(--cyan,#0aa)'>Removing <b>feature-api</b> worktree &amp; branch in background (already in main)</span>
+{% end %}
+
+<!-- END AUTO-GENERATED -->
 
 Worktrunk checks if your changes are already on main before deleting the branch.
 

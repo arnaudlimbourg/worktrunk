@@ -1,6 +1,28 @@
 // Custom styles for Worktrunk docs
 // Only add what the theme doesn't provide; prefer theme defaults
 
+// Terminal output styling (ANSI colors via inline styles from ansi-to-html crate)
+.terminal {
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+    font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+
+    code {
+        background-color: transparent;
+        color: #323232;
+        padding: 0;
+    }
+
+    // Prompt styling (manually added, not from ANSI conversion)
+    .prompt { color: #666666; }
+}
+
 // Code block enhancements (theme handles colors via CSS vars)
 .content pre {
     border: 1px solid #e0e0e0;

@@ -90,6 +90,7 @@ criterion = "0.8"
 portable-pty = "0.9"
 regex = "1.12"
 vt100 = "0.16"
+ansi-to-html = "0.2.2"
 
 [[bench]]
 name = "completion"
