@@ -130,7 +130,7 @@ pub struct Cli {
     )]
     pub verbose: bool,
 
-    /// Use internal mode (outputs directives for shell wrapper)
+    /// Shell wrapper mode
     #[arg(long, global = true, hide = true)]
     pub internal: bool,
 
