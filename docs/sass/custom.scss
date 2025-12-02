@@ -45,8 +45,8 @@ h2 {
     font-size: 1.4rem;
     font-weight: 600;
     letter-spacing: -0.02em;
-    margin-top: 2.75rem;
-    margin-bottom: 0.75rem;
+    margin-top: 2rem;
+    margin-bottom: 0.5rem;
     position: relative;
     display: inline-block;
 
@@ -67,8 +67,8 @@ h2 {
 h3 {
     font-size: 1.15rem;
     font-weight: 550;
-    margin-top: 2rem;
-    margin-bottom: 0.6rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.4rem;
     color: var(--wt-color-text-muted);
 }
 
@@ -141,6 +141,14 @@ main {
     margin-bottom: 1rem;
 }
 
+// Tighten spacing between paragraphs and code blocks
+.content p + pre,
+.content p + .terminal,
+.content pre + p,
+.content .terminal + p {
+    margin-top: 0.5rem;
+}
+
 // Links
 .content a {
     color: var(--wt-color-link);
@@ -176,7 +184,7 @@ main {
     border-radius: 0.5rem;
     padding: 0.75rem 1rem;
     overflow-x: auto;
-    margin: 1.5rem 0;
+    margin: 1rem 0;
 
     code {
         background-color: transparent;
@@ -195,7 +203,7 @@ main {
     border-radius: 0.5rem;
     padding: 0.75rem 1rem;
     overflow-x: auto;
-    margin: 1.5rem 0;
+    margin: 1rem 0;
     font-family: var(--wt-font-mono);
     font-size: 0.875rem;
     line-height: 1.5;
@@ -222,7 +230,7 @@ main {
     border-left: 3px solid var(--wt-color-accent);
     position: relative;
     background: var(--wt-color-bg-elevated);
-    margin: 1.5rem 0;
+    margin: 1rem 0;
 
     p {
         margin: 0;
@@ -236,7 +244,7 @@ main {
 table {
     border-collapse: collapse;
     width: 100%;
-    margin: 1.5rem 0;
+    margin: 1rem 0;
     border-radius: 0.5rem;
     overflow: hidden;
     border: 1px solid var(--wt-color-border-subtle);

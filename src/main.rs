@@ -77,8 +77,15 @@ fn maybe_handle_help_with_pager() -> bool {
                 ErrorKind::DisplayHelp | ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
             )
         {
-            // err.render() returns the help text clap already built
-            println!("{}", err.render());
+            // Transform code block languages for Zola compatibility:
+            // - ```text (clap's default for usage) -> ``` (no highlighting)
+            // - ```console (our examples) -> ```bash
+            let output = err
+                .render()
+                .to_string()
+                .replace("```text\n", "```\n")
+                .replace("```console\n", "```bash\n");
+            println!("{output}");
             process::exit(0);
         }
         // Fall through if not a help request

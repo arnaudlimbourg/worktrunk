@@ -406,10 +406,10 @@ fn get_help_output(command: &str, project_root: &Path) -> Result<String, String>
             let docs = docs.trim_start_matches('\n');
             // Increase heading levels so docs headings become children of command heading
             let docs = increase_heading_levels(docs);
-            format!("```text\n{}{}\n```\n\n{}", first_line, synopsis, docs)
+            format!("```\n{}{}\n```\n\n{}", first_line, synopsis, docs)
         } else {
             // No documentation section, wrap everything in code block
-            format!("```text\n{}{}\n```", first_line, rest)
+            format!("```\n{}{}\n```", first_line, rest)
         }
     } else {
         // Single line output
