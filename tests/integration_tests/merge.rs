@@ -599,7 +599,7 @@ args = ["-c", "cat >/dev/null && echo 'feat: implement user authentication syste
 }
 
 #[test]
-fn test_merge_squash_llm_fallback() {
+fn test_merge_squash_llm_command_not_found() {
     let mut repo = TestRepo::new();
     repo.commit("Initial commit");
     repo.setup_remote("main");
@@ -644,11 +644,9 @@ fn test_merge_squash_llm_fallback() {
         .output()
         .unwrap();
 
-    // Configure LLM command that will fail (non-existent command)
-    // Should now error instead of falling back
-    // (squashing is now the default, no need for --squash flag)
+    // Configure LLM command that doesn't exist - should error
     snapshot_merge_with_env(
-        "merge_squash_llm_fallback",
+        "merge_squash_llm_command_not_found",
         &repo,
         &["main"],
         Some(&feature_wt),

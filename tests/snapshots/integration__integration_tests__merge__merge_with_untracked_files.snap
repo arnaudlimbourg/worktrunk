@@ -31,14 +31,10 @@ exit_code: 0
 🔄 [36mSquashing 1 commit & working tree changes into a single commit [90m(3 files, [32m+3[39m[39m[90m)[39m...[39m
 💡 [2mBackup created @ 4967998[22m
 🔄 [36mGenerating squash commit message...[39m
-💡 [2mUsing fallback commit message. Run [90mwt config --help[39m for LLM setup guide[22m
-[107m [0m  [1mSquash commits from main[22m
-[107m [0m  
-[107m [0m  Combined commits:
-[107m [0m  - feat: add file 1
-✅ [32mSquashed @ [2mfbfc726[22m[39m
-🔄 [36mMerging 1 commit to [1mmain[22m @ [2mfbfc726[22m (no rebase needed)[39m
-[107m [0m  * [33mfbfc726[m Squash commits from main
+[107m [0m  [1mfix: commit changes[22m
+✅ [32mSquashed @ [2mffd7e7b[22m[39m
+🔄 [36mMerging 1 commit to [1mmain[22m @ [2mffd7e7b[22m (no rebase needed)[39m
+[107m [0m  * [33mffd7e7b[m fix: commit changes
 [107m [0m   file1.txt      | 1 [32m+[m
 [107m [0m   untracked1.txt | 1 [32m+[m
 [107m [0m   untracked2.txt | 1 [32m+[m

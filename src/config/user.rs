@@ -2,10 +2,49 @@
 //!
 //! Personal preferences and per-project approved commands, not checked into git.
 
-use config::{Config, ConfigError, File};
-use serde::{Deserialize, Serialize};
+use config::{Case, Config, ConfigError, File};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::path::PathBuf;
 use std::sync::OnceLock;
+
+/// Deserialize a Vec<String> that can also accept a single String
+/// This enables setting array config fields via environment variables
+fn deserialize_string_or_vec<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de;
+
+    struct StringOrVec;
+
+    impl<'de> de::Visitor<'de> for StringOrVec {
+        type Value = Vec<String>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("string or array of strings")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(vec![value.to_string()])
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: de::SeqAccess<'de>,
+        {
+            let mut vec = Vec::new();
+            while let Some(elem) = seq.next_element()? {
+                vec.push(elem);
+            }
+            Ok(vec)
+        }
+    }
+
+    deserializer.deserialize_any(StringOrVec)
+}
 
 #[cfg(not(test))]
 use etcetera::base_strategy::{BaseStrategy, choose_base_strategy};
@@ -120,7 +159,8 @@ pub struct CommitGenerationConfig {
     pub command: Option<String>,
 
     /// Arguments to pass to the command
-    #[serde(default)]
+    /// Accepts either an array or a single string (for env var compatibility)
+    #[serde(default, deserialize_with = "deserialize_string_or_vec")]
     pub args: Vec<String>,
 
     /// Inline template for commit message prompt
@@ -275,12 +315,16 @@ impl WorktrunkConfig {
         }
 
         // Add environment variables with WORKTRUNK prefix
-        // Uses "__" separator (default) to support field names with underscores
-        // TODO: This doesn't work for nested fields due to serde rename mismatch.
-        // The config crate maps WORKTRUNK_COMMIT_GENERATION__COMMAND to `commit_generation.command`
-        // (snake_case), but serde expects `commit-generation.command` (kebab-case).
-        // Only WORKTRUNK_CONFIG_PATH works reliably (handled separately in get_config_path).
-        builder = builder.add_source(config::Environment::with_prefix("WORKTRUNK").separator("__"));
+        // - prefix_separator("_"): strip prefix with single underscore (WORKTRUNK_ → key)
+        // - separator("__"): double underscore for nested fields (COMMIT_GENERATION__COMMAND → commit-generation.command)
+        // - convert_case(Kebab): converts snake_case to kebab-case to match serde field names
+        // Example: WORKTRUNK_WORKTREE_PATH → worktree-path
+        builder = builder.add_source(
+            config::Environment::with_prefix("WORKTRUNK")
+                .prefix_separator("_")
+                .separator("__")
+                .convert_case(Case::Kebab),
+        );
 
         let config: Self = builder.build()?.try_deserialize()?;
 

@@ -3,9 +3,8 @@ source: tests/integration_tests/merge.rs
 info:
   program: wt
   args:
-    - step
-    - squash
-    - "--stage=tracked"
+    - merge
+    - main
   env:
     CLICOLOR_FORCE: "1"
     COLUMNS: "150"
@@ -17,17 +16,18 @@ info:
     LANG: C
     LC_ALL: C
     SOURCE_DATE_EPOCH: "1735776000"
-    WORKTRUNK_COMMIT_GENERATION__ARGS: "squash: combined commits"
-    WORKTRUNK_COMMIT_GENERATION__COMMAND: echo
+    WORKTRUNK_COMMIT_GENERATION__COMMAND: nonexistent-llm-command
     WORKTRUNK_CONFIG_PATH: "[TEST_CONFIG]"
 ---
-success: true
-exit_code: 0
+success: false
+exit_code: 1
 ----- stdout -----
 
 ----- stderr -----
-🔄 [36mSquashing 2 commits & tracked changes into a single commit [90m(2 files, [32m+2[39m[39m[90m)[39m...[39m
-💡 [2mBackup created @ ba1424b[22m
+🔄 [36mSquashing 2 commits into a single commit [90m(2 files, [32m+2[39m[39m[90m)[39m...[39m
 🔄 [36mGenerating squash commit message...[39m
-[107m [0m  [1msquash: combined commits[22m
-✅ [32mSquashed @ [2m072b879[22m[39m
+❌ [31mCommit generation command failed[39m
+[107m [0m  Failed to spawn LLM command
+
+⚪ Ran command:
+[107m [0m  nonexistent-llm-command
