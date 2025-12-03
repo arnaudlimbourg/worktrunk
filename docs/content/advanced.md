@@ -1,6 +1,9 @@
 +++
 title = "Advanced Features"
-weight = 8
+weight = 23
+
+[extra]
+group = "Reference"
 +++
 
 Most Worktrunk users get everything they need from `wt switch`, `wt list`, `wt merge`, and `wt remove`. The features below are optional power-user capabilities.

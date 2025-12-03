@@ -1,6 +1,9 @@
 +++
 title = "FAQ"
-weight = 9
+weight = 25
+
+[extra]
+group = "Reference"
 +++
 
 ## What commands does Worktrunk execute?

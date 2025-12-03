@@ -1,6 +1,9 @@
 +++
 title = "Configuration"
-weight = 4
+weight = 20
+
+[extra]
+group = "Reference"
 +++
 
 Worktrunk uses two configuration files:

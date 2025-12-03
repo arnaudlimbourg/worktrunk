@@ -1,6 +1,9 @@
 +++
 title = "LLM Commit Messages"
-weight = 5
+weight = 22
+
+[extra]
+group = "Reference"
 +++
 
 Worktrunk generates commit messages by building a templated prompt and piping it to an external command. This integrates with `wt merge` and `wt step commit`.

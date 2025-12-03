@@ -1,6 +1,9 @@
 +++
 title = "Hooks"
-weight = 5
+weight = 21
+
+[extra]
+group = "Reference"
 +++
 
 Hooks automate setup and validation at worktree lifecycle events. They're defined in `.config/wt.toml` (project config) and run automatically during `wt switch --create` and `wt merge`.

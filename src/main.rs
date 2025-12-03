@@ -54,6 +54,12 @@ fn maybe_handle_help_with_pager() -> bool {
 
     let args: Vec<String> = std::env::args().collect();
 
+    // Check for --help-page flag (output full doc page with frontmatter)
+    if args.iter().any(|a| a == "--help-page") {
+        handle_help_page(&args);
+        process::exit(0);
+    }
+
     // Check for --help-md flag (output raw markdown without ANSI rendering)
     if args.iter().any(|a| a == "--help-md") {
         let mut cmd = cli::build_command();
@@ -125,6 +131,148 @@ fn maybe_handle_help_with_pager() -> bool {
             }
         }
     }
+}
+
+/// Generate a full documentation page for a command.
+///
+/// Output format:
+/// ```markdown
+/// +++
+/// title = "Merging"
+/// weight = 5
+/// +++
+///
+/// [after_long_help content - the conceptual docs]
+///
+/// ---
+///
+/// ## Command Reference
+///
+/// ```bash
+/// wt merge — ...
+/// Usage: ...
+/// ```
+/// ```
+///
+/// This is used to generate docs/content/merge.md etc from the source.
+fn handle_help_page(args: &[String]) {
+    use clap::ColorChoice;
+    use clap::error::ErrorKind;
+
+    let mut cmd = cli::build_command();
+    cmd = cmd.color(ColorChoice::Never);
+
+    // Find the subcommand name (the arg before --help-page, or after wt)
+    let subcommand = args
+        .iter()
+        .filter(|a| *a != "--help-page" && !a.starts_with('-') && !a.ends_with("/wt"))
+        .find(|a| {
+            // Skip the binary name
+            !a.contains("target/") && *a != "wt"
+        });
+
+    let Some(subcommand) = subcommand else {
+        eprintln!("Usage: wt <command> --help-page");
+        eprintln!("Commands with pages: merge, switch, remove, list");
+        return;
+    };
+
+    // Navigate to the subcommand
+    let sub = cmd.find_subcommand(subcommand);
+    let Some(sub) = sub else {
+        eprintln!("Unknown command: {subcommand}");
+        return;
+    };
+
+    // Get the after_long_help content
+    // Transform ```console to ```bash for Zola compatibility
+    let after_help = sub
+        .get_after_long_help()
+        .map(|s| s.to_string().replace("```console\n", "```bash\n"))
+        .unwrap_or_default();
+
+    // Get the help reference block
+    let filtered_args: Vec<String> = args
+        .iter()
+        .map(|a| {
+            if a == "--help-page" {
+                "--help".to_string()
+            } else {
+                a.clone()
+            }
+        })
+        .collect();
+
+    let mut cmd_for_help = cli::build_command();
+    cmd_for_help = cmd_for_help.color(ColorChoice::Never);
+
+    let help_block = if let Err(err) = cmd_for_help.try_get_matches_from_mut(filtered_args)
+        && matches!(
+            err.kind(),
+            ErrorKind::DisplayHelp | ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
+        ) {
+        err.render()
+            .to_string()
+            .replace("```text\n", "```\n")
+            .replace("```console\n", "```bash\n")
+    } else {
+        String::new()
+    };
+
+    // Split help_block into before and after the after_help section
+    // The help block includes the after_help at the end, we want just the reference part
+    let reference_block = if !after_help.is_empty() {
+        // Find where after_help starts in the help output and take everything before it
+        // The after_help starts after the last option block
+        if let Some(pos) = help_block.find(&after_help[..after_help.len().min(50)]) {
+            help_block[..pos].trim_end().to_string()
+        } else {
+            help_block.clone()
+        }
+    } else {
+        help_block
+    };
+
+    // Title uses "wt <command>" format for consistency
+    let title = format!("wt {subcommand}");
+
+    // Weight mapping (for nav order)
+    // Commands are grouped together after Concepts (weight 3)
+    // Order: switch, list (daily use), merge, remove (workflow completion), then utilities
+    let weight = match subcommand.as_str() {
+        "switch" => 10,
+        "list" => 11,
+        "merge" => 12,
+        "remove" => 13,
+        "select" => 14,
+        "config" => 15,
+        "step" => 16,
+        _ => 50,
+    };
+
+    // Output the page
+    println!("+++");
+    println!("title = \"{title}\"");
+    println!("weight = {weight}");
+    println!();
+    println!("[extra]");
+    println!("group = \"Commands\"");
+    println!("+++");
+    println!();
+    println!("{}", after_help.trim());
+    println!();
+    println!("---");
+    println!();
+    println!("## Command Reference");
+    println!();
+    println!(
+        "<!-- ⚠️ AUTO-GENERATED from `wt {subcommand} --help-page` — edit cli.rs to update -->"
+    );
+    println!();
+    println!("```bash");
+    print!("{}", reference_block.trim());
+    println!();
+    println!("```");
 }
 
 /// Enhance clap errors with command-specific hints, then exit.
