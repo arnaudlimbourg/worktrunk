@@ -1,6 +1,6 @@
 +++
 title = "Concepts"
-weight = 3
+weight = 2
 +++
 
 ## Why git worktrees?
@@ -95,13 +95,3 @@ test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
 - **Lifecycle hooks**: Run commands on create, start, pre-merge, post-merge
 - **Unified status**: See changes, commits, CI status across all worktrees
 - **Safe cleanup**: Validates changes are merged before deleting branches
-
-## Worktree addressing
-
-Worktrunk uses **path-first lookup** when resolving arguments:
-
-1. Compute the expected path for the argument (using the configured path template)
-2. If a worktree exists at that path, use it (regardless of what branch it's on)
-3. Otherwise, treat the argument as a branch name
-
-This means `wt switch foo` will switch to `repo.foo/` even if that worktree is on a different branch.
