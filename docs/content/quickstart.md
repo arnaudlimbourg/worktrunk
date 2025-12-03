@@ -9,7 +9,7 @@ Worktrunk is a CLI for Git worktree management, designed for parallel AI agent w
 
 ## Install
 
-**Homebrew (macOS):**
+**Homebrew (macOS & Linux):**
 
 ```bash
 $ brew install max-sixty/worktrunk/wt

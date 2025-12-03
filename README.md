@@ -48,7 +48,7 @@ I'd recommend:
 
 ### 1. Install
 
-**Homebrew (macOS):**
+**Homebrew (macOS & Linux):**
 
 ```bash
 $ brew install max-sixty/worktrunk/wt
