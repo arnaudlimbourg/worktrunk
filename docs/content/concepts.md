@@ -13,13 +13,17 @@ When working with multiple AI agents (or multiple tasks), you have a few options
 | Multiple clones | Full isolation | Slow to set up, drift out of sync |
 | Git worktrees | Isolation + shared history | Requires management |
 
-Git worktrees give you multiple directories backed by a single `.git` directory. Each worktree has its own branch and working tree, but shares the repository history and refs.
+Git worktrees are a built-in git feature that creates multiple working directories from a single repository. Each worktree has its own branch and working tree, while sharing the object database and refs with the main repository. Branches created in one worktree are immediately visible to others with no sync overhead.
+
+For more details, see [git-worktree documentation](https://git-scm.com/docs/git-worktree).
 
 ## Why Worktrunk?
 
-Git's built-in `worktree` commands require remembering worktree locations and composing git + `cd` commands. Worktrunk bundles creation, navigation, status, and cleanup into simple commands.
+Git's `worktree` commands require remembering paths and composing git + `cd` sequences. Worktrunk bundles these into simple commands and adds extended capabilities.
 
-### Comparison
+### Simple commands
+
+Worktrunk addresses worktrees by branch name rather than filesystem path, using consistent directory naming (`repo.branch`, customizable):
 
 | Task | Worktrunk | Plain git |
 |------|-----------|-----------|
@@ -27,71 +31,17 @@ Git's built-in `worktree` commands require remembering worktree locations and co
 | Create + start Claude | `wt switch -c -x claude feature` | `git worktree add -b feature ../repo.feature main && cd ../repo.feature && claude` |
 | Clean up | `wt remove` | `cd ../repo && git worktree remove ../repo.feature && git branch -d feature` |
 | List | `wt list` (with diffstats & status) | `git worktree list` (just names & paths) |
-| List with CI status | `wt list --full` | N/A |
 
-### Local merging with `wt merge`
+### Extended capabilities
 
-`wt merge` handles the full merge workflow: stage, commit, squash, rebase, merge, cleanup. Includes LLM commit messages, project hooks, and flags for skipping steps.
+Beyond simplifying common tasks, Worktrunk adds features that git worktrees don't provide.
 
-| Task | Worktrunk | Plain git |
-|------|-----------|-----------|
-| Merge + clean up | `wt merge` | `git add -A && git reset --soft $(git merge-base HEAD main) && git diff --staged \| llm "..." \| git commit -F - && git rebase main && cargo test && cd ../repo && git merge --ff-only feature && git worktree remove ../repo.feature && git branch -d feature && cargo install --path .` |
+**[LLM commit messages](/llm-commits/)** generate commit messages from diffs using external tools like [llm](https://llm.datasette.io/). Works for regular commits and squash commits during merge.
 
-<!-- ⚠️ AUTO-GENERATED-HTML from tests/snapshots/integration__integration_tests__merge__readme_example_complex.snap — edit source to update -->
+**[Lifecycle hooks](/hooks/)** run project-defined commands at key points: worktree creation, switching, and merging. Use them for dependency installation, dev servers, formatters, tests, or deployment.
 
-{% terminal() %}
-<span class="prompt">$</span> wt merge
-🔄 <span style='color:var(--cyan,#0aa)'>Squashing 3 commits into a single commit <span style='color:var(--bright-black,#555)'>(3 files, <span style='color:var(--green,#0a0)'>+33</span></span></span><span style='color:var(--bright-black,#555)'>)</span>...
-🔄 <span style='color:var(--cyan,#0aa)'>Generating squash commit message...</span>
-<span style='background:var(--bright-white,#fff)'> </span>  <b>feat(auth): Implement JWT authentication system</b>
-<span style='background:var(--bright-white,#fff)'> </span>
-<span style='background:var(--bright-white,#fff)'> </span>  Add comprehensive JWT token handling including validation, refresh logic,
-<span style='background:var(--bright-white,#fff)'> </span>  and authentication tests. This establishes the foundation for secure
-<span style='background:var(--bright-white,#fff)'> </span>  API authentication.
-<span style='background:var(--bright-white,#fff)'> </span>
-<span style='background:var(--bright-white,#fff)'> </span>  - Implement token refresh mechanism with expiry handling
-<span style='background:var(--bright-white,#fff)'> </span>  - Add JWT encoding/decoding with signature verification
-<span style='background:var(--bright-white,#fff)'> </span>  - Create test suite covering all authentication flows
-✅ <span style='color:var(--green,#0a0)'>Squashed @ <span style='opacity:0.67'>95c3316</span></span>
-🔄 <span style='color:var(--cyan,#0aa)'>Running pre-merge <b>test</b>:</span>
-<span style='background:var(--bright-white,#fff)'> </span>  <span style='opacity:0.67'><span style='color:var(--blue,#00a)'>cargo</span></span><span style='opacity:0.67'> test</span>
-    Finished test [unoptimized + debuginfo] target(s) in 0.12s
-     Running unittests src/lib.rs (target/debug/deps/worktrunk-abc123)
+**[Unified status](/list/)** shows changes, ahead/behind counts, diff stats, and commit messages across all worktrees. With `--full`, it adds CI status (GitHub/GitLab), conflict detection, and line-level diffs against main.
 
-running 18 tests
-test auth::tests::test_jwt_decode ... ok
-test auth::tests::test_jwt_encode ... ok
-test auth::tests::test_token_refresh ... ok
-test auth::tests::test_token_validation ... ok
+**Safe cleanup** validates that changes are integrated before deleting worktrees and branches.
 
-test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
-🔄 <span style='color:var(--cyan,#0aa)'>Running pre-merge <b>lint</b>:</span>
-<span style='background:var(--bright-white,#fff)'> </span>  <span style='opacity:0.67'><span style='color:var(--blue,#00a)'>cargo</span></span><span style='opacity:0.67'> clippy</span>
-    Checking worktrunk v0.1.0
-    Finished dev [unoptimized + debuginfo] target(s) in 1.23s
-🔄 <span style='color:var(--cyan,#0aa)'>Merging 1 commit to <b>main</b> @ <span style='opacity:0.67'>95c3316</span> (no rebase needed)</span>
-<span style='background:var(--bright-white,#fff)'> </span>  * <span style='color:var(--yellow,#a60)'>95c3316</span> feat(auth): Implement JWT authentication system
-<span style='background:var(--bright-white,#fff)'> </span>   auth.rs      |  8 <span style='color:var(--green,#0a0)'>++++++++</span>
-<span style='background:var(--bright-white,#fff)'> </span>   auth_test.rs | 17 <span style='color:var(--green,#0a0)'>+++++++++++++++++</span>
-<span style='background:var(--bright-white,#fff)'> </span>   jwt.rs       |  8 <span style='color:var(--green,#0a0)'>++++++++</span>
-<span style='background:var(--bright-white,#fff)'> </span>   3 files changed, 33 insertions(+)
-✅ <span style='color:var(--green,#0a0)'>Merged to <b>main</b> <span style='color:var(--bright-black,#555)'>(1 commit, 3 files, +33</span></span><span style='color:var(--bright-black,#555)'>)</span>
-🔄 <span style='color:var(--cyan,#0aa)'>Removing <b>feature-auth</b> worktree &amp; branch in background (already in main)</span>
-🔄 <span style='color:var(--cyan,#0aa)'>Running post-merge <b>install</b>:</span>
-<span style='background:var(--bright-white,#fff)'> </span>  <span style='opacity:0.67'><span style='color:var(--blue,#00a)'>cargo</span></span><span style='opacity:0.67'> install </span><span style='opacity:0.67'><span style='color:var(--cyan,#0aa)'>--path</span></span><span style='opacity:0.67'> .</span>
-  Installing worktrunk v0.1.0
-   Compiling worktrunk v0.1.0
-    Finished release [optimized] target(s) in 2.34s
-  Installing ~/.cargo/bin/wt
-   Installed package `worktrunk v0.1.0` (executable `wt`)
-{% end %}
-
-<!-- END AUTO-GENERATED -->
-
-### What Worktrunk adds
-
-- **Branch-based navigation**: Address worktrees by branch name, not path
-- **Consistent directory naming**: Predictable locations for all worktrees
-- **Lifecycle hooks**: Run commands on create, start, pre-merge, post-merge
-- **Unified status**: See changes, commits, CI status across all worktrees
-- **Safe cleanup**: Validates changes are merged before deleting branches
+**[Merge workflow](/merge/)** handles the full pipeline: stage, squash, rebase, run hooks, push, and clean up.
