@@ -23,13 +23,13 @@ Worktrunk is a CLI for git worktree management, designed for parallel AI agent w
 
 AI agents like Claude and Codex can increasingly handle longer tasks without supervision. Running several in parallel is practical. But on a single checkout they step on each other's uncommitted changes.
 
-Git worktrees solve this: multiple working directories backed by one `.git`. Each gets its own files and index while sharing the repository's history and objects.
+Git worktrees solve this: multiple working directories sharing one `.git`.
 
-But the built-in commands are path-oriented: `git worktree add ../repo.feature`, then `cd ../repo.feature`, then later `git worktree remove ../repo.feature`.
+But the built-in commands are path-oriented: `git worktree add -b feature ../repo.feature`, then `cd ../repo.feature`, then `git worktree remove ../repo.feature`.
 
 ## What Worktrunk adds
 
-Worktrunk makes worktrees easy to use. Both for basic branch-based navigation & status....
+Worktrunk makes worktrees easy to use — branch-based navigation, unified status, and workflow automation:
 
 | Task | Worktrunk | Plain git |
 |------|-----------|-----------|
@@ -37,8 +37,6 @@ Worktrunk makes worktrees easy to use. Both for basic branch-based navigation & 
 | Create + start Claude | `wt switch -c -x claude feature` | `git worktree add -b feature ../repo.feature && cd ../repo.feature && claude` |
 | Clean up | `wt remove` | `cd ../repo && git worktree remove ../repo.feature && git branch -d feature` |
 | List with status | `wt list` | `git worktree list` (paths only) |
-
-...and automating a bunch of workflows, including:
 
 - **[Lifecycle hooks](https://worktrunk.dev/hooks/)** — run commands on create, switch, merge (deps install, dev servers, test suites)
 - **[LLM commit messages](https://worktrunk.dev/llm-commits/)** — generate commits from diffs via [llm](https://llm.datasette.io/)
@@ -92,8 +90,6 @@ $ wt remove
 ```
 
 <!-- END AUTO-GENERATED -->
-
-Worktrunk checks if changes are already on main before deleting the branch.
 
 ## Install
 

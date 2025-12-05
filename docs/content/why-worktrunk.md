@@ -7,17 +7,17 @@ Worktrunk is a CLI for git worktree management, designed for parallel AI agent w
 
 ![Worktrunk Demo](/assets/wt-demo.gif)
 
-## Git worktrees
+## Context: git worktrees
 
-AI agents like Claude and Codex can increasingly handle longer tasks without supervision. Running several in parallel is practical. But on a single checkout they step on each other's uncommitted changes.
+AI agents like Claude and Codex can increasingly handle longer tasks without supervision, and it's very practical to run several in parallel. But on a single file tree they step on each other's uncommitted changes.
 
-Git worktrees solve this: multiple working directories backed by one `.git`. Each gets its own files and index while sharing the repository's history and objects.
+Git worktrees are a great primitive for this: multiple working directories sharing one `.git`.
 
-But the built-in commands are path-oriented: `git worktree add ../repo.feature`, then `cd ../repo.feature`, then later `git worktree remove ../repo.feature`.
+But git worktrees' UX is clunky: `git worktree add -b feature ../repo.feature`, then `cd ../repo.feature`, then `git worktree remove ../repo.feature`.
 
 ## What Worktrunk adds
 
-Worktrunk makes worktrees easy to use. Both for basic branch-based navigation & status....
+Worktrunk makes worktrees easy to use — branch-based navigation, unified status, and workflow automation:
 
 | Task                  | Worktrunk                        | Plain git                                                                     |
 | --------------------- | -------------------------------- | ----------------------------------------------------------------------------- |
@@ -25,8 +25,6 @@ Worktrunk makes worktrees easy to use. Both for basic branch-based navigation & 
 | Create + start Claude | `wt switch -c -x claude feature` | `git worktree add -b feature ../repo.feature && cd ../repo.feature && claude` |
 | Clean up              | `wt remove`                      | `cd ../repo && git worktree remove ../repo.feature && git branch -d feature`  |
 | List with status      | `wt list`                        | `git worktree list` (paths only)                                              |
-
-...and automating a bunch of workflows, including:
 
 - **[Lifecycle hooks](@/hooks.md)** — run commands on create, pre-merge, post-merge
 - **[LLM commit messages](@/llm-commits.md)** — generate commit messages from diffs via [llm](https://llm.datasette.io/)
@@ -62,10 +60,11 @@ See all worktrees at a glance:
 
 {% terminal() %}
 <span class="prompt">$</span> <span class="cmd">wt list</span>
-  <b>Branch</b>       <b>Status</b>         <b>HEAD±</b>    <b>main↕</b>  <b>Path</b>                <b>Remote⇅</b>  <b>Commit</b>    <b>Age</b>   <b>Message</b>
-@ <b>feature-api</b>  <span class=c>+</span>   <span class=d>↕</span><span class=d>⇡</span>      <span class=g>+54</span>   <span class=r>-5</span>   <span class=g>↑4</span>  <span class=d><span class=r>↓1</span></span>  <b>./repo.feature-api</b>   <span class=g>⇡3</span>      <span class=d>28d38c20</span>  <span class=d>30m</span>   <span class=d>Add API tests</span>
-^ main             <span class=d>^</span><span class=d>⇅</span>                         ./repo               <span class=g>⇡1</span>  <span class=d><span class=r>⇣1</span></span>  <span class=d>2e6b7a8f</span>  <span class=d>4d</span>    <span class=d>Merge fix-auth:…</span>
-+ fix-auth         <span class=d>↕</span><span class=d>|</span>                 <span class=g>↑2</span>  <span class=d><span class=r>↓1</span></span>  ./repo.fix-auth        <span class=d>|</span>     <span class=d>1d697d5b</span>  <span class=d>5h</span>    <span class=d>Add secure token…</span>
+<b>Branch</b> <b>Status</b> <b>HEAD±</b> <b>main↕</b> <b>Path</b> <b>Remote⇅</b> <b>Commit</b> <b>Age</b> <b>Message</b>
+@ <b>feature-api</b> <span class=c>+</span> <span class=d>↕</span><span class=d>⇡</span> <span class=g>+54</span> <span class=r>-5</span> <span class=g>↑4</span> <span class=d><span class=r>↓1</span></span> <b>./repo.feature-api</b> <span class=g>⇡3</span> <span class=d>28d38c20</span> <span class=d>30m</span> <span class=d>Add API tests</span>
+^ main <span class=d>^</span><span class=d>⇅</span> ./repo <span class=g>⇡1</span> <span class=d><span class=r>⇣1</span></span> <span class=d>2e6b7a8f</span> <span class=d>4d</span> <span class=d>Merge fix-auth:…</span>
+
+- fix-auth <span class=d>↕</span><span class=d>|</span> <span class=g>↑2</span> <span class=d><span class=r>↓1</span></span> ./repo.fix-auth <span class=d>|</span> <span class=d>1d697d5b</span> <span class=d>5h</span> <span class=d>Add secure token…</span>
 
 ⚪ <span class=d>Showing 3 worktrees, 1 with changes, 2 ahead</span>
 {% end %}
@@ -84,8 +83,6 @@ Clean up when done:
 {% end %}
 
 <!-- END AUTO-GENERATED -->
-
-Worktrunk checks if changes are already on main before deleting the branch.
 
 ## Install
 
@@ -111,8 +108,6 @@ $ wt config shell install
 - Run `wt --help` or `wt <command> --help` for quick CLI reference
 
 ## Further reading
-
-Resources on git worktrees and AI agent workflows:
 
 - [Claude Code: Best practices for agentic coding](https://www.anthropic.com/engineering/claude-code-best-practices) — Anthropic's official guide, including the worktree pattern
 - [Shipping faster with Claude Code and Git Worktrees](https://incident.io/blog/shipping-faster-with-claude-code-and-git-worktrees) — incident.io's workflow for parallel agents
