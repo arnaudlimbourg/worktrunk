@@ -9,19 +9,19 @@ Worktrunk is a CLI for git worktree management, designed for parallel AI agent w
 
 ## The problem
 
-Multiple AI agents on one repo need isolation:
+AI agents like Claude and Cursor can now handle longer tasks without supervision. Running several at once is practical, but they need isolated workspaces. On a single repo:
 
 | Approach | Tradeoff |
 |----------|----------|
 | One working tree, many branches | Agents step on each other; can't use git for staging |
 | Multiple clones | Slow setup, repos drift out of sync |
-| Git worktrees | Isolation + shared history, but requires management |
+| Git worktrees | Isolation + shared history, but requires path management |
 
-Git worktrees provide isolation with shared history. But git's built-in commands require remembering paths and composing `git` + `cd` sequences.
+Git worktrees give isolation with shared history. But the built-in commands are path-oriented: `git worktree add ../repo.feature`, then `cd ../repo.feature`, then later `git worktree remove ../repo.feature`.
 
 ## What Worktrunk adds
 
-Worktrunk addresses worktrees by branch name, not path:
+Worktrunk makes worktrees easy to use. Branch names replace paths:
 
 | Task | Worktrunk | Plain git |
 |------|-----------|-----------|
@@ -30,13 +30,11 @@ Worktrunk addresses worktrees by branch name, not path:
 | Clean up | `wt remove` | `cd ../repo && git worktree remove ../repo.feature && git branch -d feature` |
 | List with status | `wt list` | `git worktree list` (paths only) |
 
-Beyond navigation:
+Plus:
 
-- **[LLM commit messages](@/llm-commits.md)** — generate commits from diffs using tools like [llm](https://llm.datasette.io/)
-- **[Lifecycle hooks](@/hooks.md)** — run commands on create, switch, merge (deps, dev servers, tests)
-- **[Unified status](@/list.md)** — changes, ahead/behind, diffs, CI status across all worktrees
-- **[Safe cleanup](@/remove.md)** — validates changes are integrated before deleting
-- **[Merge workflow](@/merge.md)** — stage, squash, rebase, push, clean up
+- **[Lifecycle hooks](@/hooks.md)** — run commands on create, switch, merge (deps install, dev servers, test suites)
+- **[LLM commit messages](@/llm-commits.md)** — generate commits from diffs via [llm](https://llm.datasette.io/)
+- **[Merge workflow](@/merge.md)** — squash, rebase, push, clean up in one command
 
 ## In practice
 
@@ -110,3 +108,12 @@ $ wt config shell install
 - Learn the core commands: [wt switch](@/switch.md), [wt list](@/list.md), [wt remove](@/remove.md)
 - Set up [project hooks](@/hooks.md) for automated setup
 - Explore [LLM commit messages](@/llm-commits.md), [local merging](@/merge.md), [fzf-like picker](@/select.md), [Claude Code integration](@/claude-code.md)
+
+## Further reading
+
+Resources on git worktrees and AI agent workflows:
+
+- [Claude Code: Best practices for agentic coding](https://www.anthropic.com/engineering/claude-code-best-practices) — Anthropic's official guide, including the worktree pattern
+- [Shipping faster with Claude Code and Git Worktrees](https://incident.io/blog/shipping-faster-with-claude-code-and-git-worktrees) — incident.io's workflow for parallel agents
+- [Git worktree pattern discussion](https://github.com/anthropics/claude-code/issues/1052) — Community discussion in the Claude Code repo
+- [git-worktree documentation](https://git-scm.com/docs/git-worktree) — Official git reference
