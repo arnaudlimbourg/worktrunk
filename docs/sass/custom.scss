@@ -9,6 +9,9 @@ html {
     // Reserve scrollbar space to prevent layout shift when navigating
     // Browser support: Safari 17+, Chrome 94+, Firefox 97+. Graceful degradation.
     scrollbar-gutter: stable;
+    // Prevent page-level horizontal scroll on mobile touch devices
+    // (content overflow-x: auto handles internal scrolling for wide content)
+    overflow-x: hidden;
 }
 
 // ============================================================================
