@@ -270,6 +270,7 @@ main {
     width: 100%; // Fill available space in flex container
     max-width: 922px; // Cap width for readability
     min-width: 0; // Override Juice's min-width: 800px
+    overflow-x: auto; // Allow wide content (tables) to scroll without page overflow
     padding: 1.5rem 30px;
     background-color: var(--wt-color-bg-elevated);
     border-radius: 12px;
