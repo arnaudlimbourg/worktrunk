@@ -266,6 +266,7 @@ main {
 }
 
 .content {
+    display: block; // Override Juice's display: flex - fixes text selection across blocks
     box-sizing: border-box; // Include padding/border in width for consistent sizing
     width: 100%; // Fill available space in flex container
     max-width: 922px; // Cap width for readability
