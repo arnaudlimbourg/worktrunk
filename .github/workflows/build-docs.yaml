@@ -18,10 +18,11 @@ jobs:
           tool: zola@0.19.2
 
       - name: Fetch demo assets
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p docs/static/assets
-          for file in $(curl -fsSL https://api.github.com/repos/max-sixty/worktrunk-assets/contents/demos \
-                        | jq -r '.[].name'); do
+          for file in $(gh api repos/max-sixty/worktrunk-assets/contents/demos --jq '.[].name'); do
             curl -fsSL -o "docs/static/assets/$file" \
               "https://raw.githubusercontent.com/max-sixty/worktrunk-assets/main/demos/$file"
           done
