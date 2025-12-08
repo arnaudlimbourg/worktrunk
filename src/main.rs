@@ -37,7 +37,7 @@ use commands::{
 use output::{execute_user_command, handle_remove_output, handle_switch_output};
 
 use cli::{
-    ApprovalsCommand, CacheCommand, Cli, Commands, ConfigCommand, ConfigShellCommand,
+    ApprovalsCommand, CacheCommand, Cli, Commands, ConfigCommand, ConfigShellCommand, HookCommand,
     ListSubcommand, StepCommand, VarCommand,
 };
 use worktrunk::HookType;
@@ -821,22 +821,24 @@ fn main() {
                     }
                 })
             }
-            StepCommand::PostCreate { name, force } => {
+        },
+        Commands::Hook { action } => match action {
+            HookCommand::PostCreate { name, force } => {
                 handle_standalone_run_hook(HookType::PostCreate, force, name.as_deref())
             }
-            StepCommand::PostStart { name, force } => {
+            HookCommand::PostStart { name, force } => {
                 handle_standalone_run_hook(HookType::PostStart, force, name.as_deref())
             }
-            StepCommand::PreCommit { name, force } => {
+            HookCommand::PreCommit { name, force } => {
                 handle_standalone_run_hook(HookType::PreCommit, force, name.as_deref())
             }
-            StepCommand::PreMerge { name, force } => {
+            HookCommand::PreMerge { name, force } => {
                 handle_standalone_run_hook(HookType::PreMerge, force, name.as_deref())
             }
-            StepCommand::PostMerge { name, force } => {
+            HookCommand::PostMerge { name, force } => {
                 handle_standalone_run_hook(HookType::PostMerge, force, name.as_deref())
             }
-            StepCommand::PreRemove { name, force } => {
+            HookCommand::PreRemove { name, force } => {
                 handle_standalone_run_hook(HookType::PreRemove, force, name.as_deref())
             }
         },
