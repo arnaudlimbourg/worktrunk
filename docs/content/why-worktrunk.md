@@ -9,22 +9,22 @@ Here's a quick demo:
 
 <figure class="demo">
 <img src="/assets/wt-demo.gif" alt="Worktrunk demo showing wt list, wt switch, and wt merge">
-<figcaption>Listing worktrees, creating one, working, merging back</figcaption>
+<figcaption>Listing worktrees, creating a worktree, working, merging back</figcaption>
 </figure>
 
-## Context: git worktrees
+## Git worktrees are a great primitive
 
 AI agents like Claude Code and Codex can increasingly handle longer tasks
 without supervision, and it's very practical to run several in parallel. Git
 worktrees provide each agent with its own working directory, avoiding agents
 stepping on each other's changes.
 
-But the git worktree UX is clunky. Even something as simple as "start a new worktree" is complicated:
+But the git worktree UX is clunky. Even something as simple as "start a new worktree" is verbose:
 `git worktree add -b feature ../repo.feature`, then `cd ../repo.feature`.
 
-## What Worktrunk adds
+## Worktrunk makes git worktrees easy
 
-Worktrunk makes worktrees easy to use — branch-based navigation, unified status, and workflow automation.
+Worktrunk makes git worktrees easy to use — branch-based navigation, unified status, and workflow automation.
 
 **Core commands:**
 
@@ -40,7 +40,7 @@ Worktrunk makes worktrees easy to use — branch-based navigation, unified statu
 - **[Lifecycle hooks](@/hook.md)** — run commands on create, pre-merge, post-merge
 - **[LLM commit messages](@/llm-commits.md)** — generate commit messages from diffs via [llm](https://llm.datasette.io/)
 - **[Merge workflow](@/merge.md)** — squash, rebase, merge, clean up in one command
-- ...and lots more.
+- ...and [lots more](#next-steps)
 
 ## Core commands in practice
 
@@ -113,7 +113,7 @@ $ wt config shell install
 
 - Learn the core commands: [wt switch](@/switch.md), [wt list](@/list.md), [wt merge](@/merge.md), [wt remove](@/remove.md)
 - Set up [project hooks](@/hook.md) for automated setup
-- Explore [LLM commit messages](@/llm-commits.md), [fzf-like picker](@/select.md), [Claude Code integration](@/claude-code.md)
+- Explore [LLM commit messages](@/llm-commits.md), [fzf-like picker](@/select.md), [Claude Code integration](@/claude-code.md), [CI status & PR links](@/list.md#ci-status)
 - Run `wt --help` or `wt <command> --help` for quick CLI reference
 
 ## Further reading

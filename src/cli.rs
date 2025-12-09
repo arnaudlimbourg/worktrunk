@@ -1359,6 +1359,8 @@ $ wt list --format=json
 | Age | Time since last commit |
 | Message | Last commit message (truncated) |
 
+### CI status
+
 The CI column shows GitHub/GitLab pipeline status:
 
 | Indicator | Meaning |
