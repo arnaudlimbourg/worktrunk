@@ -52,10 +52,13 @@ pub fn maybe_handle_env_completion() -> bool {
     let mut cmd = completion_command();
     cmd.build();
 
+    // Determine the index of the word being completed.
+    // - Bash/Zsh: Pass `_CLAP_COMPLETE_INDEX` env var with the cursor position
+    // - Fish: Appends the current token as the last argument, so index = len - 1
     let index: usize = std::env::var("_CLAP_COMPLETE_INDEX")
         .ok()
         .and_then(|i| i.parse().ok())
-        .unwrap_or_default();
+        .unwrap_or_else(|| args.len() - 1);
 
     // Check if the current word is exactly "-" (single dash)
     // If so, we want to show both short flags (-h) AND long flags (--help)
