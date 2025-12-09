@@ -112,11 +112,11 @@ CI is only checked for branches that track a remote — local-only branches show
 
 Symbols appear in the Status column in this order:
 
-  Category           Symbol  Meaning                             
+  Subcolumn          Symbol  Meaning                             
   ─────────────────  ──────  ────────────────────────────────────
-  Working tree       [36m+[0m       Staged files                        
-                     [36m![0m       Modified files (unstaged)           
-                     [36m?[0m       Untracked files                     
+  Working tree (1)   [36m+[0m       Staged files                        
+  Working tree (2)   [36m![0m       Modified files (unstaged)           
+  Working tree (3)   [36m?[0m       Untracked files                     
   Branch state       [31m✖[0m       Merge conflicts                     
                      [33m↻[0m       Rebase in progress                  
                      [33m⋈[0m       Merge in progress                   

@@ -103,11 +103,11 @@ CI is only checked for branches that track a remote — local-only branches show
 
 Symbols appear in the Status column in this order:
 
-| Category | Symbol | Meaning |
-|----------|--------|---------|
-| Working tree | `+` | Staged files |
-| | `!` | Modified files (unstaged) |
-| | `?` | Untracked files |
+| Subcolumn | Symbol | Meaning |
+|-----------|--------|---------|
+| Working tree (1) | `+` | Staged files |
+| Working tree (2) | `!` | Modified files (unstaged) |
+| Working tree (3) | `?` | Untracked files |
 | Branch state | `✖` | Merge conflicts |
 | | `↻` | Rebase in progress |
 | | `⋈` | Merge in progress |
