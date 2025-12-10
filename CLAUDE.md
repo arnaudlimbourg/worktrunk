@@ -229,6 +229,8 @@ output::print(warning_message(cformat!("Branch <bold>{name}</> not found")))?;
 
 **Every user-facing message requires either an emoji or a gutter** for consistent visual separation.
 
+**Section titles** (experimental): For output with distinct sections (like `wt hook show`, `wt config show`), use cyan uppercase text without emoji: `<cyan>SECTION TITLE</>`. This distinguishes organizational headers from status messages. Currently being trialed — expand to other commands if it works well.
+
 ### Blank Line Principles
 
 - **No leading/trailing blanks** - Start immediately, end cleanly
