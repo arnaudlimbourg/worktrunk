@@ -1409,7 +1409,7 @@ wt select
 Toggle between views with number keys:
 
 1. **HEAD±** — Diff of uncommitted changes
-2. **history** — Recent commits on the branch
+2. **log** — Recent commits on the branch
 3. **main…±** — Diff of all changes vs main branch
 
 ## Keybindings

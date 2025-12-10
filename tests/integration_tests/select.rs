@@ -433,10 +433,10 @@ fn test_select_preview_panel_uncommitted() {
     assert_snapshot!("select_preview_uncommitted", normalized);
 }
 
-/// Test preview panel 2: history shows recent commits
+/// Test preview panel 2: log shows recent commits
 #[test]
 
-fn test_select_preview_panel_history() {
+fn test_select_preview_panel_log() {
     let mut repo = TestRepo::new();
     repo.commit("Initial commit");
     let feature_path = repo.add_worktree("feature");
@@ -467,7 +467,7 @@ fn test_select_preview_panel_history() {
     }
 
     let env_vars = repo.test_env_vars();
-    // Type "feature" to filter, press 2 for history panel
+    // Type "feature" to filter, press 2 for log panel
     let (raw_output, exit_code) = exec_in_pty_with_input_sequence(
         get_cargo_bin("wt").to_str().unwrap(),
         &["select"],
@@ -480,7 +480,7 @@ fn test_select_preview_panel_history() {
 
     let screen = render_terminal_screen(&raw_output);
     let normalized = normalize_output(&screen);
-    assert_snapshot!("select_preview_history", normalized);
+    assert_snapshot!("select_preview_log", normalized);
 }
 
 /// Test preview panel 3: main…± shows diff vs main branch

@@ -185,7 +185,7 @@ fn shell_escape(s: &str) -> String {
 ///
 /// Each mode shows a different aspect of the worktree:
 /// 1. WorkingTree: Uncommitted changes (git diff HEAD --stat)
-/// 2. History: Commit history since diverging from main (git log with merge-base)
+/// 2. Log: Commit history since diverging from main (git log with merge-base)
 /// 3. BranchDiff: Line diffs in commits ahead of main (git diff --stat main…)
 ///
 /// Loosely aligned with `wt list` columns, though not a perfect match:
@@ -198,7 +198,7 @@ fn shell_escape(s: &str) -> String {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PreviewMode {
     WorkingTree = 1,
-    History = 2,
+    Log = 2,
     BranchDiff = 3,
 }
 
@@ -278,7 +278,7 @@ impl PreviewLayout {
 impl PreviewMode {
     fn from_u8(n: u8) -> Self {
         match n {
-            2 => Self::History,
+            2 => Self::Log,
             3 => Self::BranchDiff,
             _ => Self::WorkingTree,
         }
@@ -287,7 +287,7 @@ impl PreviewMode {
 
 /// Preview state persistence (mode only, layout auto-detected)
 ///
-/// State file format: Single digit representing preview mode (1=WorkingTree, 2=History, 3=BranchDiff)
+/// State file format: Single digit representing preview mode (1=WorkingTree, 2=Log, 3=BranchDiff)
 struct PreviewStateData;
 
 impl PreviewStateData {
@@ -407,7 +407,7 @@ impl WorktreeSkimItem {
         }
 
         let tab1 = format_tab("1: HEAD±", mode == PreviewMode::WorkingTree);
-        let tab2 = format_tab("2: history", mode == PreviewMode::History);
+        let tab2 = format_tab("2: log", mode == PreviewMode::Log);
         let tab3 = format_tab("3: main…±", mode == PreviewMode::BranchDiff);
 
         // Controls use dim yellow to distinguish from dimmed (white) tabs
@@ -428,7 +428,7 @@ impl WorktreeSkimItem {
     fn preview_for_mode(&self, mode: PreviewMode, width: usize) -> String {
         match mode {
             PreviewMode::WorkingTree => self.render_working_tree_preview(width),
-            PreviewMode::History => self.render_history_preview(width),
+            PreviewMode::Log => self.render_log_preview(width),
             PreviewMode::BranchDiff => self.render_branch_diff_preview(width),
         }
     }
@@ -515,10 +515,10 @@ impl WorktreeSkimItem {
         )
     }
 
-    /// Render Tab 2: History preview
-    fn render_history_preview(&self, _width: usize) -> String {
+    /// Render Tab 2: Log preview
+    fn render_log_preview(&self, _width: usize) -> String {
         use worktrunk::styling::INFO_EMOJI;
-        const HISTORY_LIMIT: &str = "10";
+        const LOG_LIMIT: &str = "10";
 
         let mut output = String::new();
         let repo = Repository::current();
@@ -556,7 +556,7 @@ impl WorktreeSkimItem {
                 "--oneline",
                 "--color=always",
                 "-n",
-                HISTORY_LIMIT,
+                LOG_LIMIT,
                 head,
             ]) {
                 output.push_str(&log_output);
@@ -585,7 +585,7 @@ impl WorktreeSkimItem {
                 "--format=%C(dim)%h %s%C(reset)",
                 "--color=always",
                 "-n",
-                HISTORY_LIMIT,
+                LOG_LIMIT,
                 merge_base,
             ]) {
                 output.push_str(&log_output);
@@ -795,7 +795,7 @@ mod tests {
     #[test]
     fn test_preview_mode_from_u8() {
         assert_eq!(PreviewMode::from_u8(1), PreviewMode::WorkingTree);
-        assert_eq!(PreviewMode::from_u8(2), PreviewMode::History);
+        assert_eq!(PreviewMode::from_u8(2), PreviewMode::Log);
         assert_eq!(PreviewMode::from_u8(3), PreviewMode::BranchDiff);
         // Invalid values default to WorkingTree
         assert_eq!(PreviewMode::from_u8(0), PreviewMode::WorkingTree);
@@ -847,7 +847,7 @@ mod tests {
             .and_then(|s| s.trim().parse::<u8>().ok())
             .map(PreviewMode::from_u8)
             .unwrap_or(PreviewMode::WorkingTree);
-        assert_eq!(mode, PreviewMode::History);
+        assert_eq!(mode, PreviewMode::Log);
 
         let _ = fs::write(&state_path, "3");
         let mode = fs::read_to_string(&state_path)
