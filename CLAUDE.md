@@ -45,13 +45,13 @@ Avoid mixing: "main/default branch worktree" is confusing. Use "main worktree" f
 ### Running Tests
 
 ```bash
-# Unit tests (fast, ~210 tests)
+# Unit tests (fast)
 cargo test --lib --bins
 
-# Integration tests without shell tests (~370 tests, no external dependencies)
+# Integration tests without shell tests (no external dependencies)
 cargo test --test integration
 
-# Integration tests WITH shell tests (~420 tests, requires bash/zsh/fish)
+# Integration tests WITH shell tests (requires bash/zsh/fish)
 cargo test --test integration --features shell-integration-tests
 
 # Run all tests via pre-merge hook (recommended before committing)
