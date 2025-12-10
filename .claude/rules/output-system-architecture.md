@@ -32,7 +32,11 @@ Decide once at the edge (`main()`), initialize globally, trust internally:
 
 ```rust
 // In main.rs - the only place that knows about modes
-output::initialize(if internal { OutputMode::Directive } else { OutputMode::Interactive });
+let output_mode = match cli.internal {
+    Some(shell) => output::OutputMode::Directive(shell),
+    None => output::OutputMode::Interactive,
+};
+output::initialize(output_mode);
 
 // Everywhere else - just use the output functions
 output::print(success_message("Created worktree"))?;

@@ -298,16 +298,16 @@ Never quote commands or branch names. Use styling to make them stand out:
 
 ```rust
 // GOOD - bold in normal context
-output::info(cformat!("Use <bold>wt merge</> to continue"))?;
+output::print(info_message(cformat!("Use <bold>wt merge</> to continue")))?;
 
 // GOOD - bright-black for commands in hints
-output::hint(cformat!("Run <bright-black>wt list</> to see worktrees"))?;
+output::print(hint_message(cformat!("Run <bright-black>wt list</> to see worktrees")))?;
 
 // GOOD - plain hint without commands
-output::hint("No changes to commit")?;
+output::print(hint_message("No changes to commit"))?;
 
 // BAD - quoted commands
-output::hint("Run 'wt list' to see worktrees")?;
+output::print(hint_message("Run 'wt list' to see worktrees"))?;
 ```
 
 ## Color Detection
