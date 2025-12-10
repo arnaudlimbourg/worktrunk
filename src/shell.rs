@@ -4,25 +4,58 @@ use std::path::PathBuf;
 
 use crate::path::home_dir;
 
+/// Get PowerShell profile paths in order of preference.
+/// On Windows, returns both PowerShell Core (7+) and Windows PowerShell (5.1) paths.
+/// On Unix, uses the conventional ~/.config/powershell location.
+fn powershell_profile_paths(home: &std::path::Path) -> Vec<PathBuf> {
+    #[cfg(windows)]
+    {
+        // Use platform-specific Documents path (handles non-English Windows)
+        let docs = dirs::document_dir().unwrap_or_else(|| home.join("Documents"));
+        vec![
+            // PowerShell Core 6+ (pwsh.exe) - preferred
+            docs.join("PowerShell")
+                .join("Microsoft.PowerShell_profile.ps1"),
+            // Windows PowerShell 5.1 (powershell.exe) - legacy but still common
+            docs.join("WindowsPowerShell")
+                .join("Microsoft.PowerShell_profile.ps1"),
+        ]
+    }
+    #[cfg(not(windows))]
+    {
+        vec![
+            home.join(".config")
+                .join("powershell")
+                .join("Microsoft.PowerShell_profile.ps1"),
+        ]
+    }
+}
+
 /// Get the user's home directory or return an error
 fn home_dir_required() -> Result<PathBuf, std::io::Error> {
     home_dir().ok_or_else(|| {
         std::io::Error::new(
             std::io::ErrorKind::NotFound,
-            "Cannot determine home directory. Set $HOME environment variable",
+            "Cannot determine home directory. Set $HOME (Unix) or $USERPROFILE (Windows)",
         )
     })
 }
 
 /// Supported shells
 ///
-/// Currently supported: bash, fish, zsh
+/// Currently supported: bash, fish, zsh, powershell
+///
+/// On Windows, Git Bash users should use `bash` for shell integration.
+/// PowerShell integration is available for native Windows users without Git Bash.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum, strum::Display, strum::EnumString)]
 #[strum(serialize_all = "lowercase", ascii_case_insensitive)]
 pub enum Shell {
     Bash,
     Fish,
     Zsh,
+    #[strum(serialize = "powershell")]
+    #[clap(name = "powershell")]
+    PowerShell,
 }
 
 impl Shell {
@@ -52,6 +85,7 @@ impl Shell {
                         .join("wt.fish"),
                 ]
             }
+            Self::PowerShell => powershell_profile_paths(&home),
         })
     }
 
@@ -88,6 +122,12 @@ impl Shell {
                     .unwrap_or_else(|| home.join(".config"));
                 config_home.join("fish").join("completions").join("wt.fish")
             }
+            Self::PowerShell => {
+                // PowerShell doesn't use a separate completion file - completions are
+                // registered inline in the profile using Register-ArgumentCompleter
+                // Return a dummy path that won't be used
+                home.join(".wt-powershell-completions")
+            }
         })
     }
 
@@ -107,6 +147,10 @@ impl Shell {
                     "if type -q wt; command wt config shell init {} | source; end",
                     self
                 )
+            }
+            Self::PowerShell => {
+                // PowerShell: Check if wt is available, then invoke and execute the output
+                "if (Get-Command wt -ErrorAction SilentlyContinue) { Invoke-Expression (& wt config shell init powershell) }".to_string()
             }
         }
     }
@@ -186,6 +230,19 @@ impl Shell {
             }
         }
 
+        // Check PowerShell profiles for integration (both Core and 5.1)
+        for profile_path in powershell_profile_paths(&home) {
+            if profile_path.exists()
+                && let Ok(content) = fs::read_to_string(&profile_path)
+            {
+                // Look for PowerShell integration pattern:
+                // Invoke-Expression (& wt config shell init powershell)
+                if content.contains("Invoke-Expression") && content.contains("shell init") {
+                    return Ok(Some(profile_path));
+                }
+            }
+        }
+
         Ok(None)
     }
 
@@ -231,6 +288,10 @@ impl ShellInit {
                 let template = FishTemplate { cmd_prefix: "wt" };
                 template.render()
             }
+            Shell::PowerShell => {
+                let template = PowerShellTemplate { cmd_prefix: "wt" };
+                template.render()
+            }
         }
     }
 }
@@ -263,6 +324,13 @@ struct ZshTemplate<'a> {
 #[derive(Template)]
 #[template(path = "fish.fish", escape = "none")]
 struct FishTemplate<'a> {
+    cmd_prefix: &'a str,
+}
+
+/// PowerShell template
+#[derive(Template)]
+#[template(path = "powershell.ps1", escape = "none")]
+struct PowerShellTemplate<'a> {
     cmd_prefix: &'a str,
 }
 
@@ -356,6 +424,14 @@ mod tests {
         assert!(matches!("BASH".parse::<Shell>(), Ok(Shell::Bash)));
         assert!(matches!("fish".parse::<Shell>(), Ok(Shell::Fish)));
         assert!(matches!("zsh".parse::<Shell>(), Ok(Shell::Zsh)));
+        assert!(matches!(
+            "powershell".parse::<Shell>(),
+            Ok(Shell::PowerShell)
+        ));
+        assert!(matches!(
+            "POWERSHELL".parse::<Shell>(),
+            Ok(Shell::PowerShell)
+        ));
         assert!("invalid".parse::<Shell>().is_err());
     }
 }

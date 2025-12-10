@@ -659,6 +659,12 @@ fn handle_removed_worktree_output(
 ///
 /// Returns error if command exits with non-zero status.
 ///
+/// ## Cross-Platform Shell Execution
+///
+/// Uses the platform's preferred shell via `shell_exec::ShellConfig`:
+/// - Unix: `/bin/sh -c`
+/// - Windows: Git Bash if available, PowerShell fallback
+///
 /// ## Signal Handling (Unix)
 ///
 /// SIGINT (Ctrl-C) is handled by checking the child's exit status:
@@ -673,15 +679,34 @@ pub(crate) fn execute_streaming(
     stdin_content: Option<&str>,
 ) -> anyhow::Result<()> {
     use std::io::Write;
-    use std::process::Command;
     use worktrunk::git::WorktrunkError;
+    use worktrunk::shell_exec::ShellConfig;
 
-    let command_to_run = if redirect_stdout_to_stderr {
-        // Use newline instead of semicolon before closing brace to support
-        // multi-line commands with control structures (if/fi, for/done, etc.)
-        format!("{{ {}\n}} 1>&2", command)
+    let shell = ShellConfig::get();
+
+    // Determine stdout handling based on shell and redirect flag
+    let (command_to_run, stdout_mode) = if redirect_stdout_to_stderr {
+        if shell.is_posix() {
+            // POSIX: wrap command to redirect stdout to stderr at shell level
+            // Use newline instead of semicolon before closing brace to support
+            // multi-line commands with control structures (if/fi, for/done, etc.)
+            (
+                format!("{{ {}\n}} 1>&2", command),
+                std::process::Stdio::inherit(),
+            )
+        } else {
+            // Non-POSIX (PowerShell): redirect stdout to stderr at OS level
+            // PowerShell doesn't support shell-level stdout-to-stderr redirection (*>&2 fails).
+            // Use Stdio::from(io::stderr()) to redirect child stdout to our stderr.
+            // This keeps stdout clean for directive scripts while hook output goes to stderr.
+            // See: https://github.com/PowerShell/PowerShell/issues/7620
+            (
+                command.to_string(),
+                std::process::Stdio::from(std::io::stderr()),
+            )
+        }
     } else {
-        command.to_string()
+        (command.to_string(), std::process::Stdio::inherit())
     };
 
     let stdin_mode = if stdin_content.is_some() {
@@ -690,12 +715,11 @@ pub(crate) fn execute_streaming(
         std::process::Stdio::null()
     };
 
-    let mut child = Command::new("sh")
-        .arg("-c")
-        .arg(&command_to_run)
+    let mut cmd = shell.command(&command_to_run);
+    let mut child = cmd
         .current_dir(working_dir)
         .stdin(stdin_mode)
-        .stdout(std::process::Stdio::inherit()) // Preserve TTY for output
+        .stdout(stdout_mode)
         .stderr(std::process::Stdio::inherit()) // Preserve TTY for errors
         // Prevent vergen "overridden" warning in nested cargo builds when run via `cargo run`.
         // Add more VERGEN_* variables here if we expand build.rs and hit similar issues.
@@ -703,7 +727,7 @@ pub(crate) fn execute_streaming(
         .spawn()
         .map_err(|e| {
             anyhow::Error::from(worktrunk::git::GitError::Other {
-                message: format!("Failed to execute command: {}", e),
+                message: format!("Failed to execute command with {}: {}", shell.name, e),
             })
         })?;
 

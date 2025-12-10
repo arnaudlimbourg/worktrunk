@@ -32,15 +32,28 @@
 //! is necessary, and file snapshots are the right storage format for escape-code-heavy output.
 
 // All shell integration tests and infrastructure gated by feature flag
-#![cfg(feature = "shell-integration-tests")]
+// Unix-only for now - Windows shell integration is planned
+#![cfg(all(unix, feature = "shell-integration-tests"))]
 
 use crate::common::TestRepo;
+use crate::common::shell::shell_available;
 use insta::assert_snapshot;
 use insta_cmd::get_cargo_bin;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::LazyLock;
+
+/// Skip test if the shell is not available.
+/// Returns early from the test with a message.
+macro_rules! skip_if_shell_unavailable {
+    ($shell:expr) => {
+        if !shell_available($shell) {
+            eprintln!("Skipping test: {} not available on this system", $shell);
+            return;
+        }
+    };
+}
 
 /// Regex for normalizing temporary directory paths in test snapshots
 static TMPDIR_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
@@ -686,6 +699,7 @@ mod tests {
     #[case("zsh")]
     #[case("fish")]
     fn test_wrapper_handles_command_failure(#[case] shell: &str) {
+        skip_if_shell_unavailable!(shell);
         let mut repo = TestRepo::new();
         repo.commit("Initial commit");
 
@@ -720,6 +734,7 @@ mod tests {
     #[case("zsh")]
     #[case("fish")]
     fn test_wrapper_switch_create(#[case] shell: &str) {
+        skip_if_shell_unavailable!(shell);
         let repo = TestRepo::new();
         repo.commit("Initial commit");
 
@@ -747,6 +762,7 @@ mod tests {
     #[case("zsh")]
     #[case("fish")]
     fn test_wrapper_remove(#[case] shell: &str) {
+        skip_if_shell_unavailable!(shell);
         let mut repo = TestRepo::new();
         repo.commit("Initial commit");
 
@@ -770,6 +786,7 @@ mod tests {
     #[case("zsh")]
     #[case("fish")]
     fn test_wrapper_merge(#[case] shell: &str) {
+        skip_if_shell_unavailable!(shell);
         let mut repo = TestRepo::new();
         repo.commit("Initial commit");
 
@@ -793,6 +810,7 @@ mod tests {
     #[case("zsh")]
     #[case("fish")]
     fn test_wrapper_switch_with_execute(#[case] shell: &str) {
+        skip_if_shell_unavailable!(shell);
         let repo = TestRepo::new();
         repo.commit("Initial commit");
 
@@ -834,6 +852,7 @@ mod tests {
     #[case("zsh")]
     #[case("fish")]
     fn test_wrapper_execute_exit_code_propagation(#[case] shell: &str) {
+        skip_if_shell_unavailable!(shell);
         let repo = TestRepo::new();
         repo.commit("Initial commit");
 
@@ -879,6 +898,7 @@ mod tests {
     #[case("zsh")]
     // #[case("fish")] // TODO: Fish shell has non-deterministic PTY output ordering
     fn test_wrapper_switch_with_hooks(#[case] shell: &str) {
+        skip_if_shell_unavailable!(shell);
         let repo = TestRepo::new();
         repo.commit("Initial commit");
 
@@ -935,6 +955,7 @@ approved-commands = [
     #[case("zsh")]
     // #[case("fish")] // TODO: Fish shell has non-deterministic PTY output ordering
     fn test_wrapper_merge_with_pre_merge_success(#[case] shell: &str) {
+        skip_if_shell_unavailable!(shell);
         let mut repo = TestRepo::new();
         repo.commit("Initial commit");
         repo.setup_remote("main");
@@ -1017,6 +1038,7 @@ approved-commands = [
     #[case("zsh")]
     // #[case("fish")] // TODO: Fish shell has non-deterministic PTY output ordering
     fn test_wrapper_merge_with_pre_merge_failure(#[case] shell: &str) {
+        skip_if_shell_unavailable!(shell);
         let mut repo = TestRepo::new();
         repo.commit("Initial commit");
         repo.setup_remote("main");
@@ -1097,6 +1119,7 @@ approved-commands = [
     #[case("zsh")]
     // #[case("fish")] // TODO: Fish shell has non-deterministic PTY output ordering
     fn test_wrapper_merge_with_mixed_stdout_stderr(#[case] shell: &str) {
+        skip_if_shell_unavailable!(shell);
         let mut repo = TestRepo::new();
         repo.commit("Initial commit");
         repo.setup_remote("main");
@@ -3088,6 +3111,7 @@ for c in "${{COMPREPLY[@]}}"; do echo "${{c%%	*}}"; done
     #[case("zsh")]
     #[case("fish")]
     fn test_wrapper_help_redirect_captures_all_output(#[case] shell: &str) {
+        skip_if_shell_unavailable!(shell);
         use portable_pty::{CommandBuilder, PtySize, native_pty_system};
         use std::io::Read;
 
@@ -3285,6 +3309,7 @@ echo "SCRIPT_COMPLETED"
     #[case("zsh")]
     #[case("fish")]
     fn test_wrapper_help_interactive_uses_pager(#[case] shell: &str) {
+        skip_if_shell_unavailable!(shell);
         use portable_pty::{CommandBuilder, PtySize, native_pty_system};
         use std::io::Read;
 

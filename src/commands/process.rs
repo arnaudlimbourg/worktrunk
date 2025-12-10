@@ -1,9 +1,49 @@
 use anyhow::Context;
 use std::fs;
 use std::path::Path;
-use std::process::{Command, Stdio};
+#[cfg(unix)]
+use std::process::Command;
+use std::process::Stdio;
 use worktrunk::git::Repository;
 use worktrunk::path::format_path_for_display;
+
+/// Sanitize a string for use as a filename on all platforms.
+/// Replaces characters that are illegal in Windows filenames or are path separators.
+/// Also handles Windows reserved device names (CON, PRN, AUX, NUL, COM1-9, LPT1-9).
+fn sanitize_for_filename(s: &str) -> String {
+    // Replace illegal characters
+    let sanitized: String = s
+        .chars()
+        .map(|c| match c {
+            '/' | '\\' | '<' | '>' | ':' | '"' | '|' | '?' | '*' => '-',
+            _ => c,
+        })
+        .collect();
+
+    // Check for Windows reserved device names (case-insensitive)
+    // These cannot be used as filenames on Windows, even with extensions
+    let upper = sanitized.to_uppercase();
+    let is_reserved = matches!(upper.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+        || (upper.len() == 4
+            && (upper.starts_with("COM") || upper.starts_with("LPT"))
+            && upper.chars().nth(3).is_some_and(|c| matches!(c, '1'..='9')));
+
+    if is_reserved {
+        format!("_{}", sanitized)
+    } else {
+        sanitized
+    }
+}
+
+/// Get the separator needed before closing brace in POSIX shell command grouping.
+/// Returns empty string if command already ends with newline or semicolon.
+fn posix_command_separator(command: &str) -> &'static str {
+    if command.ends_with('\n') || command.ends_with(';') {
+        ""
+    } else {
+        ";"
+    }
+}
 
 /// Spawn a detached background process with output redirected to a log file
 ///
@@ -45,9 +85,8 @@ pub fn spawn_detached(
 
     // Generate log filename (no timestamp - overwrites on each run)
     // Format: {branch}-{name}.log (e.g., "feature-post-start-npm.log", "bugfix-remove.log")
-    // Sanitize branch and name: replace '/' with '-' to avoid creating subdirectories
-    let safe_branch = branch.replace('/', "-");
-    let safe_name = name.replace('/', "-");
+    let safe_branch = sanitize_for_filename(branch);
+    let safe_name = sanitize_for_filename(name);
     let log_path = log_dir.join(format!("{}-{}.log", safe_branch, safe_name));
 
     // Create log file
@@ -92,18 +131,11 @@ fn spawn_detached_unix(
             // Use printf to pipe JSON to the command's stdin
             // printf is more portable than echo for arbitrary content
             // Wrap command in braces to ensure proper grouping with &&, ||, etc.
-            // Only add semicolon if command doesn't already end with newline or semicolon
-            // (shell syntax: `{ cmd\n }` is valid, but `{ cmd\n; }` is not)
-            let separator = if command.ends_with('\n') || command.ends_with(';') {
-                ""
-            } else {
-                ";"
-            };
             format!(
                 "printf '%s' {} | {{ {}{} }}",
                 shell_escape::escape(json.into()),
                 command,
-                separator
+                posix_command_separator(command)
             )
         }
         None => command.to_string(),
@@ -142,28 +174,48 @@ fn spawn_detached_windows(
     context_json: Option<&str>,
 ) -> anyhow::Result<()> {
     use std::os::windows::process::CommandExt;
+    use worktrunk::shell_exec::ShellConfig;
 
     // CREATE_NEW_PROCESS_GROUP: Creates new process group (0x00000200)
     // DETACHED_PROCESS: Creates process without console (0x00000008)
     const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
     const DETACHED_PROCESS: u32 = 0x00000008;
 
-    // Build the command, optionally piping JSON context to stdin
-    let full_command = match context_json {
-        Some(json) => {
-            // PowerShell single-quote escaping:
-            // - Single quotes prevent variable expansion ($)
-            // - Backticks need escaping even in single quotes (`` ` `` → ``` `` ```)
-            // - Single quotes need doubling (`'` → `''`)
-            let escaped_json = json.replace('`', "``").replace('\'', "''");
-            // Pipe JSON to the command via PowerShell script block
-            format!("'{}' | & {{ {} }}", escaped_json, command)
-        }
-        None => command.to_string(),
-    };
+    let shell = ShellConfig::get();
 
-    let mut cmd = Command::new("powershell");
-    cmd.args(["-NoProfile", "-Command", &full_command]);
+    // Build the command based on shell type
+    let mut cmd = if shell.is_posix() {
+        // Git Bash available - use same syntax as Unix
+        let full_command = match context_json {
+            Some(json) => {
+                // Use printf to pipe JSON to the command's stdin (same as Unix)
+                format!(
+                    "printf '%s' {} | {{ {}{} }}",
+                    shell_escape::escape(json.into()),
+                    command,
+                    posix_command_separator(command)
+                )
+            }
+            None => command.to_string(),
+        };
+        shell.command(&full_command)
+    } else {
+        // PowerShell fallback
+        let full_command = match context_json {
+            Some(json) => {
+                // PowerShell single-quote escaping:
+                // - Single quotes prevent variable expansion ($) and are literal
+                // - Backticks are literal in single quotes (NOT escape characters)
+                // - Only single quotes need doubling (`'` → `''`)
+                // See: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_quoting_rules
+                let escaped_json = json.replace('\'', "''");
+                // Pipe JSON to the command via PowerShell script block
+                format!("'{}' | & {{ {} }}", escaped_json, command)
+            }
+            None => command.to_string(),
+        };
+        shell.command(&full_command)
+    };
 
     cmd.current_dir(worktree_path)
         .stdin(Stdio::null())
@@ -177,5 +229,60 @@ fn spawn_detached_windows(
         .spawn()
         .context("Failed to spawn detached process")?;
 
+    // Windows: Process is fully detached via DETACHED_PROCESS flag,
+    // no need to wait (unlike Unix which waits for the outer shell)
+
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sanitize_for_filename() {
+        // Path separators
+        assert_eq!(sanitize_for_filename("feature/branch"), "feature-branch");
+        assert_eq!(sanitize_for_filename("feature\\branch"), "feature-branch");
+
+        // Windows-illegal characters
+        assert_eq!(sanitize_for_filename("bug:123"), "bug-123");
+        assert_eq!(sanitize_for_filename("fix<angle>"), "fix-angle-");
+        assert_eq!(sanitize_for_filename("fix|pipe"), "fix-pipe");
+        assert_eq!(sanitize_for_filename("fix?question"), "fix-question");
+        assert_eq!(sanitize_for_filename("fix*wildcard"), "fix-wildcard");
+        assert_eq!(sanitize_for_filename("fix\"quotes\""), "fix-quotes-");
+
+        // Multiple special characters
+        assert_eq!(
+            sanitize_for_filename("a/b\\c<d>e:f\"g|h?i*j"),
+            "a-b-c-d-e-f-g-h-i-j"
+        );
+
+        // Already safe
+        assert_eq!(sanitize_for_filename("normal-branch"), "normal-branch");
+        assert_eq!(
+            sanitize_for_filename("branch_with_underscore"),
+            "branch_with_underscore"
+        );
+
+        // Windows reserved device names (must be prefixed to avoid conflicts)
+        assert_eq!(sanitize_for_filename("CON"), "_CON");
+        assert_eq!(sanitize_for_filename("con"), "_con");
+        assert_eq!(sanitize_for_filename("PRN"), "_PRN");
+        assert_eq!(sanitize_for_filename("AUX"), "_AUX");
+        assert_eq!(sanitize_for_filename("NUL"), "_NUL");
+        assert_eq!(sanitize_for_filename("COM1"), "_COM1");
+        assert_eq!(sanitize_for_filename("com9"), "_com9");
+        assert_eq!(sanitize_for_filename("LPT1"), "_LPT1");
+        assert_eq!(sanitize_for_filename("lpt9"), "_lpt9");
+
+        // COM0/LPT0 are NOT reserved (only 1-9 are)
+        assert_eq!(sanitize_for_filename("COM0"), "COM0");
+        assert_eq!(sanitize_for_filename("LPT0"), "LPT0");
+
+        // Longer names are fine
+        assert_eq!(sanitize_for_filename("CONSOLE"), "CONSOLE");
+        assert_eq!(sanitize_for_filename("COM10"), "COM10");
+    }
 }

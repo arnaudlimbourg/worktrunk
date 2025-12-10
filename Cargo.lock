@@ -2949,6 +2949,7 @@ dependencies = [
  "criterion",
  "crossbeam-channel",
  "crossterm",
+ "dirs",
  "env_logger",
  "etcetera",
  "home",
@@ -2981,6 +2982,7 @@ dependencies = [
  "unicode-width",
  "vergen-gitcl",
  "vt100",
+ "which",
  "wrap-ansi",
 ]
 
