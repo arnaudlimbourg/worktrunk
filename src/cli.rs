@@ -1638,6 +1638,10 @@ wt list --format=json | jq '.[] | select(.main_state == "integrated" or .main_st
 - [wt select](@/select.md) — Interactive worktree picker with live preview
 "#
     )]
+    // TODO: `args_conflicts_with_subcommands` causes confusing errors for unknown
+    // subcommands ("cannot be used with --branches") instead of "unknown subcommand".
+    // Could fix with external_subcommand + post-parse validation, but not worth the
+    // code. The `statusline` subcommand may move elsewhere anyway.
     #[command(args_conflicts_with_subcommands = true)]
     List {
         #[command(subcommand)]
