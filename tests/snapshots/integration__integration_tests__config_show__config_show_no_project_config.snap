@@ -1,9 +1,8 @@
 ---
-source: tests/integration_tests/internal_flag.rs
+source: tests/integration_tests/config_show.rs
 info:
   program: wt
   args:
-    - "--internal"
     - config
     - show
   env:

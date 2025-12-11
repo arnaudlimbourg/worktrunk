@@ -758,6 +758,11 @@ impl TestRepo {
 # Mock gh command that fails fast without network calls
 
 case "$1" in
+    --version)
+        # gh --version - succeed (indicates gh is installed)
+        echo "gh version 2.0.0 (mock)"
+        exit 0
+        ;;
     auth)
         # gh auth status - succeed immediately
         exit 0
@@ -789,6 +794,81 @@ esac
             r#"#!/bin/sh
 # Mock glab command that fails fast
 exit 1
+"#,
+        )
+        .unwrap();
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&glab_script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+
+        self.mock_bin_path = Some(mock_bin);
+    }
+
+    /// Setup mock `gh` and `glab` commands that show "installed but not authenticated"
+    ///
+    /// Use this for `wt config show` tests that need deterministic BINARIES output.
+    /// Creates mocks where:
+    /// - `gh --version`: succeeds (installed)
+    /// - `gh auth status`: fails (not authenticated)
+    /// - `glab --version`: succeeds (installed)
+    /// - `glab auth status`: fails (not authenticated)
+    pub fn setup_mock_ci_tools_unauthenticated(&mut self) {
+        let mock_bin = self.temp_dir.path().join("mock-bin");
+        std::fs::create_dir_all(&mock_bin).unwrap();
+
+        // Create mock gh script - installed but not authenticated
+        let gh_script = mock_bin.join("gh");
+        std::fs::write(
+            &gh_script,
+            r#"#!/bin/sh
+# Mock gh: installed but not authenticated
+
+case "$1" in
+    --version)
+        echo "gh version 2.0.0 (mock)"
+        exit 0
+        ;;
+    auth)
+        # gh auth status - fail (not authenticated)
+        exit 1
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+"#,
+        )
+        .unwrap();
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&gh_script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+
+        // Create mock glab script - installed but not authenticated
+        let glab_script = mock_bin.join("glab");
+        std::fs::write(
+            &glab_script,
+            r#"#!/bin/sh
+# Mock glab: installed but not authenticated
+
+case "$1" in
+    --version)
+        echo "glab version 1.0.0 (mock)"
+        exit 0
+        ;;
+    auth)
+        # glab auth status - fail (not authenticated)
+        exit 1
+        ;;
+    *)
+        exit 1
+        ;;
+esac
 "#,
         )
         .unwrap();

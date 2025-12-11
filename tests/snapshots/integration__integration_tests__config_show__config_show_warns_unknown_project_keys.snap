@@ -1,9 +1,8 @@
 ---
-source: tests/integration_tests/internal_flag.rs
+source: tests/integration_tests/config_show.rs
 info:
   program: wt
   args:
-    - "--internal"
     - config
     - show
   env:
@@ -33,7 +32,9 @@ exit_code: 0
 [107m [0m  worktree-path = [32m"../{{ main_worktree }}.{{ branch }}"
 
 [36mPROJECT CONFIG[39m  [REPO]/.config/wt.toml
-💡 [2mNot found[22m
+🟡 [33mUnknown key [1mpost-merge-command[22m will be ignored[39m
+[107m [0m  [1m[36m[post-merge-command]
+[107m [0m  deploy = [32m"task deploy"
 
 [36mSHELL INTEGRATION[39m
 ⚪ [2mSkipped bash; ~/.bashrc not found[22m

@@ -321,12 +321,12 @@ and project config (`.config/wt.toml`).
 
 If a config file doesn't exist, shows defaults that would be used.
 
-## Doctor mode
+## Full diagnostics
 
-Use `--doctor` to test commit generation with a synthetic diff:
+Use `--full` to test commit generation with a synthetic diff:
 
 ```console
-wt config show --doctor
+wt config show --full
 ```
 
 This verifies that the LLM command is configured correctly and can generate
@@ -335,7 +335,7 @@ commit messages."#
     Show {
         /// Test commit generation pipeline
         #[arg(long)]
-        doctor: bool,
+        full: bool,
     },
 
     /// Manage caches (CI status, default branch)

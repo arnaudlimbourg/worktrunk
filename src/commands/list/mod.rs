@@ -201,6 +201,42 @@ pub fn handle_list(
         }
     }
 
+    // Show hint if CI status was requested but no tools can fetch it
+    if show_full {
+        let ci_tools = ci_status::CiToolsStatus::detect();
+        if !ci_tools.any_available() {
+            use color_print::cformat;
+            use worktrunk::styling::hint_message;
+            crate::output::blank()?;
+
+            // Provide specific guidance based on what's installed but not authenticated
+            let gh_needs_auth = ci_tools.gh_installed && !ci_tools.gh_authenticated;
+            let glab_needs_auth = ci_tools.glab_installed && !ci_tools.glab_authenticated;
+
+            if gh_needs_auth && glab_needs_auth {
+                // Both installed but neither authenticated
+                crate::output::print(hint_message(cformat!(
+                    "CI status unavailable; run <bright-black>gh auth login</> or <bright-black>glab auth login</>"
+                )))?;
+            } else if gh_needs_auth {
+                // gh installed but not authenticated
+                crate::output::print(hint_message(cformat!(
+                    "CI status unavailable; run <bright-black>gh auth login</> to authenticate"
+                )))?;
+            } else if glab_needs_auth {
+                // glab installed but not authenticated
+                crate::output::print(hint_message(cformat!(
+                    "CI status unavailable; run <bright-black>glab auth login</> to authenticate"
+                )))?;
+            } else {
+                // Neither tool is installed
+                crate::output::print(hint_message(cformat!(
+                    "CI status unavailable; install <bright-black>gh</> or <bright-black>glab</>"
+                )))?;
+            }
+        }
+    }
+
     Ok(())
 }
 

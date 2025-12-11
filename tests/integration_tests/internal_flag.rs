@@ -45,9 +45,12 @@ fn test_list_with_internal_flag() {
 /// Config show doesn't emit directives, but should work fine with --internal.
 #[test]
 fn test_config_show_with_internal_flag() {
-    let repo = TestRepo::new();
+    let mut repo = TestRepo::new();
     repo.commit("Initial commit");
     let temp_home = TempDir::new().unwrap();
+
+    // Setup mock gh/glab for deterministic BINARIES output
+    repo.setup_mock_ci_tools_unauthenticated();
 
     // Create fake global config at XDG path
     let global_config_dir = temp_home.path().join(".config").join("worktrunk");
@@ -63,6 +66,7 @@ fn test_config_show_with_internal_flag() {
     settings.bind(|| {
         let mut cmd = wt_command();
         repo.clean_cli_env(&mut cmd);
+        repo.configure_mock_commands(&mut cmd);
         set_temp_home_env(&mut cmd, temp_home.path());
         cmd.arg("--internal")
             .arg("config")

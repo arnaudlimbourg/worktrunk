@@ -875,7 +875,7 @@ fn main() {
                 }
             }
             ConfigCommand::Create { project } => handle_config_create(project),
-            ConfigCommand::Show { doctor } => handle_config_show(doctor),
+            ConfigCommand::Show { full } => handle_config_show(full),
             ConfigCommand::Cache { action } => match action {
                 CacheCommand::Show => handle_cache_show(),
                 CacheCommand::Clear { cache_type } => handle_cache_clear(cache_type),
