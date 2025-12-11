@@ -13,7 +13,7 @@ use worktrunk::styling::{
 use super::command_executor::CommandContext;
 use super::commit::{CommitGenerator, CommitOptions};
 use super::context::CommandEnv;
-use super::hooks::HookPipeline;
+use super::hooks::{HookFailureStrategy, HookPipeline, run_hook_with_filter};
 use super::merge::{
     execute_post_merge_commands, execute_pre_remove_commands, run_pre_merge_commands,
 };
@@ -56,35 +56,55 @@ pub fn run_hook(hook_type: HookType, force: bool, name_filter: Option<&str>) -> 
         };
     }
 
+    /// Helper to require at least one hook is configured (for standalone `wt hook` command)
+    fn require_hooks(
+        user: Option<&CommandConfig>,
+        project: Option<&CommandConfig>,
+        hook_type: HookType,
+    ) -> anyhow::Result<()> {
+        if user.is_none() && project.is_none() {
+            return Err(worktrunk::git::GitError::Other {
+                message: format!("No {hook_type} hook configured (neither user nor project)"),
+            }
+            .into());
+        }
+        Ok(())
+    }
+
     // Execute the hook based on type
     match hook_type {
         HookType::PostCreate => {
             let user_config = user_hook!(post_create);
             let project_config = project_config.as_ref().and_then(|c| c.post_create.as_ref());
+            require_hooks(user_config, project_config, hook_type)?;
             run_hook_with_filter(
                 &ctx,
                 user_config,
                 project_config,
                 hook_type,
                 &[],
+                HookFailureStrategy::FailFast,
                 name_filter,
             )
         }
         HookType::PostStart => {
             let user_config = user_hook!(post_start);
             let project_config = project_config.as_ref().and_then(|c| c.post_start.as_ref());
+            require_hooks(user_config, project_config, hook_type)?;
             run_hook_with_filter(
                 &ctx,
                 user_config,
                 project_config,
                 hook_type,
                 &[],
+                HookFailureStrategy::FailFast,
                 name_filter,
             )
         }
         HookType::PreCommit => {
             let user_config = user_hook!(pre_commit);
             let project_config = project_config.as_ref().and_then(|c| c.pre_commit.as_ref());
+            require_hooks(user_config, project_config, hook_type)?;
             // Pre-commit hook can optionally use target branch context
             let target_branch = repo.default_branch().ok();
             let extra_vars: Vec<(&str, &str)> = target_branch
@@ -98,6 +118,7 @@ pub fn run_hook(hook_type: HookType, force: bool, name_filter: Option<&str>) -> 
                 project_config,
                 hook_type,
                 &extra_vars,
+                HookFailureStrategy::FailFast,
                 name_filter,
             )
         }
@@ -114,86 +135,6 @@ pub fn run_hook(hook_type: HookType, force: bool, name_filter: Option<&str>) -> 
         }
         HookType::PreRemove => execute_pre_remove_commands(&ctx, name_filter),
     }
-}
-
-/// Run user and project hooks with optional name filter (used by standalone hook commands)
-///
-/// Runs user hooks first, then project hooks.
-/// Returns an error if no hooks are configured for this hook type.
-fn run_hook_with_filter(
-    ctx: &super::command_executor::CommandContext,
-    user_config: Option<&worktrunk::config::CommandConfig>,
-    project_config: Option<&worktrunk::config::CommandConfig>,
-    hook_type: HookType,
-    extra_vars: &[(&str, &str)],
-    name_filter: Option<&str>,
-) -> anyhow::Result<()> {
-    use super::hooks::{HookFailureStrategy, HookPipeline, HookSource};
-
-    // Check at least one hook is configured
-    if user_config.is_none() && project_config.is_none() {
-        return Err(worktrunk::git::GitError::Other {
-            message: format!("No {hook_type} hook configured (neither user nor project)"),
-        }
-        .into());
-    }
-
-    let pipeline = HookPipeline::new(*ctx);
-    let mut total_commands_run = 0;
-
-    // Run user hooks first (no approval required)
-    if let Some(config) = user_config {
-        total_commands_run += pipeline.run_sequential(
-            config,
-            hook_type,
-            HookSource::User,
-            extra_vars,
-            HookFailureStrategy::FailFast,
-            name_filter,
-        )?;
-    }
-
-    // Then run project hooks (approval already happened at gate)
-    if let Some(config) = project_config {
-        total_commands_run += pipeline.run_sequential(
-            config,
-            hook_type,
-            HookSource::Project,
-            extra_vars,
-            HookFailureStrategy::FailFast,
-            name_filter,
-        )?;
-    }
-
-    // If name filter was provided but no commands matched, error with available names
-    if let Some(name) = name_filter
-        && total_commands_run == 0
-    {
-        let mut available = Vec::new();
-        if let Some(config) = user_config {
-            available.extend(
-                config
-                    .commands()
-                    .iter()
-                    .filter_map(|c| c.name.as_ref().map(|n| format!("user:{n}"))),
-            );
-        }
-        if let Some(config) = project_config {
-            available.extend(
-                config
-                    .commands()
-                    .iter()
-                    .filter_map(|c| c.name.as_ref().map(|n| format!("project:{n}"))),
-            );
-        }
-        return Err(worktrunk::git::GitError::HookCommandNotFound {
-            name: name.to_string(),
-            available,
-        }
-        .into());
-    }
-
-    Ok(())
 }
 
 /// Handle `wt step commit` command
