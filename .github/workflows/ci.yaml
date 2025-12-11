@@ -74,29 +74,20 @@ jobs:
         # Skip lychee on Windows/macOS - it requires bash and we only need to run it once
         SKIP: ${{ runner.os != 'Linux' && 'lychee' || '' }}
 
-    # This installs from crates.io, not from the PR code. Pre-merge hooks
-    # run against the published version, testing the hook configuration.
-    - name: Install wt
+    # On Linux/macOS: Install from crates.io (pre-merge hooks run against published version)
+    # On Windows: Build from source (published version may not have Git Bash detection fixes)
+    - name: Install wt (Linux/macOS)
       if: runner.os != 'Windows'
       uses: baptiste0928/cargo-install@v3
       with:
         crate: worktrunk
 
-    - name: 🧪 Pre-merge hooks
-      if: runner.os != 'Windows'
-      run: wt hook pre-merge --force
-
-    # Windows: Run tests directly (wt hook pre-merge uses bash syntax).
-    # Same test command as wt.toml pre-merge config.
-    - name: 🧪 Tests (Windows)
+    - name: Install wt (Windows - from source)
       if: runner.os == 'Windows'
-      run: |
-        cargo insta test --dnd --check --features shell-integration-tests
-        cargo test --doc
-      env:
-        RUSTFLAGS: '-D warnings'
-        NEXTEST_STATUS_LEVEL: fail
-        NEXTEST_SUCCESS_OUTPUT: never
+      run: cargo install --path .
+
+    - name: 🧪 Pre-merge hooks
+      run: wt hook pre-merge --force
 
   # Check if Cargo files changed (for conditional jobs below)
   changes:
