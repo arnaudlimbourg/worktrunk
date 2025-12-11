@@ -1,5 +1,6 @@
 use crate::common::{
-    TestRepo, repo, repo_with_main_worktree, repo_with_remote, setup_snapshot_settings, wt_command,
+    TestRepo, repo, repo_with_feature_worktree, repo_with_remote, setup_snapshot_settings,
+    wt_command,
 };
 use insta::Settings;
 use insta_cmd::assert_cmd_snapshot;
@@ -201,15 +202,9 @@ fn test_remove_without_internal(repo: TestRepo) {
 
 /// Test merge command with internal flag and --no-remove
 #[rstest]
-fn test_merge_internal_no_remove(mut repo_with_main_worktree: TestRepo) {
-    let repo = &mut repo_with_main_worktree;
-    // Create a feature worktree and make a commit
-    let feature_wt = repo.add_worktree_with_commit(
-        "feature",
-        "feature.txt",
-        "feature content",
-        "Add feature file",
-    );
+fn test_merge_internal_no_remove(mut repo_with_feature_worktree: TestRepo) {
+    let repo = &mut repo_with_feature_worktree;
+    let feature_wt = &repo.worktrees["feature"];
 
     let settings = setup_snapshot_settings(repo);
 
@@ -220,7 +215,7 @@ fn test_merge_internal_no_remove(mut repo_with_main_worktree: TestRepo) {
             .arg("merge")
             .arg("main")
             .arg("--no-remove")
-            .current_dir(&feature_wt);
+            .current_dir(feature_wt);
 
         // Note: Using file snapshot instead of inline because multiline inline snapshots
         // don't work well with NUL bytes (\0) in the output
@@ -231,15 +226,9 @@ fn test_merge_internal_no_remove(mut repo_with_main_worktree: TestRepo) {
 /// Test merge command with internal flag (removes worktree, emits cd shell script)
 /// This test verifies that the shell script output is correctly formatted
 #[rstest]
-fn test_merge_internal_remove(mut repo_with_main_worktree: TestRepo) {
-    let repo = &mut repo_with_main_worktree;
-    // Create a feature worktree and make a commit
-    let feature_wt = repo.add_worktree_with_commit(
-        "feature",
-        "feature.txt",
-        "feature content",
-        "Add feature file",
-    );
+fn test_merge_internal_remove(mut repo_with_feature_worktree: TestRepo) {
+    let repo = &mut repo_with_feature_worktree;
+    let feature_wt = &repo.worktrees["feature"];
 
     let mut settings = setup_snapshot_settings(repo);
     settings.add_filter(r"cd '[^']+'", "cd '[PATH]'");
@@ -250,7 +239,7 @@ fn test_merge_internal_remove(mut repo_with_main_worktree: TestRepo) {
         cmd.arg("--internal")
             .arg("merge")
             .arg("main")
-            .current_dir(&feature_wt);
+            .current_dir(feature_wt);
 
         assert_cmd_snapshot!(cmd);
     });

@@ -1,6 +1,6 @@
 use crate::common::{
     TestRepo, make_snapshot_cmd, merge_scenario, merge_scenario_multi_commit, repo,
-    repo_with_main_worktree, setup_snapshot_settings,
+    repo_with_feature_worktree, repo_with_main_worktree, setup_snapshot_settings,
 };
 use insta_cmd::assert_cmd_snapshot;
 use rstest::rstest;
@@ -577,20 +577,8 @@ args = ["-c", "cat >/dev/null && echo 'fix: update file 1 content'"]
 fn test_merge_with_untracked_files(mut repo_with_main_worktree: TestRepo) {
     let repo = &mut repo_with_main_worktree;
     // Create a feature worktree with one commit
-    let feature_wt = repo.add_worktree("feature");
-    std::fs::write(feature_wt.join("file1.txt"), "content 1").unwrap();
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "file1.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "feat: add file 1"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+    let feature_wt =
+        repo.add_worktree_with_commit("feature", "file1.txt", "content 1", "feat: add file 1");
 
     // Add untracked files
     std::fs::write(feature_wt.join("untracked1.txt"), "untracked content 1").unwrap();
@@ -622,22 +610,12 @@ fn test_merge_pre_merge_command_success(mut repo: TestRepo) {
     repo.add_main_worktree();
 
     // Create a feature worktree and make a commit
-    let feature_wt = repo.add_worktree("feature");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "feature.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add feature file"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+    let feature_wt = repo.add_worktree_with_commit(
+        "feature",
+        "feature.txt",
+        "feature content",
+        "Add feature file",
+    );
 
     // Merge with --force to skip approval prompts
     snapshot_merge(
@@ -661,22 +639,12 @@ fn test_merge_pre_merge_command_failure(mut repo: TestRepo) {
     repo.add_main_worktree();
 
     // Create a feature worktree and make a commit
-    let feature_wt = repo.add_worktree("feature");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "feature.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add feature file"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+    let feature_wt = repo.add_worktree_with_commit(
+        "feature",
+        "feature.txt",
+        "feature content",
+        "Add feature file",
+    );
 
     // Merge with --force - pre-merge command should fail and block merge
     snapshot_merge(
@@ -700,22 +668,12 @@ fn test_merge_pre_merge_command_no_hooks(mut repo: TestRepo) {
     repo.add_main_worktree();
 
     // Create a feature worktree and make a commit
-    let feature_wt = repo.add_worktree("feature");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "feature.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add feature file"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+    let feature_wt = repo.add_worktree_with_commit(
+        "feature",
+        "feature.txt",
+        "feature content",
+        "Add feature file",
+    );
 
     // Merge with --no-verify - should skip pre-merge commands and succeed
     snapshot_merge(
@@ -748,22 +706,12 @@ test = "exit 0"
     repo.add_main_worktree();
 
     // Create a feature worktree and make a commit
-    let feature_wt = repo.add_worktree("feature");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "feature.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add feature file"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+    let feature_wt = repo.add_worktree_with_commit(
+        "feature",
+        "feature.txt",
+        "feature content",
+        "Add feature file",
+    );
 
     // Merge with --force - all pre-merge commands should pass
     snapshot_merge(
@@ -793,22 +741,12 @@ fn test_merge_post_merge_command_success(mut repo: TestRepo) {
     repo.add_main_worktree();
 
     // Create a feature worktree and make a commit
-    let feature_wt = repo.add_worktree("feature");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "feature.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add feature file"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+    let feature_wt = repo.add_worktree_with_commit(
+        "feature",
+        "feature.txt",
+        "feature content",
+        "Add feature file",
+    );
 
     // Merge with --force
     snapshot_merge(
@@ -849,22 +787,12 @@ fn test_merge_post_merge_command_skipped_with_no_verify(mut repo: TestRepo) {
     repo.add_main_worktree();
 
     // Create a feature worktree and make a commit
-    let feature_wt = repo.add_worktree("feature");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "feature.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add feature file"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+    let feature_wt = repo.add_worktree_with_commit(
+        "feature",
+        "feature.txt",
+        "feature content",
+        "Add feature file",
+    );
 
     // Merge with --no-verify - hook should be skipped entirely
     snapshot_merge(
@@ -895,22 +823,12 @@ fn test_merge_post_merge_command_failure(mut repo: TestRepo) {
     repo.add_main_worktree();
 
     // Create a feature worktree and make a commit
-    let feature_wt = repo.add_worktree("feature");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "feature.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add feature file"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+    let feature_wt = repo.add_worktree_with_commit(
+        "feature",
+        "feature.txt",
+        "feature content",
+        "Add feature file",
+    );
 
     // Merge with --force - post-merge command should fail but merge should complete
     snapshot_merge(
@@ -944,22 +862,12 @@ deploy = "echo 'Deploying branch {{ branch }}' > deploy.txt"
     repo.add_main_worktree();
 
     // Create a feature worktree and make a commit
-    let feature_wt = repo.add_worktree("feature");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "feature.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add feature file"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+    let feature_wt = repo.add_worktree_with_commit(
+        "feature",
+        "feature.txt",
+        "feature content",
+        "Add feature file",
+    );
 
     // Merge with --force
     snapshot_merge(
@@ -1129,22 +1037,12 @@ fn test_merge_pre_squash_command_success(mut repo: TestRepo) {
     repo.add_main_worktree();
 
     // Create a feature worktree and make commits
-    let feature_wt = repo.add_worktree("feature");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "feature.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add feature file"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+    let feature_wt = repo.add_worktree_with_commit(
+        "feature",
+        "feature.txt",
+        "feature content",
+        "Add feature file",
+    );
 
     // Merge with --force (squashing is now the default)
     snapshot_merge(
@@ -1168,22 +1066,12 @@ fn test_merge_pre_squash_command_failure(mut repo: TestRepo) {
     repo.add_main_worktree();
 
     // Create a feature worktree and make commits
-    let feature_wt = repo.add_worktree("feature");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "feature.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add feature file"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+    let feature_wt = repo.add_worktree_with_commit(
+        "feature",
+        "feature.txt",
+        "feature content",
+        "Add feature file",
+    );
 
     // Merge with --force (squashing is default) - pre-commit command should fail and block merge
     snapshot_merge(
@@ -1199,22 +1087,12 @@ fn test_merge_no_remote(mut repo: TestRepo) {
     // Deliberately NOT calling setup_remote to test the error case
 
     // Create a feature worktree and make a commit
-    let feature_wt = repo.add_worktree("feature");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "feature.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add feature file"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+    let feature_wt = repo.add_worktree_with_commit(
+        "feature",
+        "feature.txt",
+        "feature content",
+        "Add feature file",
+    );
 
     // Try to merge without specifying target (should fail - no remote to get default branch)
     snapshot_merge("merge_no_remote", &repo, &[], Some(&feature_wt));
@@ -1851,26 +1729,9 @@ command = "{}"
 }
 
 #[rstest]
-fn test_merge_no_commit_with_clean_tree(mut repo_with_main_worktree: TestRepo) {
-    let repo = &mut repo_with_main_worktree;
-
-    // Create a feature worktree with commits (clean tree)
-    let feature_wt = repo.add_worktree("feature");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "feature.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add feature file"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+fn test_merge_no_commit_with_clean_tree(mut repo_with_feature_worktree: TestRepo) {
+    let repo = &mut repo_with_feature_worktree;
+    let feature_wt = &repo.worktrees["feature"];
 
     // Merge with --no-commit (should succeed - clean tree)
     let settings = setup_snapshot_settings(repo);
@@ -1879,7 +1740,7 @@ fn test_merge_no_commit_with_clean_tree(mut repo_with_main_worktree: TestRepo) {
             repo,
             "merge",
             &["main", "--no-commit", "--no-remove"],
-            Some(&feature_wt),
+            Some(feature_wt),
         );
         assert_cmd_snapshot!(cmd, @r"
         success: true
@@ -1900,22 +1761,12 @@ fn test_merge_no_commit_with_clean_tree(mut repo_with_main_worktree: TestRepo) {
 #[rstest]
 fn test_merge_no_commit_with_dirty_tree(mut repo: TestRepo) {
     // Create a feature worktree with a commit
-    let feature_wt = repo.add_worktree("feature");
-    fs::write(feature_wt.join("committed.txt"), "committed content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "committed.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add committed file"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+    let feature_wt = repo.add_worktree_with_commit(
+        "feature",
+        "committed.txt",
+        "committed content",
+        "Add committed file",
+    );
 
     // Add uncommitted changes
     fs::write(feature_wt.join("uncommitted.txt"), "uncommitted content").unwrap();
@@ -1939,26 +1790,9 @@ fn test_merge_no_commit_with_dirty_tree(mut repo: TestRepo) {
 }
 
 #[rstest]
-fn test_merge_no_commit_no_squash_no_remove_redundant(mut repo_with_main_worktree: TestRepo) {
-    let repo = &mut repo_with_main_worktree;
-
-    // Create a feature worktree with commits (clean tree)
-    let feature_wt = repo.add_worktree("feature");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "feature.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add feature file"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+fn test_merge_no_commit_no_squash_no_remove_redundant(mut repo_with_feature_worktree: TestRepo) {
+    let repo = &mut repo_with_feature_worktree;
+    let feature_wt = &repo.worktrees["feature"];
 
     // Merge with --no-commit --no-squash --no-remove (redundant but valid - should succeed)
     let settings = setup_snapshot_settings(repo);
@@ -1967,7 +1801,7 @@ fn test_merge_no_commit_no_squash_no_remove_redundant(mut repo_with_main_worktre
             repo,
             "merge",
             &["main", "--no-commit", "--no-squash", "--no-remove"],
-            Some(&feature_wt),
+            Some(feature_wt),
         );
         assert_cmd_snapshot!(cmd, @r"
         success: true
@@ -2053,22 +1887,12 @@ fn test_merge_rebase_true_rebase(mut repo: TestRepo) {
     // Should show "Rebasing onto main..." progress message
 
     // Create a feature worktree with a commit
-    let feature_wt = repo.add_worktree("true-rebase-test");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "feature.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add feature"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+    let feature_wt = repo.add_worktree_with_commit(
+        "true-rebase-test",
+        "feature.txt",
+        "feature content",
+        "Add feature",
+    );
 
     // Advance main with a new commit (in the primary worktree which is on main)
     fs::write(repo.root_path().join("main-update.txt"), "main content").unwrap();
@@ -2102,22 +1926,12 @@ fn test_merge_primary_on_different_branch(mut repo: TestRepo) {
     assert_eq!(repo.current_branch(), "develop");
 
     // Create a feature worktree and make a commit
-    let feature_wt = repo.add_worktree("feature-from-develop");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "feature.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add feature file"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+    let feature_wt = repo.add_worktree_with_commit(
+        "feature-from-develop",
+        "feature.txt",
+        "feature content",
+        "Add feature file",
+    );
 
     snapshot_merge(
         "merge_primary_on_different_branch",
@@ -2171,22 +1985,12 @@ fn test_merge_primary_on_different_branch_dirty(mut repo: TestRepo) {
     fs::write(repo.root_path().join("file.txt"), "develop local changes").unwrap();
 
     // Create a feature worktree and make a commit
-    let feature_wt = repo.add_worktree("feature-dirty-primary");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "feature.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add feature file"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+    let feature_wt = repo.add_worktree_with_commit(
+        "feature-dirty-primary",
+        "feature.txt",
+        "feature content",
+        "Add feature file",
+    );
 
     // Try to merge to main - should fail because primary has uncommitted changes that conflict
     snapshot_merge(
@@ -2198,26 +2002,9 @@ fn test_merge_primary_on_different_branch_dirty(mut repo: TestRepo) {
 }
 
 #[rstest]
-fn test_merge_race_condition_commit_after_push(mut repo_with_main_worktree: TestRepo) {
-    let repo = &mut repo_with_main_worktree;
-
-    // Create a feature worktree and make a commit
-    let feature_wt = repo.add_worktree("feature");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "feature.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add feature file"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+fn test_merge_race_condition_commit_after_push(mut repo_with_feature_worktree: TestRepo) {
+    let repo = &mut repo_with_feature_worktree;
+    let feature_wt = repo.worktrees["feature"].clone();
 
     // Merge to main (this pushes the branch to main)
     snapshot_merge(
@@ -2750,21 +2537,8 @@ fn test_step_squash_single_commit(mut repo: TestRepo) {
     // Test "nothing to squash; already a single commit" message
 
     // Create a feature worktree with exactly one commit
-    let feature_wt = repo.add_worktree("feature");
-
-    fs::write(feature_wt.join("file1.txt"), "content 1").expect("Failed to write file");
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "file1.txt"])
-        .current_dir(&feature_wt)
-        .output()
-        .expect("Failed to add file");
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "feat: single commit"])
-        .current_dir(&feature_wt)
-        .output()
-        .expect("Failed to commit");
+    let feature_wt =
+        repo.add_worktree_with_commit("feature", "file1.txt", "content 1", "feat: single commit");
 
     snapshot_step_squash_with_env(
         "step_squash_single_commit",

@@ -13,7 +13,6 @@ use crate::common::{
 use insta_cmd::assert_cmd_snapshot;
 use rstest::rstest;
 use std::fs;
-use std::process::Command;
 use std::thread;
 use std::time::Duration;
 
@@ -264,22 +263,8 @@ fn snapshot_merge(test_name: &str, repo: &TestRepo, args: &[&str], cwd: Option<&
 #[cfg_attr(windows, ignore)]
 fn test_user_pre_merge_hook_executes(mut repo: TestRepo) {
     // Create feature worktree with a commit
-    let feature_wt = repo.add_worktree("feature");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.current_dir(&feature_wt)
-        .args(["add", "."])
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.current_dir(&feature_wt)
-        .args(["commit", "-m", "Add feature"])
-        .output()
-        .unwrap();
+    let feature_wt =
+        repo.add_worktree_with_commit("feature", "feature.txt", "feature content", "Add feature");
 
     // Write user config with pre-merge hook
     repo.write_test_config(
@@ -305,22 +290,8 @@ check = "echo 'USER_PRE_MERGE_RAN' > user_premerge.txt"
 #[rstest]
 fn test_user_pre_merge_hook_failure_blocks_merge(mut repo: TestRepo) {
     // Create feature worktree with a commit
-    let feature_wt = repo.add_worktree("feature");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.current_dir(&feature_wt)
-        .args(["add", "."])
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.current_dir(&feature_wt)
-        .args(["commit", "-m", "Add feature"])
-        .output()
-        .unwrap();
+    let feature_wt =
+        repo.add_worktree_with_commit("feature", "feature.txt", "feature content", "Add feature");
 
     // Write user config with failing pre-merge hook
     repo.write_test_config(
@@ -343,22 +314,8 @@ check = "exit 1"
 #[rstest]
 fn test_user_pre_merge_skipped_with_no_verify(mut repo: TestRepo) {
     // Create feature worktree with a commit
-    let feature_wt = repo.add_worktree("feature");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.current_dir(&feature_wt)
-        .args(["add", "."])
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.current_dir(&feature_wt)
-        .args(["commit", "-m", "Add feature"])
-        .output()
-        .unwrap();
+    let feature_wt =
+        repo.add_worktree_with_commit("feature", "feature.txt", "feature content", "Add feature");
 
     // Write user config with pre-merge hook that creates a marker
     repo.write_test_config(
@@ -449,22 +406,8 @@ long = "sh -c 'echo start >> hook.log; sleep 30; echo done >> hook.log'"
 #[cfg_attr(windows, ignore)]
 fn test_user_post_merge_hook_executes(mut repo: TestRepo) {
     // Create feature worktree with a commit
-    let feature_wt = repo.add_worktree("feature");
-    fs::write(feature_wt.join("feature.txt"), "feature content").unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.current_dir(&feature_wt)
-        .args(["add", "."])
-        .output()
-        .unwrap();
-
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.current_dir(&feature_wt)
-        .args(["commit", "-m", "Add feature"])
-        .output()
-        .unwrap();
+    let feature_wt =
+        repo.add_worktree_with_commit("feature", "feature.txt", "feature content", "Add feature");
 
     // Write user config with post-merge hook
     repo.write_test_config(

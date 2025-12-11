@@ -339,22 +339,12 @@ fn test_list_json_with_metadata(mut repo: TestRepo) {
 #[rstest]
 fn test_list_json_tree_matches_main_after_merge(mut repo: TestRepo) {
     // Create feature branch with a worktree
-    let feature_path = repo.add_worktree("feature-merged");
-
-    // Make a commit on feature branch
-    std::fs::write(feature_path.join("feature.txt"), "feature content").unwrap();
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "."])
-        .current_dir(&feature_path)
-        .output()
-        .unwrap();
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Feature commit"])
-        .current_dir(&feature_path)
-        .output()
-        .unwrap();
+    let feature_path = repo.add_worktree_with_commit(
+        "feature-merged",
+        "feature.txt",
+        "feature content",
+        "Feature commit",
+    );
 
     // Make the same commit on main (so trees will match after merge)
     std::fs::write(repo.root_path().join("feature.txt"), "feature content").unwrap();
@@ -704,20 +694,12 @@ fn test_list_with_user_marker(mut repo: TestRepo) {
     repo.commit_with_age("Initial commit", DAY);
 
     // Branch ahead of main with commits and user marker 🤖
-    let feature_wt = repo.add_worktree("feature-api");
-    std::fs::write(feature_wt.join("api.rs"), "// API implementation").unwrap();
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "."])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add REST API endpoints"])
-        .current_dir(&feature_wt)
-        .output()
-        .unwrap();
+    let _feature_wt = repo.add_worktree_with_commit(
+        "feature-api",
+        "api.rs",
+        "// API implementation",
+        "Add REST API endpoints",
+    );
     // Set user marker
     let mut cmd = Command::new("git");
     repo.configure_git_cmd(&mut cmd);
@@ -727,20 +709,12 @@ fn test_list_with_user_marker(mut repo: TestRepo) {
         .unwrap();
 
     // Branch with uncommitted changes and user marker 💬
-    let review_wt = repo.add_worktree("review-ui");
-    std::fs::write(review_wt.join("component.tsx"), "// UI component").unwrap();
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "."])
-        .current_dir(&review_wt)
-        .output()
-        .unwrap();
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Add dashboard component"])
-        .current_dir(&review_wt)
-        .output()
-        .unwrap();
+    let review_wt = repo.add_worktree_with_commit(
+        "review-ui",
+        "component.tsx",
+        "// UI component",
+        "Add dashboard component",
+    );
     // Add uncommitted changes
     std::fs::write(review_wt.join("styles.css"), "/* pending styles */").unwrap();
     // Set user marker
@@ -792,26 +766,12 @@ fn test_list_json_with_git_operation(mut repo: TestRepo) {
     repo.commit("Initial commit");
 
     // Create feature worktree
-    let feature = repo.add_worktree("feature");
-
-    // Feature makes changes to the file
-    std::fs::write(
-        feature.join("conflict.txt"),
+    let feature = repo.add_worktree_with_commit(
+        "feature",
+        "conflict.txt",
         "feature line 1\nfeature line 2\n",
-    )
-    .unwrap();
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "."])
-        .current_dir(&feature)
-        .output()
-        .unwrap();
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Feature changes"])
-        .current_dir(&feature)
-        .output()
-        .unwrap();
+        "Feature changes",
+    );
 
     // Main makes conflicting changes
     std::fs::write(
@@ -1861,20 +1821,7 @@ fn test_list_task_dag_full_with_diffs(mut repo: TestRepo) {
     std::fs::write(feature_a.join("new.txt"), "content").unwrap();
 
     // Create another worktree with commits
-    let feature_b = repo.add_worktree("feature-b");
-    std::fs::write(feature_b.join("file.txt"), "test").unwrap();
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["add", "."])
-        .current_dir(&feature_b)
-        .output()
-        .unwrap();
-    let mut cmd = Command::new("git");
-    repo.configure_git_cmd(&mut cmd);
-    cmd.args(["commit", "-m", "Test commit"])
-        .current_dir(&feature_b)
-        .output()
-        .unwrap();
+    let _feature_b = repo.add_worktree_with_commit("feature-b", "file.txt", "test", "Test commit");
 
     snapshot_list_progressive_full("task_dag_full_with_diffs", &repo);
 }

@@ -188,6 +188,31 @@ pub fn repo_with_main_worktree(repo: TestRepo) -> TestRepo {
     repo
 }
 
+/// Repo with main worktree and a feature branch with one commit.
+///
+/// Builds on `repo_with_main_worktree`, adding a "feature" worktree with a
+/// single commit. Access the feature worktree path via `repo.worktrees["feature"]`.
+///
+/// Use directly or with `#[from(repo_with_feature_worktree)]` in rstest:
+/// ```ignore
+/// #[rstest]
+/// fn test_merge(mut repo_with_feature_worktree: TestRepo) {
+///     let repo = &mut repo_with_feature_worktree;
+///     let feature_wt = &repo.worktrees["feature"];
+///     // feature has one commit, ready to merge
+/// }
+/// ```
+#[rstest::fixture]
+pub fn repo_with_feature_worktree(mut repo_with_main_worktree: TestRepo) -> TestRepo {
+    repo_with_main_worktree.add_worktree_with_commit(
+        "feature",
+        "feature.txt",
+        "feature content",
+        "Add feature file",
+    );
+    repo_with_main_worktree
+}
+
 /// Merge test setup with a single commit on feature branch.
 ///
 /// Creates a repo with:
