@@ -80,7 +80,6 @@ pub(super) enum TaskResult {
         has_file_changes: bool,
     },
     /// Whether merging branch into main would add changes (merge simulation)
-    /// Only computed with --full flag
     WouldMergeAdd {
         item_idx: usize,
         would_merge_add: bool,

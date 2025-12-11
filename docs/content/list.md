@@ -120,7 +120,7 @@ The Status column has multiple subcolumns. Within each, only the first matching 
 | Main | `^` | Is the main branch |
 | | `✗` | Would conflict if merged to main |
 | | `_` | Same commit as main |
-| | `⊂` | [Content integrated](@/remove.md#branch-cleanup) (`--full` detects additional cases) |
+| | `⊂` | [Content integrated](@/remove.md#branch-cleanup) |
 | | `↕` | Diverged from main |
 | | `↑` | Ahead of main |
 | | `↓` | Behind main |

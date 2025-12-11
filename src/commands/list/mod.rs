@@ -152,17 +152,16 @@ pub fn handle_list(
     let repo = Repository::current();
 
     // Build skip set based on flags
-    // Without --full: skip expensive operations (BranchDiff, CiStatus, WouldMergeAdd)
+    // Without --full: skip expensive operations (BranchDiff, CiStatus)
+    // TODO: WouldMergeAdd (~500ms-2s per worktree) is currently enabled for ⊂ detection.
+    // If this causes performance issues, consider adding it back to skip_tasks or
+    // implementing a timeout for the merge simulation.
     let skip_tasks: std::collections::HashSet<TaskKind> = if show_full {
         std::collections::HashSet::new() // Compute everything
     } else {
-        [
-            TaskKind::BranchDiff,
-            TaskKind::CiStatus,
-            TaskKind::WouldMergeAdd,
-        ]
-        .into_iter()
-        .collect()
+        [TaskKind::BranchDiff, TaskKind::CiStatus]
+            .into_iter()
+            .collect()
     };
 
     // Progressive rendering only for table format with Progressive mode

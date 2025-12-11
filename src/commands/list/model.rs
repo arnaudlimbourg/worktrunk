@@ -212,7 +212,7 @@ pub struct ListItem {
     pub has_file_changes: Option<bool>,
     /// Whether merging branch into main would add changes (merge simulation).
     /// False when `git merge-tree --write-tree main branch` produces same tree as main.
-    /// Only computed with `--full` flag. Catches squash-merged branches where main advanced.
+    /// Catches squash-merged branches where main advanced.
     #[serde(skip)]
     pub would_merge_add: Option<bool>,
     /// Whether branch HEAD is an ancestor of main (or same commit).
@@ -320,8 +320,8 @@ impl ListItem {
     ///    Catches squash-merged branches where commits exist but add no files.
     /// 3. **Tree matches main** - tree SHA equals main's tree SHA.
     ///    Catches rebased/squash-merged branches with identical content.
-    /// 4. **Merge simulation** (`--full` only) - merging branch into main wouldn't
-    ///    change main's tree. Catches squash-merged branches where main has advanced.
+    /// 4. **Merge simulation** - merging branch into main wouldn't change main's
+    ///    tree. Catches squash-merged branches where main has advanced.
     /// 5. **Working tree matches main** (worktrees only) - uncommitted changes
     ///    don't diverge from main.
     pub(crate) fn is_potentially_removable(&self) -> bool {
@@ -358,7 +358,7 @@ impl ListItem {
             return true;
         }
 
-        // Check 4: Merge simulation (--full only)
+        // Check 4: Merge simulation
         // Merging branch into main wouldn't add changes - content already integrated.
         // This catches cases where main has advanced past the squash-merge point.
         if self.would_merge_add == Some(false) && is_working_tree_clean() {
@@ -620,7 +620,7 @@ impl ListItem {
 /// - `behind_main`: Number of commits branch is behind main (None = not computed)
 /// - `committed_trees_match`: Whether committed tree SHAs match (HEAD^{tree} == main^{tree})
 /// - `has_file_changes`: Whether three-dot diff has file changes (None = not computed)
-/// - `would_merge_add`: Whether merge simulation shows changes (None = not computed, `--full` only)
+/// - `would_merge_add`: Whether merge simulation shows changes (None = not computed)
 /// - `working_tree_diff_with_main`: Diff between working tree and main. May be `None` (not
 ///   computed) or `Some(None)` (skipped). When unavailable, assumes no match.
 #[allow(clippy::too_many_arguments)]
@@ -671,7 +671,7 @@ fn determine_integration_state(
         return (false, Some(IntegrationReason::TreesMatch));
     }
 
-    // Priority 6: Merge simulation shows no changes (--full only)
+    // Priority 6: Merge simulation shows no changes
     if would_merge_add == Some(false) && is_clean {
         return (false, Some(IntegrationReason::MergeAddsNothing));
     }
