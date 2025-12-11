@@ -426,7 +426,9 @@ approved-commands = ["echo 'Second command'"]
         "Should NOT execute any commands when declined"
     );
     assert!(
-        normalized.contains("Created new worktree"),
+        normalized.contains("Created worktree")
+            && normalized.contains("based off")
+            && normalized.contains("@"),
         "Should still create worktree even when commands declined"
     );
     assert_snapshot!(

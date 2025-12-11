@@ -27,4 +27,4 @@ exit_code: 0
 + complex   [36m![39m[36m?[39m         [32m+1[0m   [31m-1[0m           ./repo.complex           [2mb834638e[0m  [2m1d[0m    [2mInitial commit
 + simple   [36m+[39m [36m?[39m         [32m+1[0m   [31m-1[0m           ./repo.simple            [2mb834638e[0m  [2m1d[0m    [2mInitial commit
 
-⚪ [2mShowing 3 worktrees, 2 with changes
+⚪ [2mShowing 3 worktrees; 2 with changes

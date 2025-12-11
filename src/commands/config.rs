@@ -419,7 +419,7 @@ fn render_shell_status(out: &mut String) -> anyhow::Result<()> {
             out,
             "{}",
             hint_message(cformat!(
-                "<bright-black>wt config shell install</> enables shell integration"
+                "Run <bright-black>wt config shell install</> to enable shell integration"
             ))
         )?;
     }
@@ -447,7 +447,7 @@ fn render_binaries_status(out: &mut String) -> anyhow::Result<()> {
                 out,
                 "{}",
                 warning_message(cformat!(
-                    "<bold>gh</> installed but not authenticated; run <bright-black>gh auth login</>"
+                    "<bold>gh</> installed but not authenticated; run <bold>gh auth login</>"
                 ))
             )?;
         }
@@ -455,9 +455,7 @@ fn render_binaries_status(out: &mut String) -> anyhow::Result<()> {
         writeln!(
             out,
             "{}",
-            hint_message(cformat!(
-                "<bold>gh</> not found (GitHub CI status unavailable)"
-            ))
+            hint_message(cformat!("Install <bright-black>gh</> for GitHub CI status"))
         )?;
     }
 
@@ -474,7 +472,7 @@ fn render_binaries_status(out: &mut String) -> anyhow::Result<()> {
                 out,
                 "{}",
                 warning_message(cformat!(
-                    "<bold>glab</> installed but not authenticated; run <bright-black>glab auth login</>"
+                    "<bold>glab</> installed but not authenticated; run <bold>glab auth login</>"
                 ))
             )?;
         }
@@ -483,7 +481,7 @@ fn render_binaries_status(out: &mut String) -> anyhow::Result<()> {
             out,
             "{}",
             hint_message(cformat!(
-                "<bold>glab</> not found (GitLab CI status unavailable)"
+                "Install <bright-black>glab</> for GitLab CI status"
             ))
         )?;
     }

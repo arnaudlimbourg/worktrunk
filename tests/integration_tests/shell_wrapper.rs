@@ -747,7 +747,7 @@ mod tests {
         output.assert_no_job_control_messages();
 
         assert!(
-            output.combined.contains("Created new worktree"),
+            output.combined.contains("Created worktree"),
             "{}: Should show success message",
             shell
         );
@@ -942,7 +942,7 @@ mod tests {
 
         // Should still show wt's success message (worktree was created)
         assert!(
-            output.combined.contains("Created new worktree"),
+            output.combined.contains("Created worktree"),
             "{}: Should show wt's success message even though execute command failed",
             shell
         );
@@ -1376,7 +1376,7 @@ approved-commands = ["echo 'test command executed'"]
 
         // Should still have the success message
         assert!(
-            output.combined.contains("Created new worktree"),
+            output.combined.contains("Created worktree"),
             "Success message missing"
         );
 
@@ -1618,7 +1618,7 @@ approved-commands = ["echo 'fish background task'"]
 
         // Should still show success message
         assert!(
-            output.combined.contains("Created new worktree"),
+            output.combined.contains("Created worktree"),
             "Success message missing from minimal output"
         );
 
@@ -1867,7 +1867,7 @@ approved-commands = ["echo 'bash background'"]
 
         // Verify the command completed successfully
         assert!(
-            output.contains("Created new worktree"),
+            output.contains("Created worktree"),
             "Should show success message.\nOutput:\n{}",
             output
         );
@@ -2041,7 +2041,7 @@ approved-commands = ["echo 'bash background'"]
         output.assert_no_directive_leaks();
 
         assert!(
-            output.combined.contains("Created new worktree"),
+            output.combined.contains("Created worktree"),
             "{}: Should create worktree for branch with slashes",
             shell
         );
@@ -2062,7 +2062,7 @@ approved-commands = ["echo 'bash background'"]
         output.assert_no_directive_leaks();
 
         assert!(
-            output.combined.contains("Created new worktree"),
+            output.combined.contains("Created worktree"),
             "{}: Should create worktree for branch with dashes/underscores",
             shell
         );
@@ -2163,7 +2163,7 @@ approved-commands = ["echo 'bash background'"]
         output.assert_no_directive_leaks();
 
         assert!(
-            output.combined.contains("Created new worktree"),
+            output.combined.contains("Created worktree"),
             "{}: Should create worktree using WORKTRUNK_BIN fallback.\nOutput:\n{}",
             shell,
             output.combined
@@ -2229,7 +2229,7 @@ approved-commands = ["echo 'cleanup test'"]
         output.assert_no_directive_leaks();
 
         assert!(
-            output.combined.contains("Created new worktree"),
+            output.combined.contains("Created worktree"),
             "{}: Should complete successfully",
             shell
         );

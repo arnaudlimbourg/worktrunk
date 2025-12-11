@@ -22,7 +22,7 @@ The plugin adds status indicators to `wt list`:
 + review-ui      <span class=c>?</span> <span class=d>↑</span> 💬              <span class=g>↑1</span>      ./repo.review-ui             <span class=d>afd3b353</span>  <span class=d>1d</span>    <span class=d>Add dashboard component</span>
 + <span class=d>wip-docs</span>       <span class=c>?</span> <span class=d>_</span>                         <span class=d>./repo.wip-docs</span>              <span class=d>b834638e</span>  <span class=d>1d</span>    <span class=d>Initial commit</span>
 
-⚪ <span class=d>Showing 4 worktrees, 2 ahead</span>
+⚪ <span class=d>Showing 4 worktrees; 2 ahead</span>
 {% end %}
 
 <!-- END AUTO-GENERATED -->

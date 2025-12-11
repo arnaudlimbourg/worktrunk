@@ -642,20 +642,26 @@ pub fn collect(
     let num_local_branches = branches_without_worktrees.len();
     let num_remote_branches = remote_branches.len();
 
-    let footer_base =
+    let footer_base = {
+        let wt_plural = if num_worktrees == 1 { "" } else { "s" };
         if (show_branches && num_local_branches > 0) || (show_remotes && num_remote_branches > 0) {
-            let mut parts = vec![format!("{} worktrees", num_worktrees)];
+            let mut parts = vec![format!("{} worktree{}", num_worktrees, wt_plural)];
             if show_branches && num_local_branches > 0 {
-                parts.push(format!("{} branches", num_local_branches));
+                let br_plural = if num_local_branches == 1 { "" } else { "es" };
+                parts.push(format!("{} branch{}", num_local_branches, br_plural));
             }
             if show_remotes && num_remote_branches > 0 {
-                parts.push(format!("{} remote branches", num_remote_branches));
+                let rb_plural = if num_remote_branches == 1 { "" } else { "es" };
+                parts.push(format!(
+                    "{} remote branch{}",
+                    num_remote_branches, rb_plural
+                ));
             }
             format!("Showing {}", parts.join(", "))
         } else {
-            let plural = if num_worktrees == 1 { "" } else { "s" };
-            format!("Showing {} worktree{}", num_worktrees, plural)
-        };
+            format!("Showing {} worktree{}", num_worktrees, wt_plural)
+        }
+    };
 
     // Create progressive table if showing progress
     let mut progressive_table = if show_progress {
