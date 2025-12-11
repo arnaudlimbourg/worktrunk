@@ -1,11 +1,9 @@
-use crate::common::TestRepo;
+use crate::common::{TestRepo, repo, repo_with_remote};
+use rstest::rstest;
 use worktrunk::git::Repository;
 
-#[test]
-fn test_get_default_branch_with_origin_head() {
-    let mut repo = TestRepo::new();
-    repo.setup_remote("main");
-
+#[rstest]
+fn test_get_default_branch_with_origin_head(#[from(repo_with_remote)] repo: TestRepo) {
     // origin/HEAD should be set automatically by setup_remote
     assert!(repo.has_origin_head());
 
@@ -14,11 +12,8 @@ fn test_get_default_branch_with_origin_head() {
     assert_eq!(branch, "main");
 }
 
-#[test]
-fn test_get_default_branch_without_origin_head() {
-    let mut repo = TestRepo::new();
-    repo.setup_remote("main");
-
+#[rstest]
+fn test_get_default_branch_without_origin_head(#[from(repo_with_remote)] repo: TestRepo) {
     // Clear origin/HEAD to force remote query
     repo.clear_origin_head();
     assert!(!repo.has_origin_head());
@@ -31,11 +26,8 @@ fn test_get_default_branch_without_origin_head() {
     assert!(repo.has_origin_head());
 }
 
-#[test]
-fn test_get_default_branch_caches_result() {
-    let mut repo = TestRepo::new();
-    repo.setup_remote("main");
-
+#[rstest]
+fn test_get_default_branch_caches_result(#[from(repo_with_remote)] repo: TestRepo) {
     // Clear origin/HEAD
     repo.clear_origin_head();
     assert!(!repo.has_origin_head());
@@ -49,10 +41,8 @@ fn test_get_default_branch_caches_result() {
     assert_eq!(branch, "main");
 }
 
-#[test]
-fn test_get_default_branch_no_remote() {
-    let repo = TestRepo::new();
-
+#[rstest]
+fn test_get_default_branch_no_remote(repo: TestRepo) {
     // No remote configured, should infer from local branches
     // Since there's only one local branch, it should return that
     let result = Repository::at(repo.root_path()).default_branch();
@@ -67,9 +57,8 @@ fn test_get_default_branch_no_remote() {
     assert_eq!(inferred_branch, current_branch);
 }
 
-#[test]
-fn test_get_default_branch_with_custom_remote() {
-    let mut repo = TestRepo::new();
+#[rstest]
+fn test_get_default_branch_with_custom_remote(mut repo: TestRepo) {
     repo.setup_custom_remote("upstream", "main");
 
     // Test that we can get the default branch from a custom remote
@@ -77,9 +66,8 @@ fn test_get_default_branch_with_custom_remote() {
     assert_eq!(branch, "main");
 }
 
-#[test]
-fn test_primary_remote_detects_custom_remote() {
-    let mut repo = TestRepo::new();
+#[rstest]
+fn test_primary_remote_detects_custom_remote(mut repo: TestRepo) {
     repo.setup_custom_remote("upstream", "develop");
 
     // Test that primary_remote detects the custom remote name
@@ -87,9 +75,8 @@ fn test_primary_remote_detects_custom_remote() {
     assert_eq!(remote, "upstream");
 }
 
-#[test]
-fn test_branch_exists_with_custom_remote() {
-    let mut repo = TestRepo::new();
+#[rstest]
+fn test_branch_exists_with_custom_remote(mut repo: TestRepo) {
     repo.setup_custom_remote("upstream", "main");
 
     let git_repo = Repository::at(repo.root_path());
@@ -101,10 +88,8 @@ fn test_branch_exists_with_custom_remote() {
     assert!(!git_repo.branch_exists("nonexistent").unwrap());
 }
 
-#[test]
-fn test_get_default_branch_no_remote_common_names_fallback() {
-    let repo = TestRepo::new();
-
+#[rstest]
+fn test_get_default_branch_no_remote_common_names_fallback(repo: TestRepo) {
     // Create additional branches (no remote configured)
     repo.git_command(&["branch", "feature"]).status().unwrap();
     repo.git_command(&["branch", "bugfix"]).status().unwrap();
@@ -115,10 +100,8 @@ fn test_get_default_branch_no_remote_common_names_fallback() {
     assert_eq!(branch, "main");
 }
 
-#[test]
-fn test_get_default_branch_no_remote_master_fallback() {
-    let repo = TestRepo::new();
-
+#[rstest]
+fn test_get_default_branch_no_remote_master_fallback(repo: TestRepo) {
     // Rename main to master, then create other branches
     repo.git_command(&["branch", "-m", "main", "master"])
         .status()
@@ -132,10 +115,8 @@ fn test_get_default_branch_no_remote_master_fallback() {
     assert_eq!(branch, "master");
 }
 
-#[test]
-fn test_get_default_branch_no_remote_init_default_branch_config() {
-    let repo = TestRepo::new();
-
+#[rstest]
+fn test_get_default_branch_no_remote_init_default_branch_config(repo: TestRepo) {
     // Rename main to something non-standard, create the configured default
     repo.git_command(&["branch", "-m", "main", "primary"])
         .status()
@@ -153,10 +134,8 @@ fn test_get_default_branch_no_remote_init_default_branch_config() {
     assert_eq!(branch, "primary");
 }
 
-#[test]
-fn test_get_default_branch_no_remote_fails_when_no_match() {
-    let repo = TestRepo::new();
-
+#[rstest]
+fn test_get_default_branch_no_remote_fails_when_no_match(repo: TestRepo) {
     // Rename main to something non-standard
     repo.git_command(&["branch", "-m", "main", "xyz"])
         .status()
