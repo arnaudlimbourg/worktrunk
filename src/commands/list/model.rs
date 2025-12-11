@@ -479,7 +479,7 @@ impl ListItem {
                 };
 
                 // Determine integration state (for non-main worktrees)
-                let (same_commit, integration_reason) = determine_integration_state(
+                let integration = determine_integration_state(
                     data.is_main,
                     default_branch,
                     self.is_ancestor,
@@ -495,8 +495,7 @@ impl ListItem {
                 let main_state = MainState::from_integration_and_counts(
                     data.is_main,
                     has_merge_tree_conflicts,
-                    same_commit,
-                    integration_reason,
+                    integration,
                     counts.ahead,
                     counts.behind,
                 );
@@ -516,7 +515,7 @@ impl ListItem {
 
                 // Branches don't have working trees, so pass empty diff as "inherently clean"
                 let empty_diff = LineDiff::default();
-                let (same_commit, integration_reason) = determine_integration_state(
+                let integration = determine_integration_state(
                     false, // branches are never main worktree
                     default_branch,
                     self.is_ancestor,
@@ -532,8 +531,7 @@ impl ListItem {
                 let main_state = MainState::from_integration_and_counts(
                     false, // not main
                     has_merge_tree_conflicts,
-                    same_commit,
-                    integration_reason,
+                    integration,
                     counts.ahead,
                     counts.behind,
                 );
@@ -551,26 +549,9 @@ impl ListItem {
     }
 }
 
-/// Determine integration state for a worktree.
+/// Determine integration state for a worktree or branch.
 ///
-/// Returns `(same_commit, integration_reason)` indicating whether the branch content
-/// is integrated into main and how.
-///
-/// # Return values
-///
-/// - `(true, None)`: Branch HEAD is exactly the same commit as main (SameCommit)
-/// - `(false, Some(reason))`: Content is integrated via the given reason
-/// - `(false, None)`: Not integrated (normal branch)
-///
-/// # Parameters
-///
-/// - `is_ancestor`: Whether branch HEAD is ancestor of main (None = not computed)
-/// - `behind_main`: Number of commits branch is behind main (None = not computed)
-/// - `committed_trees_match`: Whether committed tree SHAs match (HEAD^{tree} == main^{tree})
-/// - `has_file_changes`: Whether three-dot diff has file changes (None = not computed)
-/// - `would_merge_add`: Whether merge simulation shows changes (None = not computed)
-/// - `working_tree_diff_with_main`: Diff between working tree and main. May be `None` (not
-///   computed) or `Some(None)` (skipped). When unavailable, assumes no match.
+/// Returns `Some(MainState)` if integrated (SameCommit or Integrated), `None` otherwise.
 #[allow(clippy::too_many_arguments)]
 fn determine_integration_state(
     is_main: bool,
@@ -582,9 +563,9 @@ fn determine_integration_state(
     would_merge_add: Option<bool>,
     working_tree_diff: Option<&LineDiff>,
     working_tree_diff_with_main: &Option<Option<LineDiff>>,
-) -> (bool, Option<IntegrationReason>) {
+) -> Option<MainState> {
     if is_main || default_branch.is_none() {
-        return (false, None);
+        return None;
     }
 
     // Require working_tree_diff to be loaded and empty. Don't assume clean when unknown
@@ -593,22 +574,22 @@ fn determine_integration_state(
 
     // Priority 1: Branch is exactly the same commit as main (ancestor with 0 behind)
     if is_ancestor == Some(true) && behind_main == Some(0) && is_clean {
-        return (true, None); // SameCommit
+        return Some(MainState::SameCommit);
     }
 
     // Priority 2: Branch is ancestor of main but main has moved past (already merged)
     if is_ancestor == Some(true) && is_clean {
-        return (false, Some(IntegrationReason::Ancestor));
+        return Some(MainState::Integrated(IntegrationReason::Ancestor));
     }
 
     // Priority 3: No file changes beyond merge-base (squash-merged)
     if has_file_changes == Some(false) && is_clean {
-        return (false, Some(IntegrationReason::NoAddedChanges));
+        return Some(MainState::Integrated(IntegrationReason::NoAddedChanges));
     }
 
     // Priority 4: Tree SHA matches main (squash merge/rebase with identical content)
     if committed_trees_match && is_clean {
-        return (false, Some(IntegrationReason::TreesMatch));
+        return Some(MainState::Integrated(IntegrationReason::TreesMatch));
     }
 
     // Priority 5: Working tree matches main
@@ -618,15 +599,15 @@ fn determine_integration_state(
         .is_some_and(|diff| diff.is_empty());
 
     if working_tree_matches_main {
-        return (false, Some(IntegrationReason::TreesMatch));
+        return Some(MainState::Integrated(IntegrationReason::TreesMatch));
     }
 
     // Priority 6: Merge simulation shows no changes
     if would_merge_add == Some(false) && is_clean {
-        return (false, Some(IntegrationReason::MergeAddsNothing));
+        return Some(MainState::Integrated(IntegrationReason::MergeAddsNothing));
     }
 
-    (false, None)
+    None
 }
 
 /// Upstream divergence state relative to remote tracking branch.
@@ -835,12 +816,11 @@ impl MainState {
 
     /// Compute from divergence counts and integration state.
     ///
-    /// Priority: WouldConflict > SameCommit > Integrated > Diverged > Ahead > Behind
+    /// Priority: WouldConflict > integration > Diverged > Ahead > Behind
     pub fn from_integration_and_counts(
         is_main: bool,
         would_conflict: bool,
-        same_commit: bool,
-        integration_reason: Option<IntegrationReason>,
+        integration: Option<MainState>,
         ahead: usize,
         behind: usize,
     ) -> Self {
@@ -848,10 +828,8 @@ impl MainState {
             Self::IsMain
         } else if would_conflict {
             Self::WouldConflict
-        } else if same_commit {
-            Self::SameCommit
-        } else if let Some(reason) = integration_reason {
-            Self::Integrated(reason)
+        } else if let Some(state) = integration {
+            state
         } else {
             match (ahead, behind) {
                 (0, 0) => Self::None,
@@ -1396,29 +1374,28 @@ mod tests {
     fn test_main_state_from_integration_and_counts() {
         // IsMain takes priority
         assert!(matches!(
-            MainState::from_integration_and_counts(true, false, false, None, 5, 3),
+            MainState::from_integration_and_counts(true, false, None, 5, 3),
             MainState::IsMain
         ));
 
         // WouldConflict next
         assert!(matches!(
-            MainState::from_integration_and_counts(false, true, false, None, 5, 3),
+            MainState::from_integration_and_counts(false, true, None, 5, 3),
             MainState::WouldConflict
         ));
 
-        // SameCommit next
+        // SameCommit (passed as integration state)
         assert!(matches!(
-            MainState::from_integration_and_counts(false, false, true, None, 0, 0),
+            MainState::from_integration_and_counts(false, false, Some(MainState::SameCommit), 0, 0),
             MainState::SameCommit
         ));
 
-        // Integrated next
+        // Integrated (passed as integration state)
         assert!(matches!(
             MainState::from_integration_and_counts(
                 false,
                 false,
-                false,
-                Some(IntegrationReason::Ancestor),
+                Some(MainState::Integrated(IntegrationReason::Ancestor)),
                 0,
                 5
             ),
@@ -1427,25 +1404,25 @@ mod tests {
 
         // Diverged (both ahead and behind)
         assert!(matches!(
-            MainState::from_integration_and_counts(false, false, false, None, 3, 2),
+            MainState::from_integration_and_counts(false, false, None, 3, 2),
             MainState::Diverged
         ));
 
         // Ahead only
         assert!(matches!(
-            MainState::from_integration_and_counts(false, false, false, None, 3, 0),
+            MainState::from_integration_and_counts(false, false, None, 3, 0),
             MainState::Ahead
         ));
 
         // Behind only
         assert!(matches!(
-            MainState::from_integration_and_counts(false, false, false, None, 0, 2),
+            MainState::from_integration_and_counts(false, false, None, 0, 2),
             MainState::Behind
         ));
 
         // None (in sync)
         assert!(matches!(
-            MainState::from_integration_and_counts(false, false, false, None, 0, 0),
+            MainState::from_integration_and_counts(false, false, None, 0, 0),
             MainState::None
         ));
     }
