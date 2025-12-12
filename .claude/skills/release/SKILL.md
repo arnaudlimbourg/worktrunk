@@ -8,15 +8,16 @@ description: Worktrunk release workflow. Use when user asks to "do a release", "
 ## Steps
 
 1. **Run tests**: `cargo run -- hook pre-merge --force`
-2. **Check current version**: Read `version` in `Cargo.toml` to determine next version
-3. **Review CHANGELOG**: Check commits since last release cover notable changes
-4. **Update CHANGELOG**: Add `## X.Y.Z` section at top with changes
-5. **Bump version**: Update `version` in `Cargo.toml`, run `cargo check` to update `Cargo.lock`
-6. **Commit**: `git add -A && git commit -m "Release vX.Y.Z"`
-7. **Merge to main**: `wt merge --no-remove` (rebases onto main, pushes, keeps worktree)
-8. **Tag and push**: `git tag vX.Y.Z && git push origin vX.Y.Z`
-9. **Wait for release workflow**: `gh run watch <run-id> --exit-status`
-10. **Update Homebrew**: `./dev/update-homebrew.sh` (requires sibling `homebrew-worktrunk` checkout)
+2. **Check current version**: Read `version` in `Cargo.toml`
+3. **Review commits**: Check commits since last release to understand scope of changes
+4. **Confirm release type with user**: Present changes summary and ask user to confirm patch/minor/major (see below)
+5. **Update CHANGELOG**: Add `## X.Y.Z` section at top with changes (see MANDATORY verification below)
+6. **Bump version**: Update `version` in `Cargo.toml`, run `cargo check` to update `Cargo.lock`
+7. **Commit**: `git add -A && git commit -m "Release vX.Y.Z"`
+8. **Merge to main**: `wt merge --no-remove` (rebases onto main, pushes, keeps worktree)
+9. **Tag and push**: `git tag vX.Y.Z && git push origin vX.Y.Z`
+10. **Wait for release workflow**: `gh run watch <run-id> --exit-status`
+11. **Update Homebrew**: `./dev/update-homebrew.sh` (requires sibling `homebrew-worktrunk` checkout)
 
 The tag push triggers the release workflow which builds binaries and publishes to crates.io. The Homebrew script fetches SHA256 hashes from the release assets and updates the formula.
 
@@ -47,6 +48,71 @@ Notable changes to document:
 - Breaking changes
 
 Skip: internal refactors, doc-only changes, test additions (unless user-facing like shell completion tests).
+
+### MANDATORY: Verify Each Changelog Entry
+
+**After drafting changelog entries, you MUST spawn a subagent to verify each bullet point is accurate.** This is non-negotiable — changelog mistakes are a recurring problem.
+
+The subagent should:
+1. Take the list of drafted changelog entries
+2. For each entry, find the commit(s) it describes and read the actual diff
+3. Verify the entry accurately describes what changed
+4. Check for missing changes that should be documented
+5. Report any inaccuracies or omissions
+
+**Subagent prompt template:**
+
+```
+Verify these changelog entries for version X.Y.Z are accurate.
+
+Previous version: [e.g., v0.1.9]
+Commits to check: git log v<previous>..HEAD
+
+Entries to verify:
+[paste drafted entries]
+
+For EACH entry:
+1. Find the relevant commit(s) using git log and git show
+2. Read the actual diff, not just the commit message
+3. Confirm the entry accurately describes the user-facing change
+4. Flag if the entry overstates, understates, or misdescribes the change
+
+Also check: Are there any user-facing changes in the commits that are NOT covered by these entries?
+
+Report format:
+- Entry: [entry text]
+  Status: ✅ Accurate / ⚠️ Needs revision / ❌ Incorrect
+  Evidence: [what you found in the diff]
+  Suggested fix: [if needed]
+```
+
+**Do not finalize the changelog until the subagent confirms all entries are accurate.**
+
+**If verification finds problems:** Escalate to the user. Show them the subagent's findings and ask how to proceed. Don't attempt to resolve ambiguous changelog entries autonomously — the user knows the intent behind their changes better than you do.
+
+## Confirm Release Type
+
+**Before proceeding with changelog and version bump, confirm the release type with the user.**
+
+After reviewing commits, present:
+1. Current version (e.g., `0.2.0`)
+2. Brief summary of changes (new features, bug fixes, breaking changes)
+3. Your recommendation for release type with reasoning
+4. The three options: patch, minor, major
+
+Use `AskUserQuestion` to get explicit confirmation. Example:
+
+```
+Current version: 0.2.0
+Changes since v0.2.0:
+- Added `state clear` command (new feature)
+- Added `previous-branch` state key (new feature)
+- No breaking changes
+
+Recommendation: Minor release (0.3.0) — new features, no breaking changes
+```
+
+**Do not proceed until user confirms the release type.** The user may have context about upcoming changes or preferences that affect versioning.
 
 ## Version Guidelines
 
