@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0
+
+### Added
+
+- **`--show-prompt` flag for LLM commands**: `wt step commit --show-prompt` and `wt step squash --show-prompt` output the rendered LLM prompt without executing the command. Useful for debugging templates or manually piping to LLM tools. ([#187](https://github.com/max-sixty/worktrunk/pull/187))
+- **Diff size limits and diffstat for LLM prompts**: Large diffs (>400K chars) are progressively filtered—first removing lock files, then truncating to 50 lines/file, max 50 files. New `git_diff_stat` template variable shows line change statistics. ([#186](https://github.com/max-sixty/worktrunk/pull/186))
+- **`MainState::Empty` status**: New `_` symbol for clean same-commit branches (safe to delete), distinguished from `–` (en-dash) for same-commit branches with uncommitted changes. Previously, both showed `_`. Only Empty branches are dimmed and considered "potentially removable". ([#185](https://github.com/max-sixty/worktrunk/pull/185))
+
+### Changed
+
+- **State subcommands default to `get`**: Running `wt config state default-branch` now defaults to `get`, making the command shorter. Use explicit `get` subcommand to access options like `--refresh` or `--branch`. ([#184](https://github.com/max-sixty/worktrunk/pull/184))
+- **Clearer integration reason messages**: Updated descriptions to be more precise—"same commit as" instead of "already in" for SameCommit, "ancestor of" for Ancestor, "no added changes" for NoAddedChanges, "tree matches" for TreesMatch.
+
 ## 0.2.1
 
 ### Changed
