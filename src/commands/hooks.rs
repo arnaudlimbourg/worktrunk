@@ -23,6 +23,7 @@ use crate::commands::process::spawn_detached;
 use crate::output::execute_command_in_worktree;
 
 /// Controls how hook execution should respond to failures.
+#[derive(Clone, Copy)]
 pub enum HookFailureStrategy {
     /// Stop on first failure and surface a `HookCommandFailed` error.
     FailFast,
@@ -287,7 +288,7 @@ pub fn run_hook_with_filter(
             hook_type,
             HookSource::User,
             extra_vars,
-            HookFailureStrategy::FailFast, // User hooks always fail-fast
+            failure_strategy,
             name_filter,
         )?;
     }
