@@ -54,7 +54,7 @@ Or for OpenAI:
 ```toml
 [commit-generation]
 command = "llm"
-args = ["-m", "gpt-4o-mini"]
+args = ["-m", "gpt-5-nano"]
 ```
 
 ## How it works
