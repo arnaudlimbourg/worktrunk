@@ -282,12 +282,14 @@ impl SummaryMetrics {
     }
 
     fn update(&mut self, item: &ListItem) {
-        if let Some(data) = item.worktree_data() {
+        if let Some(_data) = item.worktree_data() {
             self.worktrees += 1;
-            if data
-                .working_tree_diff
+            // Use status_symbols.working_tree which includes untracked files,
+            // not just working_tree_diff which only has tracked changes
+            if item
+                .status_symbols
                 .as_ref()
-                .is_some_and(|d| !d.is_empty())
+                .is_some_and(|s| s.working_tree.is_dirty())
             {
                 self.dirty_worktrees += 1;
             }
