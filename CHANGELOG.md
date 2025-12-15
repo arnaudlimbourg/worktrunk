@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.4.0
+
+### Added
+
+- **`--no-rebase` flag for `wt merge`**: Fails early with a clear error if the branch is not already rebased onto target, rather than auto-rebasing. Useful for workflows that handle rebasing separately. ([#194](https://github.com/max-sixty/worktrunk/pull/194))
+
+### Changed
+
+- **Branch-first argument resolution**: `wt switch` and `wt remove` now check if the branch has a worktree anywhere before checking the expected path. If you type `wt switch foo`, you get branch foo's worktree, not whatever happens to be at the expected path. ([#197](https://github.com/max-sixty/worktrunk/pull/197))
+
+### Fixed
+
+- **`--no-commit` incorrectly skipped rebasing**: `wt merge --no-commit` now correctly rebases before stopping (if needed), rather than skipping the rebase entirely. ([#194](https://github.com/max-sixty/worktrunk/pull/194))
+- **Pager for `wt config show --full`**: The pager now works correctly with the `--full` flag, showing diagnostics properly. ([#198](https://github.com/max-sixty/worktrunk/pull/198))
+- **Statusline stdin handling**: Fixed flaky behavior on Windows CI by using standard is_terminal() check instead of timeout-based approach. ([#210](https://github.com/max-sixty/worktrunk/pull/210))
+
+### Improved
+
+- **Path-occupied error messages**: When `wt switch` can't create a worktree because the path exists, error messages now show which branch occupies the path and provide actionable commands to fix the situation. ([#195](https://github.com/max-sixty/worktrunk/pull/195), [#206](https://github.com/max-sixty/worktrunk/pull/206), [#207](https://github.com/max-sixty/worktrunk/pull/207))
+- **Switch mismatch detection**: Better error messages when path/branch mismatches occur, with hints showing the expected path. ([#195](https://github.com/max-sixty/worktrunk/pull/195))
+
 ## 0.3.1
 
 ### Fixed
