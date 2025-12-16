@@ -6,7 +6,7 @@ use std::path::Path;
 use crate::commands::command_executor::CommandContext;
 use crate::commands::execute_pre_remove_commands;
 use crate::commands::process::spawn_detached;
-use crate::commands::worktree::{RemoveResult, SwitchBranchInfo, SwitchResult};
+use crate::commands::worktree::{BranchDeletionMode, RemoveResult, SwitchBranchInfo, SwitchResult};
 use worktrunk::config::WorktrunkConfig;
 use worktrunk::git::GitError;
 use worktrunk::git::IntegrationReason;
@@ -192,11 +192,11 @@ fn handle_branch_deletion_result(
 ///
 /// `target_branch`: The branch we checked integration against (shown in reason)
 fn get_flag_note(
-    no_delete_branch: bool,
+    deletion_mode: BranchDeletionMode,
     outcome: &BranchDeletionOutcome,
     target_branch: Option<&str>,
 ) -> String {
-    if no_delete_branch {
+    if deletion_mode.should_keep() {
         return " (--no-delete-branch)".to_string();
     }
 
@@ -219,17 +219,16 @@ fn get_flag_note(
 /// Format message for remove worktree operation (includes emoji and color for consistency)
 ///
 /// `target_branch`: The branch we checked integration against (Some = merge context, None = explicit remove)
-#[allow(clippy::too_many_arguments)]
 fn format_remove_worktree_message(
     main_path: &std::path::Path,
     changed_directory: bool,
     branch_name: &str,
     branch: Option<&str>,
-    no_delete_branch: bool,
+    deletion_mode: BranchDeletionMode,
     outcome: &BranchDeletionOutcome,
     target_branch: Option<&str>,
 ) -> String {
-    let flag_note = get_flag_note(no_delete_branch, outcome, target_branch);
+    let flag_note = get_flag_note(deletion_mode, outcome, target_branch);
 
     let branch_display = branch.or(Some(branch_name));
     let path_display = format_path_for_display(main_path);
@@ -243,7 +242,7 @@ fn format_remove_worktree_message(
     // Determine action suffix based on what happened to the branch
     let action_suffix = if branch_deleted {
         "worktree & branch"
-    } else if no_delete_branch {
+    } else if deletion_mode.should_keep() {
         // User explicitly kept the branch via --no-delete-branch
         "worktree"
     } else if matches!(outcome, BranchDeletionOutcome::NotDeleted) {
@@ -465,16 +464,14 @@ pub fn handle_remove_output(
             worktree_path,
             changed_directory,
             branch_name,
-            no_delete_branch,
-            force_delete,
+            deletion_mode,
             target_branch,
         } => handle_removed_worktree_output(
             main_path,
             worktree_path,
             *changed_directory,
             branch_name.as_deref(),
-            *no_delete_branch,
-            *force_delete,
+            *deletion_mode,
             target_branch.as_deref(),
             branch,
             background,
@@ -482,17 +479,15 @@ pub fn handle_remove_output(
         ),
         RemoveResult::BranchOnly {
             branch_name,
-            no_delete_branch,
-            force_delete,
-        } => handle_branch_only_output(branch_name, *no_delete_branch, *force_delete),
+            deletion_mode,
+        } => handle_branch_only_output(branch_name, *deletion_mode),
     }
 }
 
 /// Handle output for BranchOnly removal (branch exists but no worktree)
 fn handle_branch_only_output(
     branch_name: &str,
-    no_delete_branch: bool,
-    force_delete: bool,
+    deletion_mode: BranchDeletionMode,
 ) -> anyhow::Result<()> {
     // Warn that no worktree was found (user asked to remove it)
     super::print(warning_message(cformat!(
@@ -500,7 +495,7 @@ fn handle_branch_only_output(
     )))?;
 
     // Attempt branch deletion (unless --no-delete-branch was specified)
-    if no_delete_branch {
+    if deletion_mode.should_keep() {
         // User explicitly requested no branch deletion - nothing more to do
         super::flush()?;
         return Ok(());
@@ -513,12 +508,12 @@ fn handle_branch_only_output(
     let default_branch = repo.default_branch().ok();
     let check_target = default_branch.as_deref().unwrap_or("HEAD");
 
-    let result = delete_branch_if_safe(&repo, branch_name, check_target, force_delete);
+    let result = delete_branch_if_safe(&repo, branch_name, check_target, deletion_mode.is_force());
     let (deletion, _) = handle_branch_deletion_result(result, branch_name, false)?;
 
     if !matches!(deletion.outcome, BranchDeletionOutcome::NotDeleted) {
         let flag_note = get_flag_note(
-            no_delete_branch,
+            deletion_mode,
             &deletion.outcome,
             Some(&deletion.effective_target),
         );
@@ -538,8 +533,7 @@ fn handle_removed_worktree_output(
     worktree_path: &std::path::Path,
     changed_directory: bool,
     branch_name: Option<&str>,
-    no_delete_branch: bool,
-    force_delete: bool,
+    deletion_mode: BranchDeletionMode,
     target_branch: Option<&str>,
     branch: Option<&str>,
     background: bool,
@@ -609,12 +603,12 @@ fn handle_removed_worktree_output(
 
         // Determine outcome upfront (check once, not in background script)
         // Only show effective_target in message if we had a meaningful target (not tautological "HEAD" fallback)
-        let (outcome, effective_target) = if no_delete_branch {
+        let (outcome, effective_target) = if deletion_mode.should_keep() {
             (
                 BranchDeletionOutcome::NotDeleted,
                 target_branch.map(String::from),
             )
-        } else if force_delete {
+        } else if deletion_mode.is_force() {
             (
                 BranchDeletionOutcome::ForceDeleted,
                 target_branch.map(String::from),
@@ -641,10 +635,10 @@ fn handle_removed_worktree_output(
             BranchDeletionOutcome::ForceDeleted | BranchDeletionOutcome::Integrated(_)
         );
 
-        let flag_note = get_flag_note(no_delete_branch, &outcome, effective_target.as_deref());
+        let flag_note = get_flag_note(deletion_mode, &outcome, effective_target.as_deref());
 
         // Reason in parentheses: user flags shown explicitly, integration reason for automatic cleanup
-        let action = if no_delete_branch {
+        let action = if deletion_mode.should_keep() {
             cformat!(
                 "<cyan>Removing <bold>{branch_name}</> worktree in background; retaining branch{flag_note}</>"
             )
@@ -660,7 +654,7 @@ fn handle_removed_worktree_output(
         super::print(progress_message(action))?;
 
         // Show hint for unmerged branches (same as synchronous path)
-        if !no_delete_branch && !should_delete_branch {
+        if !deletion_mode.should_keep() && !should_delete_branch {
             super::print(hint_message(cformat!(
                 "<bright-black>wt remove -D</> deletes unmerged branches"
             )))?;
@@ -702,11 +696,15 @@ fn handle_removed_worktree_output(
 
         // Delete the branch (unless --no-delete-branch was specified)
         // Only show effective_target in message if we had a meaningful target (not tautological "HEAD" fallback)
-        let (outcome, effective_target, show_hint) = if !no_delete_branch {
+        let (outcome, effective_target, show_hint) = if !deletion_mode.should_keep() {
             let deletion_repo = worktrunk::git::Repository::at(main_path);
             let check_target = target_branch.unwrap_or("HEAD");
-            let result =
-                delete_branch_if_safe(&deletion_repo, branch_name, check_target, force_delete);
+            let result = delete_branch_if_safe(
+                &deletion_repo,
+                branch_name,
+                check_target,
+                deletion_mode.is_force(),
+            );
             let (deletion, needs_hint) = handle_branch_deletion_result(result, branch_name, true)?;
             // Only use effective_target for display if we had a real target (not "HEAD" fallback)
             let display_target = target_branch.map(|_| deletion.effective_target);
@@ -725,7 +723,7 @@ fn handle_removed_worktree_output(
             changed_directory,
             branch_name,
             branch,
-            no_delete_branch,
+            deletion_mode,
             &outcome,
             effective_target.as_deref(),
         )))?;
@@ -949,19 +947,31 @@ mod tests {
     fn test_get_flag_note() {
         // --no-delete-branch flag
         assert_eq!(
-            get_flag_note(true, &BranchDeletionOutcome::NotDeleted, None),
+            get_flag_note(
+                BranchDeletionMode::Keep,
+                &BranchDeletionOutcome::NotDeleted,
+                None
+            ),
             " (--no-delete-branch)"
         );
 
         // NotDeleted without flag
         assert_eq!(
-            get_flag_note(false, &BranchDeletionOutcome::NotDeleted, None),
+            get_flag_note(
+                BranchDeletionMode::SafeDelete,
+                &BranchDeletionOutcome::NotDeleted,
+                None
+            ),
             ""
         );
 
         // Force deleted
         assert_eq!(
-            get_flag_note(false, &BranchDeletionOutcome::ForceDeleted, None),
+            get_flag_note(
+                BranchDeletionMode::ForceDelete,
+                &BranchDeletionOutcome::ForceDeleted,
+                None
+            ),
             " (--force-delete)"
         );
 
@@ -974,7 +984,7 @@ mod tests {
         ];
         for (reason, expected_contains) in cases {
             let note = get_flag_note(
-                false,
+                BranchDeletionMode::SafeDelete,
                 &BranchDeletionOutcome::Integrated(reason),
                 Some("main"),
             );
@@ -988,7 +998,7 @@ mod tests {
 
         // NoAddedChanges is special - no target shown
         let note = get_flag_note(
-            false,
+            BranchDeletionMode::SafeDelete,
             &BranchDeletionOutcome::Integrated(IntegrationReason::NoAddedChanges),
             Some("main"),
         );
@@ -1006,7 +1016,7 @@ mod tests {
             false,
             "feature",
             Some("feature"),
-            false,
+            BranchDeletionMode::SafeDelete,
             &BranchDeletionOutcome::Integrated(IntegrationReason::SameCommit),
             Some("main"),
         );
@@ -1020,7 +1030,7 @@ mod tests {
             false,
             "feature",
             Some("feature"),
-            true,
+            BranchDeletionMode::Keep,
             &BranchDeletionOutcome::NotDeleted,
             None,
         );
@@ -1034,7 +1044,7 @@ mod tests {
             true,
             "feature",
             Some("feature"),
-            false,
+            BranchDeletionMode::ForceDelete,
             &BranchDeletionOutcome::ForceDeleted,
             None,
         );
@@ -1047,7 +1057,7 @@ mod tests {
             false,
             "feature",
             Some("feature"),
-            false,
+            BranchDeletionMode::SafeDelete,
             &BranchDeletionOutcome::NotDeleted,
             None,
         );

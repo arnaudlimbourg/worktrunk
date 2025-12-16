@@ -357,6 +357,45 @@ impl SwitchBranchInfo {
     }
 }
 
+/// How the branch should be handled after worktree removal.
+///
+/// This enum replaces the previous `no_delete_branch: bool, force_delete: bool` pattern,
+/// making the three valid states explicit and preventing invalid combinations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BranchDeletionMode {
+    /// Keep the branch regardless of merge status (--no-delete-branch flag).
+    Keep,
+    /// Delete the branch only if it's fully merged into the target branch (default).
+    SafeDelete,
+    /// Delete the branch even if it's not merged (-D flag).
+    ForceDelete,
+}
+
+impl BranchDeletionMode {
+    /// Create from CLI flags.
+    ///
+    /// `--no-delete-branch` takes precedence over `-D` (force delete).
+    pub fn from_flags(no_delete_branch: bool, force_delete: bool) -> Self {
+        if no_delete_branch {
+            Self::Keep
+        } else if force_delete {
+            Self::ForceDelete
+        } else {
+            Self::SafeDelete
+        }
+    }
+
+    /// Whether the branch should be kept (not deleted).
+    pub fn should_keep(&self) -> bool {
+        matches!(self, Self::Keep)
+    }
+
+    /// Whether to force delete even if not merged.
+    pub fn is_force(&self) -> bool {
+        matches!(self, Self::ForceDelete)
+    }
+}
+
 /// Result of a worktree remove operation
 pub enum RemoveResult {
     /// Removed worktree and returned to main (if needed)
@@ -366,15 +405,13 @@ pub enum RemoveResult {
         changed_directory: bool,
         /// Branch name, if known. None for detached HEAD state.
         branch_name: Option<String>,
-        no_delete_branch: bool,
-        force_delete: bool,
+        deletion_mode: BranchDeletionMode,
         target_branch: Option<String>,
     },
     /// Branch exists but has no worktree - attempt branch deletion only
     BranchOnly {
         branch_name: String,
-        no_delete_branch: bool,
-        force_delete: bool,
+        deletion_mode: BranchDeletionMode,
     },
 }
 
@@ -643,7 +680,10 @@ pub fn handle_remove(
         )))?;
     }
 
-    repo.remove_worktree_by_name(worktree_name, no_delete_branch, force_delete)
+    repo.remove_worktree_by_name(
+        worktree_name,
+        BranchDeletionMode::from_flags(no_delete_branch, force_delete),
+    )
 }
 
 /// Handle removing the current worktree (supports detached HEAD state).
@@ -662,18 +702,21 @@ pub fn handle_remove_current(
         crate::output::print(progress_message("Removing current worktree..."))?;
     }
 
-    repo.remove_current_worktree(no_delete_branch, force_delete)
+    repo.remove_current_worktree(BranchDeletionMode::from_flags(
+        no_delete_branch,
+        force_delete,
+    ))
 }
 
 /// Handle removing a worktree by path (for detached non-current worktrees).
 ///
 /// This is used when a worktree is in detached HEAD state and we're not
 /// currently in it. We can still remove the worktree, we just don't know
-/// which branch (if any) to delete.
+/// which branch (if any) to delete. Branch deletion is not attempted
+/// since no branch is associated with a detached HEAD worktree.
 pub fn handle_remove_by_path(
     path: &std::path::Path,
     branch: Option<String>,
-    force_delete: bool,
     background: bool,
 ) -> anyhow::Result<RemoveResult> {
     let repo = Repository::current();
@@ -697,8 +740,7 @@ pub fn handle_remove_by_path(
         worktree_path: path.to_path_buf(),
         changed_directory: false,
         branch_name: branch,
-        no_delete_branch: true, // Can't delete branch for detached worktree
-        force_delete,
+        deletion_mode: BranchDeletionMode::Keep, // Can't delete branch for detached worktree
         target_branch: None,
     })
 }
@@ -1154,8 +1196,7 @@ mod tests {
             worktree_path: PathBuf::from("/worktree"),
             changed_directory: true,
             branch_name: Some("feature".to_string()),
-            no_delete_branch: false,
-            force_delete: false,
+            deletion_mode: BranchDeletionMode::SafeDelete,
             target_branch: Some("main".to_string()),
         };
         match result {
@@ -1164,16 +1205,15 @@ mod tests {
                 worktree_path,
                 changed_directory,
                 branch_name,
-                no_delete_branch,
-                force_delete,
+                deletion_mode,
                 target_branch,
             } => {
                 assert_eq!(main_path.to_str().unwrap(), "/main");
                 assert_eq!(worktree_path.to_str().unwrap(), "/worktree");
                 assert!(changed_directory);
                 assert_eq!(branch_name.as_deref(), Some("feature"));
-                assert!(!no_delete_branch);
-                assert!(!force_delete);
+                assert!(!deletion_mode.should_keep());
+                assert!(!deletion_mode.is_force());
                 assert_eq!(target_branch.as_deref(), Some("main"));
             }
             _ => panic!("Expected RemovedWorktree variant"),
@@ -1184,18 +1224,16 @@ mod tests {
     fn test_remove_result_branch_only() {
         let result = RemoveResult::BranchOnly {
             branch_name: "stale-branch".to_string(),
-            no_delete_branch: true,
-            force_delete: false,
+            deletion_mode: BranchDeletionMode::Keep,
         };
         match result {
             RemoveResult::BranchOnly {
                 branch_name,
-                no_delete_branch,
-                force_delete,
+                deletion_mode,
             } => {
                 assert_eq!(branch_name, "stale-branch");
-                assert!(no_delete_branch);
-                assert!(!force_delete);
+                assert!(deletion_mode.should_keep());
+                assert!(!deletion_mode.is_force());
             }
             _ => panic!("Expected BranchOnly variant"),
         }
@@ -1208,20 +1246,17 @@ mod tests {
             worktree_path: PathBuf::from("/worktree"),
             changed_directory: false,
             branch_name: None, // Detached HEAD
-            no_delete_branch: true,
-            force_delete: true,
+            deletion_mode: BranchDeletionMode::ForceDelete,
             target_branch: None,
         };
         match result {
             RemoveResult::RemovedWorktree {
                 branch_name,
-                no_delete_branch,
-                force_delete,
+                deletion_mode,
                 ..
             } => {
                 assert!(branch_name.is_none());
-                assert!(no_delete_branch);
-                assert!(force_delete);
+                assert!(deletion_mode.is_force());
             }
             _ => panic!("Expected RemovedWorktree variant"),
         }

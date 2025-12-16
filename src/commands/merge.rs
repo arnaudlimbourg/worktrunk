@@ -10,7 +10,7 @@ use super::context::CommandEnv;
 use super::hooks::{HookFailureStrategy, run_hook_with_filter};
 use super::project_config::collect_commands_for_hooks;
 use super::repository_ext::RepositoryCliExt;
-use super::worktree::{MergeOperations, RemoveResult, handle_push};
+use super::worktree::{BranchDeletionMode, MergeOperations, RemoveResult, handle_push};
 
 /// Options for the merge command
 pub struct MergeOptions<'a> {
@@ -237,8 +237,7 @@ pub fn handle_merge(opts: MergeOptions<'_>) -> anyhow::Result<()> {
             worktree_path: worktree_root,
             changed_directory: true,
             branch_name: Some(current_branch.clone()),
-            no_delete_branch: false,
-            force_delete: false,
+            deletion_mode: BranchDeletionMode::SafeDelete,
             target_branch: Some(target_branch.clone()),
         };
         // Run hooks during merge removal (pass through verify flag)

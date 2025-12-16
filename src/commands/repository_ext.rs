@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::process;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::worktree::RemoveResult;
+use super::worktree::{BranchDeletionMode, RemoveResult};
 use anyhow::Context;
 use color_print::cformat;
 use worktrunk::config::ProjectConfig;
@@ -26,8 +26,7 @@ pub trait RepositoryCliExt {
     fn remove_worktree_by_name(
         &self,
         branch_name: &str,
-        no_delete_branch: bool,
-        force_delete: bool,
+        deletion_mode: BranchDeletionMode,
     ) -> anyhow::Result<RemoveResult>;
 
     /// Remove the current worktree (handles detached HEAD state).
@@ -38,8 +37,7 @@ pub trait RepositoryCliExt {
     /// 2. The reflog (if detached from a branch)
     fn remove_current_worktree(
         &self,
-        no_delete_branch: bool,
-        force_delete: bool,
+        deletion_mode: BranchDeletionMode,
     ) -> anyhow::Result<RemoveResult>;
 
     /// Prepare the target worktree for push by auto-stashing non-overlapping changes when safe.
@@ -82,8 +80,7 @@ impl RepositoryCliExt for Repository {
     fn remove_worktree_by_name(
         &self,
         branch_name: &str,
-        no_delete_branch: bool,
-        force_delete: bool,
+        deletion_mode: BranchDeletionMode,
     ) -> anyhow::Result<RemoveResult> {
         let worktree_path = match self.worktree_for_branch(branch_name)? {
             Some(path) => path,
@@ -93,8 +90,7 @@ impl RepositoryCliExt for Repository {
                     // Branch exists but no worktree - return BranchOnly to attempt branch deletion
                     return Ok(RemoveResult::BranchOnly {
                         branch_name: branch_name.to_string(),
-                        no_delete_branch,
-                        force_delete,
+                        deletion_mode,
                     });
                 }
                 // Check if branch exists on a remote
@@ -151,16 +147,14 @@ impl RepositoryCliExt for Repository {
             worktree_path,
             changed_directory,
             branch_name: Some(branch_name.to_string()),
-            no_delete_branch,
-            force_delete,
+            deletion_mode,
             target_branch,
         })
     }
 
     fn remove_current_worktree(
         &self,
-        no_delete_branch: bool,
-        force_delete: bool,
+        deletion_mode: BranchDeletionMode,
     ) -> anyhow::Result<RemoveResult> {
         // Cannot remove the main working tree (only linked worktrees can be removed)
         if !self.is_in_worktree()? {
@@ -199,8 +193,7 @@ impl RepositoryCliExt for Repository {
             worktree_path: current_path,
             changed_directory: true,
             branch_name,
-            no_delete_branch,
-            force_delete,
+            deletion_mode,
             target_branch,
         })
     }

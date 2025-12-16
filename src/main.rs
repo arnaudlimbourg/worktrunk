@@ -1378,7 +1378,7 @@ fn main() {
                             }
                         } else {
                             // Non-current worktree is detached - remove by path (no branch to delete)
-                            match handle_remove_by_path(path, None, force_delete, background) {
+                            match handle_remove_by_path(path, None, background) {
                                 Ok(result) => {
                                     handle_remove_output(&result, None, background, verify)?;
                                 }
