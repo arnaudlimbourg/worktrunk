@@ -13,6 +13,25 @@ Creates:
 
 Theme colors are defined in `docs/demos/shared/themes.py` to match the doc site's CSS variables.
 
+## Demo Goals
+
+The demo showcases `wt select` with **realistic variety in all columns**:
+
+```
+Branch         Status         HEAD±    main↕     main…±  Remote⇅  CI  Age
+@ main               ^                                              ○   now
++ streaming      +           +54   -5                               ●   now
++ doctor             ↕                  ↑1  ↓1  +320  -14           ●   2d
++ llm-templates   !  ↕        +8        ↑1  ↓1  +263 -192               3d
+```
+
+Key demonstration points:
+- **CI column**: hollow ○ (branch CI) vs filled ● (PR CI) vs none
+- **HEAD± column**: Large staged diff (+54), small unstaged (+8), none
+- **Status column**: Staged changes (+), unstaged (!), ahead/behind (↕)
+- **main↕ column**: Some branches ahead-only, some ahead-and-behind
+- **main…± column**: Meaningful merge-base diffstats (small to 300+ lines)
+
 ## How It Works
 
 Uses the **unified demo infrastructure** (`prepare_demo_repo()` from `shared/lib.py`), same as wt-core and wt-merge demos. The repo is a synthetic "acme" Rust project with alpha/beta/hooks branches designed to showcase column variety.
