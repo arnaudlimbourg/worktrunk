@@ -106,7 +106,7 @@ project = "github.com/user/repo"
 command = "npm install"
 "#;
 
-        let output = format_toml(toml_content, "");
+        let output = format_toml(toml_content);
 
         // Check that output contains ANSI escape codes
         assert!(
@@ -288,7 +288,7 @@ command = "npm install"
         let long_text = "This is a very long commit message that would normally overflow the terminal width and break the gutter formatting, but now it should wrap nicely at word boundaries.";
 
         // Use fixed width for consistent testing (80 columns)
-        let result = format_with_gutter(long_text, "", Some(80));
+        let result = format_with_gutter(long_text, Some(80));
 
         // Should contain multiple lines (wrapped)
         let line_count = result.lines().count();
@@ -310,7 +310,7 @@ command = "npm install"
     #[test]
     fn test_format_with_gutter_preserves_newlines() {
         let multi_line = "Line 1\nLine 2\nLine 3";
-        let result = format_with_gutter(multi_line, "", None);
+        let result = format_with_gutter(multi_line, None);
 
         // Should have at least 3 lines (one for each input line)
         assert!(result.lines().count() >= 3);
@@ -327,7 +327,7 @@ command = "npm install"
         let commit_msg = "This commit refactors the authentication system to use a more secure token-based approach instead of the previous session-based system which had several security vulnerabilities that were identified during the security audit last month. The new implementation follows industry best practices and includes proper token rotation and expiration handling.";
 
         // Use fixed width for consistent testing (80 columns)
-        let result = format_with_gutter(commit_msg, "", Some(80));
+        let result = format_with_gutter(commit_msg, Some(80));
 
         insta::assert_snapshot!(result, @r"
         [107m [0m This commit refactors the authentication system to use a more secure
@@ -343,7 +343,7 @@ command = "npm install"
         // Test that bash gutter formatting properly resets colors at the end of each line
         // to prevent color bleeding into subsequent output (like child process output)
         let command = "pre-commit run --all-files";
-        let result = format_bash_with_gutter(command, "");
+        let result = format_bash_with_gutter(command);
 
         // The output should end with ANSI reset code followed by newline
         // ANSI reset is \x1b[0m (ESC[0m)
@@ -355,7 +355,7 @@ command = "npm install"
 
         // Verify the reset appears at the end of EVERY line (for multi-line commands)
         let multi_line_command = "npm install && \\\n    npm run build";
-        let multi_result = format_bash_with_gutter(multi_line_command, "");
+        let multi_result = format_bash_with_gutter(multi_line_command);
 
         // Each line should end with reset code
         for line in multi_result.lines() {
@@ -559,7 +559,7 @@ command = "npm install"
         let command = "cp -cR {{ repo_root }}/target/debug/.fingerprint {{ repo_root }}/target/debug/build {{ worktree }}/target/debug/";
 
         // Use explicit width for deterministic output (avoids env var mutation in parallel tests)
-        let result = format_bash_with_gutter_at_width(command, "", 80);
+        let result = format_bash_with_gutter_at_width(command, 80);
 
         // Snapshot the raw output to verify ANSI codes are consistent
         insta::assert_snapshot!(result);
@@ -589,7 +589,7 @@ cp -cR {{ repo_root }}/target/debug/.fingerprint {{ repo_root }}/target/debug/bu
 }}/target/debug/"#;
 
         // Use explicit width for deterministic output (avoids env var mutation in parallel tests)
-        let result = format_bash_with_gutter_at_width(multiline_command, "", 80);
+        let result = format_bash_with_gutter_at_width(multiline_command, 80);
 
         // Snapshot the output - each line should have consistent dim styling
         insta::assert_snapshot!(result);
@@ -603,7 +603,7 @@ cp -cR {{ repo_root }}/target/debug/.fingerprint {{ repo_root }}/target/debug/bu
         // The template text `{{ worktree` and `}}` should have identical ANSI codes.
 
         let multiline = "echo {{ worktree\n}}/path";
-        let result = format_bash_with_gutter(multiline, "");
+        let result = format_bash_with_gutter(multiline);
 
         let lines: Vec<&str> = result.lines().collect();
         assert_eq!(lines.len(), 2, "Should have 2 lines");
@@ -644,7 +644,7 @@ cp -cR {{ repo_root }}/target/debug/.fingerprint {{ repo_root }}/target/debug/bu
         // This catches regressions where all text becomes the same color.
 
         let command = "echo 'hello' | grep hello > output.txt && cat output.txt";
-        let result = format_bash_with_gutter(command, "");
+        let result = format_bash_with_gutter(command);
 
         // Check for presence of different ANSI color codes:
         // - Blue (34m) for commands like echo, grep, cat
@@ -698,7 +698,7 @@ cp -c {{ repo_root }}/target/debug/deps/*.rlib {{ repo_root }}/target/debug/deps
 cp -cR {{ repo_root }}/target/debug/.fingerprint {{ repo_root }}/target/debug/build {{ worktree
 }}/target/debug/"#;
 
-        let result = format_bash_with_gutter(command, "");
+        let result = format_bash_with_gutter(command);
 
         // The critical assertion: NO [39m codes should appear anywhere in the output.
         // [39m is "reset foreground to default" - we never emit this, only [0m (full reset).
@@ -744,7 +744,7 @@ cp -cR {{ repo_root }}/target/debug/.fingerprint {{ repo_root }}/target/debug/bu
         // The fix: token styles use dim+color only (no bold). This test ensures we
         // don't regress by checking that [2m][1m][2m] never appears.
         let command = "cp -cR path/to/source path/to/dest";
-        let result = format_bash_with_gutter(command, "");
+        let result = format_bash_with_gutter(command);
 
         // The problematic pattern is [2m] followed by [1m] followed by [2m]
         // This happens when: line starts with dim, style adds bold+dim
@@ -765,7 +765,7 @@ cp -cR {{ repo_root }}/target/debug/.fingerprint {{ repo_root }}/target/debug/bu
         //
         // Token styles should emit [2m] (dim) along with their color.
         let command = "cp -cR path/to/source path/to/dest";
-        let result = format_bash_with_gutter(command, "");
+        let result = format_bash_with_gutter(command);
 
         // Verify commands are dim+blue: [0m][2m][34m] (reset, dim, blue)
         assert!(

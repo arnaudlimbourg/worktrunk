@@ -1588,7 +1588,7 @@ fn main() {
                     // Has context: msg is context, chain contains intermediate + root cause
                     let _ = output::print(error_message(&msg));
                     let chain_text = chain.join("\n");
-                    let _ = output::gutter(format_with_gutter(&chain_text, "", None));
+                    let _ = output::gutter(format_with_gutter(&chain_text, None));
                 } else if msg.contains('\n') {
                     // Multiline error without context - this shouldn't happen if all
                     // errors have proper context. Fail in tests, log in production.
@@ -1597,7 +1597,7 @@ fn main() {
                     }
                     log::warn!("Multiline error without context: {msg}");
                     let _ = output::print(error_message("Command failed"));
-                    let _ = output::gutter(format_with_gutter(&msg, "", None));
+                    let _ = output::gutter(format_with_gutter(&msg, None));
                 } else {
                     // Single-line error without context: inline with emoji
                     let _ = output::print(error_message(&msg));

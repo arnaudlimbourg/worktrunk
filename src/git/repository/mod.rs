@@ -595,12 +595,12 @@ impl Repository {
     /// - `worktree` identifies which worktree (e.g., branch name) for multi-worktree operations.
     pub fn ensure_clean_working_tree(
         &self,
-        action: Option<&str>,
+        action: &str,
         worktree: Option<&str>,
     ) -> anyhow::Result<()> {
         if self.is_dirty()? {
             return Err(GitError::UncommittedChanges {
-                action: action.map(String::from),
+                action: Some(action.into()),
                 worktree: worktree.map(String::from),
             }
             .into());
@@ -1063,18 +1063,18 @@ impl Repository {
     ///
     /// Users can find safety backups with: `git reflog show refs/wt-backup/<branch>`
     ///
-    /// Returns the SHA of the backup commit and a restore command.
+    /// Returns the short SHA of the backup commit.
     ///
     /// # Example
     /// ```no_run
     /// use worktrunk::git::Repository;
     ///
     /// let repo = Repository::current();
-    /// let (sha, restore_cmd) = repo.create_safety_backup("feature → main (squash)")?;
-    /// println!("Backup created: {} - Restore with: {}", sha, restore_cmd);
+    /// let sha = repo.create_safety_backup("feature → main (squash)")?;
+    /// println!("Backup created: {}", sha);
     /// # Ok::<(), anyhow::Error>(())
     /// ```
-    pub fn create_safety_backup(&self, message: &str) -> anyhow::Result<(String, String)> {
+    pub fn create_safety_backup(&self, message: &str) -> anyhow::Result<String> {
         // Create a backup commit using git stash create (without storing it in the stash list)
         let backup_sha = self
             .run_command(&["stash", "create", "--include-untracked"])?
@@ -1112,12 +1112,7 @@ impl Repository {
         ])
         .context("Failed to create backup ref")?;
 
-        // Return short SHA and restore command
-        // Use git stash apply because the backup is a merge commit (created by git stash create)
-        let short_sha = &backup_sha[..7];
-        let restore_cmd = format!("git stash apply --index {}", short_sha);
-
-        Ok((short_sha.to_string(), restore_cmd))
+        Ok(backup_sha[..7].to_string())
     }
 
     /// Get all branch names (local branches only).

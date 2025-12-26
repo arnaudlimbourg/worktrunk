@@ -251,7 +251,7 @@ impl std::fmt::Display for GitError {
                         "Cannot create worktree for <bold>{branch}</>: {error_detail}"
                     )),
                     hint,
-                    format_bash_with_gutter(&command, "")
+                    format_bash_with_gutter(&command)
                 )
             }
 
@@ -318,7 +318,7 @@ impl std::fmt::Display for GitError {
                 )?;
                 if !files.is_empty() {
                     let joined_files = files.join("\n");
-                    write!(f, "{}", format_with_gutter(&joined_files, "", None))?;
+                    write!(f, "{}", format_with_gutter(&joined_files, None))?;
                 }
                 let path_display = format_path_for_display(worktree_path);
                 write!(
@@ -343,7 +343,7 @@ impl std::fmt::Display for GitError {
                     ))
                 )?;
                 if !commits_formatted.is_empty() {
-                    write!(f, "\n{}", format_with_gutter(commits_formatted, "", None))?;
+                    write!(f, "\n{}", format_with_gutter(commits_formatted, None))?;
                 }
                 // Context-appropriate hint
                 let merge_cmd = suggest_command("merge", &[target_branch], &[]);
@@ -389,7 +389,7 @@ impl std::fmt::Display for GitError {
                     error_message(cformat!("Rebase onto <bold>{target_branch}</> incomplete"))
                 )?;
                 if !git_output.is_empty() {
-                    write!(f, "\n{}", format_with_gutter(git_output, "", None))
+                    write!(f, "\n{}", format_with_gutter(git_output, None))
                 } else {
                     write!(
                         f,
@@ -467,7 +467,7 @@ impl std::fmt::Display for GitError {
                 let error_block = format_error_block(error_header, error);
                 // Show full pipeline command if available, otherwise just the LLM command
                 let display_command = reproduction_command.as_ref().unwrap_or(command);
-                let command_gutter = format_with_gutter(display_command, "", None);
+                let command_gutter = format_with_gutter(display_command, None);
                 write!(
                     f,
                     "{}\n\n{}\n{}",
@@ -649,7 +649,7 @@ fn format_error_block(header: impl Into<String>, error: &str) -> String {
     if trimmed.is_empty() {
         header
     } else {
-        format!("{header}\n{}", format_with_gutter(trimmed, "", None))
+        format!("{header}\n{}", format_with_gutter(trimmed, None))
     }
 }
 

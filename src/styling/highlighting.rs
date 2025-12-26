@@ -87,7 +87,7 @@ pub(super) fn bash_token_style(kind: &str) -> Option<Style> {
 // ============================================================================
 
 /// Formats TOML content with syntax highlighting using synoptic
-pub fn format_toml(content: &str, left_margin: &str) -> String {
+pub fn format_toml(content: &str) -> String {
     let gutter = super::GUTTER;
 
     // Get TOML highlighter from synoptic's built-in rules (tab_width = 4)
@@ -98,9 +98,7 @@ pub fn format_toml(content: &str, left_margin: &str) -> String {
             let dim = Style::new().dimmed();
             let mut output = String::new();
             for line in content.lines() {
-                output.push_str(&format!(
-                    "{left_margin}{gutter} {gutter:#}  {dim}{line}{dim:#}\n"
-                ));
+                output.push_str(&format!("{gutter} {gutter:#}  {dim}{line}{dim:#}\n"));
             }
             return output;
         }
@@ -114,8 +112,8 @@ pub fn format_toml(content: &str, left_margin: &str) -> String {
 
     // Render each line with appropriate styling
     for (y, line) in lines.iter().enumerate() {
-        // Add left margin, gutter, and spacing
-        output.push_str(&format!("{left_margin}{gutter} {gutter:#}  "));
+        // Add gutter and spacing
+        output.push_str(&format!("{gutter} {gutter:#}  "));
 
         // Render each token with appropriate styling
         for token in highlighter.line(y, line) {
@@ -308,7 +306,7 @@ mod tests {
     #[test]
     fn test_format_toml_basic() {
         let content = "[section]\nkey = \"value\"";
-        let result = format_toml(content, "");
+        let result = format_toml(content);
         // Should contain the original content (highlighted or not)
         assert!(result.contains("section"));
         assert!(result.contains("key"));
@@ -318,19 +316,9 @@ mod tests {
     }
 
     #[test]
-    fn test_format_toml_with_margin() {
-        let content = "key = true";
-        let result = format_toml(content, "  ");
-        // Should have margin prefix
-        assert!(result.starts_with("  "));
-        assert!(result.contains("key"));
-        assert!(result.contains("true"));
-    }
-
-    #[test]
     fn test_format_toml_multiline() {
         let content = "[table]\nkey1 = \"value1\"\nkey2 = 42\n# comment\nkey3 = false";
-        let result = format_toml(content, "");
+        let result = format_toml(content);
         // Each line should be present
         assert!(result.contains("table"));
         assert!(result.contains("key1"));
@@ -342,7 +330,7 @@ mod tests {
     #[test]
     fn test_format_toml_empty() {
         let content = "";
-        let result = format_toml(content, "");
+        let result = format_toml(content);
         // Empty content should produce empty output (or just newlines)
         assert!(result.is_empty() || result.trim().is_empty() || result == "\n");
     }

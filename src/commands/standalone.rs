@@ -367,7 +367,7 @@ pub fn handle_squash(
     // Create safety backup before potentially destructive reset if there are working tree changes
     if has_staged {
         let backup_message = format!("{} → {} (squash)", current_branch, target_branch);
-        let (sha, _restore_cmd) = repo.create_safety_backup(&backup_message)?;
+        let sha = repo.create_safety_backup(&backup_message)?;
         crate::output::print(hint_message(format!("Backup created @ {sha}")))?;
     }
 
@@ -397,7 +397,7 @@ pub fn handle_squash(
 
     // Display the generated commit message
     let formatted_message = generator.format_message_for_display(&commit_message);
-    crate::output::gutter(format_with_gutter(&formatted_message, "", None))?;
+    crate::output::gutter(format_with_gutter(&formatted_message, None))?;
 
     // Reset to merge base (soft reset stages all changes, including any already-staged uncommitted changes)
     repo.run_command(&["reset", "--soft", &merge_base])
@@ -882,7 +882,7 @@ fn render_hook_commands(
             cmd.template.clone()
         };
 
-        write!(out, "{}", format_bash_with_gutter(&command_text, ""))?;
+        write!(out, "{}", format_bash_with_gutter(&command_text))?;
     }
 
     Ok(())

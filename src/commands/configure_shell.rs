@@ -183,10 +183,8 @@ pub fn handle_configure_shell(
             let _ = crate::output::print(warning_message(
                 "Completions won't work; add to ~/.zshrc before the wt line:",
             ));
-            let _ = crate::output::gutter(format_bash_with_gutter(
-                "autoload -Uz compinit && compinit",
-                "",
-            ));
+            let _ =
+                crate::output::gutter(format_bash_with_gutter("autoload -Uz compinit && compinit"));
         }
     }
 
@@ -534,7 +532,7 @@ fn prompt_for_confirmation(
         );
 
         // Show the config line that will be added with gutter
-        eprint!("{}", format_bash_with_gutter(&result.config_line, ""));
+        eprint!("{}", format_bash_with_gutter(&result.config_line));
         eprintln!(); // Blank line after each shell block
     }
 
@@ -555,7 +553,7 @@ fn prompt_for_confirmation(
 
         // Show the completion content that will be written
         let fish_completion = fish_completion_content(cmd);
-        eprint!("{}", format_bash_with_gutter(fish_completion.trim(), ""));
+        eprint!("{}", format_bash_with_gutter(fish_completion.trim()));
         eprintln!(); // Blank line after
     }
 
@@ -950,7 +948,6 @@ pub fn handle_show_theme() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     crate::output::gutter(format_with_gutter(
         "[commit-generation]\ncommand = \"llm --model claude\"",
-        "",
         None,
     ))
     .map_err(|e| e.to_string())?;
@@ -962,7 +959,6 @@ pub fn handle_show_theme() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     crate::output::gutter(format_bash_with_gutter(
         "eval \"$(wt config shell init bash)\"",
-        "",
     ))
     .map_err(|e| e.to_string())?;
 

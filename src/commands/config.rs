@@ -219,7 +219,7 @@ fn render_diagnostics(out: &mut String) -> anyhow::Result<()> {
                     "Commit generation working (<bold>{command_display}</>)"
                 ))
             )?;
-            write!(out, "{}", format_with_gutter(&message, "", None))?;
+            write!(out, "{}", format_with_gutter(&message, None))?;
         }
         Err(e) => {
             writeln!(
@@ -229,7 +229,7 @@ fn render_diagnostics(out: &mut String) -> anyhow::Result<()> {
                     "Commit generation failed (<bold>{command_display}</>)"
                 ))
             )?;
-            write!(out, "{}", format_with_gutter(&e.to_string(), "", None))?;
+            write!(out, "{}", format_with_gutter(&e.to_string(), None))?;
         }
     }
 
@@ -256,7 +256,7 @@ fn render_user_config(out: &mut String) -> anyhow::Result<()> {
         )?;
         writeln!(out)?;
         let default_config = "# Default configuration:\nworktree-path = \"../{{ main_worktree }}.{{ branch | sanitize }}\"";
-        write!(out, "{}", format_toml(default_config, ""))?;
+        write!(out, "{}", format_toml(default_config))?;
         return Ok(());
     }
 
@@ -272,7 +272,7 @@ fn render_user_config(out: &mut String) -> anyhow::Result<()> {
     warn_unknown_keys(out, &find_unknown_user_keys(&contents))?;
 
     // Display TOML with syntax highlighting (gutter at column 0)
-    write!(out, "{}", format_toml(&contents, ""))?;
+    write!(out, "{}", format_toml(&contents))?;
 
     Ok(())
 }
@@ -335,7 +335,7 @@ fn render_project_config(out: &mut String) -> anyhow::Result<()> {
     warn_unknown_keys(out, &find_unknown_project_keys(&contents))?;
 
     // Display TOML with syntax highlighting (gutter at column 0)
-    write!(out, "{}", format_toml(&contents, ""))?;
+    write!(out, "{}", format_toml(&contents))?;
 
     Ok(())
 }
@@ -394,7 +394,7 @@ fn render_shell_status(out: &mut String) -> anyhow::Result<()> {
                     write!(
                         out,
                         "{}",
-                        format_with_gutter("autoload -Uz compinit && compinit", "", None,)
+                        format_with_gutter("autoload -Uz compinit && compinit", None)
                     )?;
                 }
 
@@ -610,7 +610,7 @@ fn render_log_files(out: &mut String, repo: &Repository) -> anyhow::Result<()> {
     )?;
 
     if !log_dir.exists() {
-        write!(out, "{}", format_with_gutter("(none)", "", None))?;
+        write!(out, "{}", format_with_gutter("(none)", None))?;
         return Ok(());
     }
 
@@ -620,7 +620,7 @@ fn render_log_files(out: &mut String, repo: &Repository) -> anyhow::Result<()> {
         .collect();
 
     if entries.is_empty() {
-        write!(out, "{}", format_with_gutter("(none)", "", None))?;
+        write!(out, "{}", format_with_gutter("(none)", None))?;
         return Ok(());
     }
 
@@ -1075,16 +1075,16 @@ fn handle_state_show_table(repo: &Repository) -> anyhow::Result<()> {
     // Show default branch cache
     writeln!(out, "{}", format_heading("DEFAULT BRANCH", None))?;
     match repo.default_branch() {
-        Ok(branch) => write!(out, "{}", format_with_gutter(&branch, "", None))?,
-        Err(_) => write!(out, "{}", format_with_gutter("(not cached)", "", None))?,
+        Ok(branch) => write!(out, "{}", format_with_gutter(&branch, None))?,
+        Err(_) => write!(out, "{}", format_with_gutter("(not cached)", None))?,
     }
     writeln!(out)?;
 
     // Show previous branch (for `wt switch -`)
     writeln!(out, "{}", format_heading("PREVIOUS BRANCH", None))?;
     match repo.get_switch_previous() {
-        Some(prev) => write!(out, "{}", format_with_gutter(&prev, "", None))?,
-        None => write!(out, "{}", format_with_gutter("(none)", "", None))?,
+        Some(prev) => write!(out, "{}", format_with_gutter(&prev, None))?,
+        None => write!(out, "{}", format_with_gutter("(none)", None))?,
     }
     writeln!(out)?;
 
@@ -1092,7 +1092,7 @@ fn handle_state_show_table(repo: &Repository) -> anyhow::Result<()> {
     writeln!(out, "{}", format_heading("BRANCH MARKERS", None))?;
     let markers = get_all_markers(repo);
     if markers.is_empty() {
-        write!(out, "{}", format_with_gutter("(none)", "", None))?;
+        write!(out, "{}", format_with_gutter("(none)", None))?;
     } else {
         let mut table = String::from("| Branch | Marker | Age |\n");
         table.push_str("|--------|--------|-----|\n");
@@ -1118,7 +1118,7 @@ fn handle_state_show_table(repo: &Repository) -> anyhow::Result<()> {
             .then_with(|| a.0.cmp(&b.0))
     });
     if entries.is_empty() {
-        write!(out, "{}", format_with_gutter("(none)", "", None))?;
+        write!(out, "{}", format_with_gutter("(none)", None))?;
     } else {
         // Build markdown table
         let mut table = String::from("| Branch | Status | Age | Head |\n");

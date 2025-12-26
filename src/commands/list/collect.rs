@@ -1071,7 +1071,7 @@ pub fn collect(
                 .collect();
             diag.push_str(&format!(
                 "\n{}",
-                format_with_gutter(&missing_lines.join("\n"), "", None)
+                format_with_gutter(&missing_lines.join("\n"), None)
             ));
         }
 
@@ -1146,7 +1146,7 @@ pub fn collect(
             .collect();
         let warning = format!(
             "Some git operations failed:\n{}",
-            format_with_gutter(&error_lines.join("\n"), "", None)
+            format_with_gutter(&error_lines.join("\n"), None)
         );
         crate::output::print(warning_message(warning))?;
     }

@@ -129,7 +129,7 @@ fn prompt_for_batch_approval(commands: &[&HookCommand], project_id: &str) -> any
             None => format!("{INFO_SYMBOL} {phase}:"),
         };
         eprintln!("{label}");
-        eprint!("{}", format_bash_with_gutter(&cmd.command.template, ""));
+        eprint!("{}", format_bash_with_gutter(&cmd.command.template));
     }
 
     // Check if stdin is a TTY before attempting to prompt

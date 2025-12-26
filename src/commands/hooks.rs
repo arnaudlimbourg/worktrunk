@@ -81,7 +81,7 @@ impl<'a> HookPipeline<'a> {
     ) -> anyhow::Result<()> {
         let label = crate::commands::format_command_label(label_prefix, prepared.name.as_deref());
         crate::output::print(progress_message(format!("{label}:")))?;
-        crate::output::gutter(format_bash_with_gutter(&prepared.expanded, ""))?;
+        crate::output::gutter(format_bash_with_gutter(&prepared.expanded))?;
         Ok(())
     }
 
