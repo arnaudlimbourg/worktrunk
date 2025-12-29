@@ -84,51 +84,58 @@ args = ["-m", "claude-haiku-4.5"]
 # Demo Setup Functions
 # =============================================================================
 
-def prepare_docs_core(env: DemoEnv):
-    """Set up repo for docs wt-core demo with hooks and billing branch."""
-    hooks_config = '''[post-start]
-dev = "npm run dev -- --port {{ branch | hash_port }}"
+def prepare_basic(env: DemoEnv):
+    """Basic repo setup - no hooks, no extras."""
+    prepare_demo_repo(env, REPO_ROOT)
+
+
+def prepare_with_hooks(env: DemoEnv, include_deps: bool = False):
+    """Standard hooks demo: dev server + cleanup + billing branch."""
+    dev_cmd = "npm run dev -- --port {{ branch | hash_port }}"
+    cleanup_cmd = "flyctl scale count 0"
+
+    if include_deps:
+        hooks_config = f'''[post-start]
+deps = "npm install"
+dev = "{dev_cmd}"
 
 [pre-remove]
-cleanup = "flyctl scale count 0"
+cleanup = "{cleanup_cmd}"
 '''
+        approved = ["npm install", dev_cmd, cleanup_cmd]
+    else:
+        hooks_config = f'''[post-start]
+dev = "{dev_cmd}"
+
+[pre-remove]
+cleanup = "{cleanup_cmd}"
+'''
+        approved = [dev_cmd, cleanup_cmd]
+
     prepare_demo_repo(env, REPO_ROOT, hooks_config=hooks_config)
-    _write_user_config(env, ["npm run dev -- --port {{ branch | hash_port }}", "flyctl scale count 0"])
+    _write_user_config(env, approved)
     _add_billing_branch(env)
 
 
-def prepare_docs_merge(env: DemoEnv):
-    """Set up repo for docs wt-merge demo with LLM commit generation."""
+def prepare_with_llm_commit(env: DemoEnv):
+    """LLM commit generation demo with staged changes."""
     prepare_demo_repo(env, REPO_ROOT)
     _write_user_config(env, ["cargo nextest run"], commit_generation=True)
     _add_staged_validation(env)
 
 
-def prepare_docs_select(env: DemoEnv):
-    """Set up repo for docs wt-select demo (standard setup)."""
+def prepare_merge_only(env: DemoEnv):
+    """Merge demo without LLM commit generation."""
     prepare_demo_repo(env, REPO_ROOT)
+    _write_user_config(env, ["cargo nextest run"])
 
 
-def prepare_twitter_core(env: DemoEnv):
-    """Standard setup with hooks config for most Twitter demos."""
-    hooks_config = '''[post-start]
-dev = "npm run dev -- --port {{ branch | hash_port }}"
-
-[pre-remove]
-cleanup = "flyctl scale count 0"
-'''
-    prepare_demo_repo(env, REPO_ROOT, hooks_config=hooks_config)
-    _write_user_config(env, ["npm run dev -- --port {{ branch | hash_port }}", "flyctl scale count 0"])
-    _add_billing_branch(env)
-
-
-def prepare_twitter_switch(env: DemoEnv):
-    """Simplified setup for wt-switch demo - launches real Claude Code UI."""
+def prepare_switch(env: DemoEnv):
+    """Switch demo with Claude Code UI."""
     hooks_config = '[post-start]\ndeps = "npm install"\n'
     prepare_demo_repo(env, REPO_ROOT, hooks_config=hooks_config)
     _write_user_config(env, ["npm install"])
 
-    # Configure Claude Code for worktrees we'll use
     setup_claude_code_config(env, [
         str(env.repo),
         str(env.work_base / "acme.alpha"),
@@ -136,52 +143,20 @@ def prepare_twitter_switch(env: DemoEnv):
     ])
 
 
-def prepare_twitter_commit(env: DemoEnv):
-    """Set up repo for wt-commit demo with LLM commit generation."""
-    prepare_demo_repo(env, REPO_ROOT)
-    _write_user_config(env, ["cargo nextest run"], commit_generation=True)
-    _add_staged_validation(env)
-
-
-def prepare_twitter_merge(env: DemoEnv):
-    """Set up repo for wt-merge demo with pre-commit hook."""
-    prepare_demo_repo(env, REPO_ROOT)
-    _write_user_config(env, ["cargo nextest run"])
-
-
-def prepare_twitter_select(env: DemoEnv):
-    """Set up repo for wt-select-short demo (standard setup)."""
-    prepare_demo_repo(env, REPO_ROOT)
-
-
-def prepare_twitter_hooks(env: DemoEnv):
-    """Setup for wt-hooks demo - more hooks to showcase the feature."""
-    hooks_config = '''[post-start]
-deps = "npm install"
-dev = "npm run dev -- --port {{ branch | hash_port }}"
-
-[pre-remove]
-cleanup = "flyctl scale count 0"
-'''
-    prepare_demo_repo(env, REPO_ROOT, hooks_config=hooks_config)
-    _write_user_config(env, ["npm install", "npm run dev -- --port {{ branch | hash_port }}", "flyctl scale count 0"])
-    _add_billing_branch(env)
-
-
-def prepare_twitter_devserver(env: DemoEnv):
+def prepare_devserver(env: DemoEnv):
     """Setup for wt-devserver demo - shows URL column in wt list."""
-    hooks_config = '''[post-start]
-dev = "npm run dev -- --port {{ branch | hash_port }} &"
+    dev_cmd = "npm run dev -- --port {{ branch | hash_port }} &"
+    hooks_config = f'''[post-start]
+dev = "{dev_cmd}"
 
 [list]
-url = "http://localhost:{{ branch | hash_port }}"
+url = "http://localhost:{{{{ branch | hash_port }}}}"
 '''
     prepare_demo_repo(env, REPO_ROOT, hooks_config=hooks_config)
+    _write_user_config(env, [dev_cmd])
 
-    bin_dir = env.home / "bin"
-
-    # npm mock that starts nc listener so URL appears active
-    npm_mock = bin_dir / "npm"
+    # Override npm mock to start nc listener so URL appears active
+    npm_mock = env.home / "bin" / "npm"
     npm_mock.write_text("""#!/bin/bash
 if [[ "$1" == "run" && "$2" == "dev" ]]; then
     PORT="$5"
@@ -195,15 +170,8 @@ fi
 """)
     npm_mock.chmod(0o755)
 
-    # User config with approved command
-    config_dir = env.home / ".config" / "worktrunk"
-    project_id = str(env.bare_remote).removesuffix(".git")
-    (config_dir / "config.toml").write_text(f'''[projects."{project_id}"]
-approved-commands = ["npm run dev -- --port {{{{ branch | hash_port }}}} &"]
-''')
 
-
-def prepare_twitter_zellij(env: DemoEnv):
+def prepare_zellij(env: DemoEnv):
     """Setup for wt-zellij demo - multiple Claude Code instances in Zellij tabs."""
     prepare_demo_repo(env, REPO_ROOT, hooks_config='')
 
@@ -238,7 +206,7 @@ def prepare_twitter_zellij(env: DemoEnv):
         api_lib.write_text(content)
 
 
-def prepare_twitter_zellij_omnibus(env: DemoEnv):
+def prepare_zellij_omnibus(env: DemoEnv):
     """Setup for wt-zellij-omnibus demo - comprehensive showcase."""
     hooks_config = '''[post-start]
 dev = "npm run dev -- --port {{ branch | hash_port }} &"
@@ -313,24 +281,24 @@ echo "Add placeholder module for user profile settings."
 # size_override is optional - if None, uses target default
 
 DOCS_DEMOS = [
-    ("wt-core.tape", "wt-core", prepare_docs_core, "vhs", None),
-    ("wt-merge.tape", "wt-merge", prepare_docs_merge, "vhs", None),
-    ("wt-select.tape", "wt-select", prepare_docs_select, "vhs-keystrokes", None),
+    ("wt-core.tape", "wt-core", prepare_with_hooks, "vhs", None),
+    ("wt-merge.tape", "wt-merge", prepare_with_llm_commit, "vhs", None),
+    ("wt-select.tape", "wt-select", prepare_basic, "vhs-keystrokes", None),
 ]
 
 TWITTER_DEMOS = [
-    ("wt-switch.tape", "wt-switch", prepare_twitter_switch, "vhs", None),
-    ("wt-statusline.tape", "wt-statusline", prepare_twitter_switch, "vhs", None),
-    ("wt-list.tape", "wt-list", prepare_twitter_core, "vhs", None),
-    ("wt-list-remove.tape", "wt-list-remove", prepare_twitter_core, "vhs", None),
-    ("wt-hooks.tape", "wt-hooks", prepare_twitter_hooks, "vhs", None),
-    ("wt-devserver.tape", "wt-devserver", prepare_twitter_devserver, "vhs", SIZE_DEVSERVER),
-    ("wt-commit.tape", "wt-commit", prepare_twitter_commit, "vhs", None),
-    ("wt-merge.tape", "wt-merge", prepare_twitter_merge, "vhs", None),
-    ("wt-select-short.tape", "wt-select-short", prepare_twitter_select, "vhs-keystrokes", None),
-    ("wt-core.tape", "wt-core", prepare_twitter_core, "vhs", None),
-    ("wt-zellij.tape", "wt-zellij", prepare_twitter_zellij, "vhs", SIZE_ZELLIJ),
-    ("wt-zellij-omnibus.tape", "wt-zellij-omnibus", prepare_twitter_zellij_omnibus, "vhs", SIZE_ZELLIJ),
+    ("wt-switch.tape", "wt-switch", prepare_switch, "vhs", None),
+    ("wt-statusline.tape", "wt-statusline", prepare_switch, "vhs", None),
+    ("wt-list.tape", "wt-list", prepare_with_hooks, "vhs", None),
+    ("wt-list-remove.tape", "wt-list-remove", prepare_with_hooks, "vhs", None),
+    ("wt-hooks.tape", "wt-hooks", lambda env: prepare_with_hooks(env, include_deps=True), "vhs", None),
+    ("wt-devserver.tape", "wt-devserver", prepare_devserver, "vhs", SIZE_DEVSERVER),
+    ("wt-commit.tape", "wt-commit", prepare_with_llm_commit, "vhs", None),
+    ("wt-merge.tape", "wt-merge", prepare_merge_only, "vhs", None),
+    ("wt-select-short.tape", "wt-select-short", prepare_basic, "vhs-keystrokes", None),
+    ("wt-core.tape", "wt-core", prepare_with_hooks, "vhs", None),
+    ("wt-zellij.tape", "wt-zellij", prepare_zellij, "vhs", SIZE_ZELLIJ),
+    ("wt-zellij-omnibus.tape", "wt-zellij-omnibus", prepare_zellij_omnibus, "vhs", SIZE_ZELLIJ),
 ]
 
 TARGETS = {
@@ -419,20 +387,19 @@ Examples:
 
     # Check vhs-keystrokes availability
     vhs_keystrokes_available = Path(VHS_KEYSTROKES).exists()
-    if not vhs_keystrokes_available:
-        print(f"Note: vhs-keystrokes not found at {VHS_KEYSTROKES}")
-        print("wt-select demos will be skipped. See docs/demos/CLAUDE.md")
+    needs_keystrokes = any(vhs_type == "vhs-keystrokes" for _, _, _, vhs_type, _ in demos)
+
+    if needs_keystrokes and not vhs_keystrokes_available:
+        print(f"Error: vhs-keystrokes required but not found", file=sys.stderr)
+        print(f"Not found at: {VHS_KEYSTROKES}", file=sys.stderr)
+        print("See docs/demos/CLAUDE.md for build instructions", file=sys.stderr)
+        sys.exit(1)
 
     # Record each demo
     for tape_file, output_name, setup_func, vhs_type, size_override in demos:
         tape_path = TAPES_DIR / tape_file
         if not tape_path.exists():
             print(f"Skipping {output_name}: {tape_file} not found")
-            continue
-
-        # Check if this demo needs vhs-keystrokes
-        if vhs_type == "vhs-keystrokes" and not vhs_keystrokes_available:
-            print(f"Skipping {output_name}: requires vhs-keystrokes")
             continue
 
         vhs_binary = VHS_KEYSTROKES if vhs_type == "vhs-keystrokes" else "vhs"
