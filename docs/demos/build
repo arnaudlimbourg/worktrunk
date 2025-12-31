@@ -333,7 +333,7 @@ def record_demo(
 
     if text_mode:
         output_txt = mode_out_dir / f"{output_name}.txt"
-        record_text(env, tape_path, output_txt, replacements)
+        record_text(env, tape_path, output_txt, replacements, REPO_ROOT)
         print(f"✓ {output_name}: Text saved to {output_txt}")
     else:
         output_gifs = {}
