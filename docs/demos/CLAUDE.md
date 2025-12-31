@@ -154,6 +154,11 @@ Demo GIFs should feel natural—not rushed, but not lingering. The goal is to le
 | LLM operations | 4s | Show thinking + generated output |
 | Transitions (cd, switch) | 1–1.5s | Brief pause after context change |
 | Quick sequences (keystrokes) | 0.1–0.5s | Related actions feel like one gesture |
+| Tab completion (shows menu) | 400ms | Pause after Tab when menu appears for viewer to see options |
+| Tab completion (cycles selection) | 300ms | Pause after Tab cycles to show selected option |
+| Tab completion (auto-completes) | 0 | No pause needed when Tab completes to single result |
+| Tab completion (before Enter) | 50ms | Required after final Tab/selection before Enter; lets fish settle |
+| Tab cycling → execute | Enter, 50ms, Enter | When Tab cycling with pager open: first Enter accepts, second executes |
 | End hold (before exit) | 2–4s | Let final state sink in |
 | Pre-enter pause | 1s | For commands where output clears visible area: TUI takeover (`claude`) or heavy output (`wt merge`). |
 | Claude UI startup | 6s | Big visual change; wait for UI to render and settle |

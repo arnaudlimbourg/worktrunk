@@ -215,6 +215,14 @@ fi
     # Build wt binary
     build_wt(repo_root)
 
+    # Install fish completions (needed for tab completion in demos)
+    # Note: Demos using tab completion also need to source the completions
+    # in the tape's hidden section (VHS doesn't trigger fish's lazy loading)
+    wt_bin = repo_root / "target" / "debug" / "wt"
+    install_env = os.environ.copy()
+    install_env["HOME"] = str(env.home)
+    run([str(wt_bin), "config", "shell", "install", "fish", "--yes"], env=install_env)
+
     # User config directory (demos add their own config.toml)
     config_dir = env.home / ".config" / "worktrunk"
     config_dir.mkdir(parents=True)
@@ -376,16 +384,18 @@ keybinds clear-defaults=true {{
 ''')
 
 
-def setup_fish_config(env: DemoEnv, repo_root: Path, wsl_create: bool = False) -> None:
+def setup_fish_config(env: DemoEnv, wsl_create: bool = False) -> None:
     """Set up Fish shell configuration for demo recording.
 
     Creates config with wsl abbreviation, starship, wt shell integration,
-    and Zellij tab auto-rename. Runs `wt config shell install` to install
-    shell extension and completions.
+    Zellij tab auto-rename, and completion pre-loading.
+
+    Note: Completion files are installed by prepare_base_repo(). This function
+    creates config.fish that sources them (needed because VHS doesn't trigger
+    fish's lazy completion loading reliably).
 
     Args:
         env: Demo environment
-        repo_root: Path to worktrunk repo (for wt binary)
         wsl_create: If True, wsl abbreviation includes --create flag
     """
     fish_config_dir = env.home / ".config" / "fish"
@@ -399,6 +409,8 @@ set -U fish_greeting ""
 # wsl abbreviation: switch to worktree and launch Claude
 abbr --add wsl '{wsl_cmd}'
 starship init fish | source
+# Pre-load wt completions (VHS doesn't trigger lazy loading reliably)
+source ~/.config/fish/completions/wt.fish 2>/dev/null
 
 # Disable cursor blinking for VHS recording
 set fish_cursor_default block
@@ -417,12 +429,6 @@ function __zellij_tab_rename --on-variable PWD
     end
 end
 ''')
-
-    # Install shell extension and completions via wt command
-    wt_bin = repo_root / "target" / "debug" / "wt"
-    install_env = os.environ.copy()
-    install_env["HOME"] = str(env.home)
-    run([str(wt_bin), "config", "shell", "install", "fish", "--yes"], env=install_env)
 
 
 def setup_mock_clis(env: DemoEnv) -> None:
