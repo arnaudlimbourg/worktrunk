@@ -27,14 +27,18 @@ impl SourcedCommand {
     /// Format: "Running pre-merge user:foo:" for named, "Running post-create user hook:" for unnamed
     /// When display_path is set, appends "@ path" to show where the command runs.
     fn announce(&self) -> anyhow::Result<()> {
-        // Named: "user:foo" matches filter syntax
-        // Unnamed: "user hook" is clearer than just "user:"
-        let display_name = match &self.prepared.name {
-            Some(n) => format!("{}:{}", self.source, n),
-            None => format!("{} hook", self.source),
+        // Named: "Running post-switch user:foo" with "user:foo" bold
+        // Unnamed: "Running post-switch user hook" with no bold
+        let full_label = match &self.prepared.name {
+            Some(n) => {
+                let display_name = format!("{}:{}", self.source, n);
+                crate::commands::format_command_label(
+                    &self.hook_type.to_string(),
+                    Some(&display_name),
+                )
+            }
+            None => format!("Running {} {} hook", self.hook_type, self.source),
         };
-        let full_label =
-            crate::commands::format_command_label(&self.hook_type.to_string(), Some(&display_name));
         let message = match &self.display_path {
             Some(path) => {
                 let path_display = format_path_for_display(path);
