@@ -43,6 +43,16 @@ Regenerate a single demo:
 | docs | wt-core, wt-switch, wt-list, wt-commit, wt-statusline, wt-merge, wt-select, wt-zellij-omnibus |
 | social | wt-switch, wt-statusline, wt-list, wt-list-remove, wt-hooks, wt-devserver, wt-commit, wt-merge, wt-select-short, wt-core, wt-zellij-omnibus |
 
+## Prerequisites
+
+Demos that launch Claude Code (wt-switch, wt-statusline, wt-zellij-omnibus) require `ANTHROPIC_API_KEY` in your environment:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+This uses a small amount of API credits per recording (Claude starts, renders its UI, then exits).
+
 ## Publishing demos
 
 After building, publish to the assets repo:
