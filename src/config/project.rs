@@ -84,7 +84,16 @@ pub struct ProjectConfig {
 
 impl ProjectConfig {
     /// Load project configuration from .config/wt.toml in the repository root
-    pub fn load(repo_root: &std::path::Path) -> Result<Option<Self>, ConfigError> {
+    ///
+    /// Set `write_hints` to true for normal usage. Set to false during completion
+    /// to avoid side effects (writing git config hints).
+    pub fn load(
+        repo: &crate::git::Repository,
+        write_hints: bool,
+    ) -> Result<Option<Self>, ConfigError> {
+        let repo_root = repo
+            .worktree_root()
+            .map_err(|e| ConfigError::Message(format!("Failed to get worktree root: {}", e)))?;
         let config_path = repo_root.join(".config").join("wt.toml");
 
         if !config_path.exists() {
@@ -99,11 +108,13 @@ impl ProjectConfig {
         // Only write migration file in main worktree (where .git is a directory)
         // Linked worktrees have .git as a file pointing to the main worktree
         let is_main_worktree = repo_root.join(".git").is_dir();
+        let repo_for_hints = if write_hints { Some(repo) } else { None };
         let _ = super::deprecation::check_and_migrate(
             &config_path,
             &contents,
             is_main_worktree,
             "Project config",
+            repo_for_hints,
         );
 
         let config: ProjectConfig = toml::from_str(&contents)
