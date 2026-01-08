@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.10.0
+
+### Improved
+
+- **`wt step copy-ignored`**: Copy gitignored files listed in `.worktreeinclude` between worktrees. Useful for syncing `.env` files, IDE settings, and build caches to new worktrees via post-create hooks. Uses COW (reflink) copying for efficient handling of large directories. Matches Claude Code Desktop's worktree file syncing behavior.
+- **`--foreground` flag**: Debug background hooks by running them in the foreground. Available on `wt hook post-start`, `wt hook post-switch`, and `wt remove`. Replaces the deprecated `--no-background` flag.
+- **`--var` flag for hooks**: Override template variables when running hooks manually, e.g., `wt hook post-create --var target=main`.
+- **`[ci] platform` config**: Explicitly set CI platform (`github` or `gitlab`) for GitHub Enterprise or self-hosted GitLab where URL-based detection fails.
+- **Upstream diff in `wt select`**: Tab 4 shows ahead/behind diff vs upstream tracking branch (remote⇅), matching the column in `wt list`.
+- **`{{ base }}` and `{{ base_worktree_path }}` variables**: New template variables for creation hooks (post-create, post-start, post-switch) to access the base branch name and worktree path.
+- **`-vv` diagnostic reports**: Double-verbose flag writes a diagnostic report to `.git/wt-logs/diagnostic.md` with environment info, configs, and logs for easy bug reporting.
+
+### Fixed
+
+- **Warning ordering**: Warnings about state discovered during evaluation now appear before the action message, making them feel like considered observations rather than afterthoughts.
+- **Config validation in `wt config show`**: Now validates TOML syntax and schema, displaying parse errors with details.
+
+### Documentation
+
+- **Undocumented features**: Added documentation for `--show-prompt` and `--stage` flags on `wt step commit/squash`, `skip-shell-integration-prompt` config, and `[select] pager` config.
+
 ## 0.9.5
 
 ### Improved
