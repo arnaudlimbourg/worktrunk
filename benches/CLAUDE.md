@@ -6,10 +6,13 @@ See `list.rs` header for the authoritative list of benchmark groups and run exam
 
 ```bash
 # Fast iteration (skip slow benchmarks)
-cargo bench --bench list -- --skip cold --skip real
+cargo bench --bench list -- --skip cold --skip real --skip divergent_branches
 
 # Run specific group
 cargo bench --bench list many_branches
+
+# GH #461 scenario (200 branches with divergence)
+cargo bench --bench list divergent_branches
 
 # All benchmarks (~1 hour)
 cargo bench --bench list
