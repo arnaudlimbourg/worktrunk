@@ -103,17 +103,17 @@ impl TaskContext {
     /// Get the default branch (cached in Repository).
     ///
     /// Used for informational stats (ahead/behind, branch diff).
-    fn default_branch(&self, kind: TaskKind) -> Result<String, TaskError> {
-        self.repo.default_branch().map_err(|e| self.error(kind, e))
+    /// Returns None if default branch cannot be determined.
+    fn default_branch(&self) -> Option<String> {
+        self.repo.default_branch()
     }
 
     /// Get the integration target (cached in Repository).
     ///
     /// Used for integration checks (status symbols, safe deletion).
-    fn integration_target(&self, kind: TaskKind) -> Result<String, TaskError> {
-        self.repo
-            .integration_target()
-            .map_err(|e| self.error(kind, e))
+    /// Returns None if default branch cannot be determined.
+    fn integration_target(&self) -> Option<String> {
+        self.repo.integration_target()
     }
 }
 
@@ -400,7 +400,13 @@ impl Task for AheadBehindTask {
     const KIND: TaskKind = TaskKind::AheadBehind;
 
     fn compute(ctx: TaskContext) -> Result<TaskResult, TaskError> {
-        let base = ctx.default_branch(Self::KIND)?;
+        // When default_branch is None, return zero counts (cells show empty)
+        let Some(base) = ctx.default_branch() else {
+            return Ok(TaskResult::AheadBehind {
+                item_idx: ctx.item_idx,
+                counts: AheadBehind::default(),
+            });
+        };
         let repo = &ctx.repo;
 
         // Check cache first (populated by batch_ahead_behind if it ran).
@@ -434,7 +440,13 @@ impl Task for CommittedTreesMatchTask {
     const KIND: TaskKind = TaskKind::CommittedTreesMatch;
 
     fn compute(ctx: TaskContext) -> Result<TaskResult, TaskError> {
-        let base = ctx.integration_target(Self::KIND)?;
+        // When integration_target is None, return false (conservative: don't mark as integrated)
+        let Some(base) = ctx.integration_target() else {
+            return Ok(TaskResult::CommittedTreesMatch {
+                item_idx: ctx.item_idx,
+                committed_trees_match: false,
+            });
+        };
         let repo = &ctx.repo;
         // Use the item's commit instead of HEAD, since for branches without
         // worktrees, HEAD is the main worktree's HEAD.
@@ -472,7 +484,13 @@ impl Task for HasFileChangesTask {
                 has_file_changes: true,
             });
         };
-        let target = ctx.integration_target(Self::KIND)?;
+        // When integration_target is None, return true (conservative: assume has changes)
+        let Some(target) = ctx.integration_target() else {
+            return Ok(TaskResult::HasFileChanges {
+                item_idx: ctx.item_idx,
+                has_file_changes: true,
+            });
+        };
         let repo = &ctx.repo;
         let has_file_changes = repo
             .has_added_changes(branch, &target)
@@ -509,7 +527,13 @@ impl Task for WouldMergeAddTask {
                 would_merge_add: true,
             });
         };
-        let base = ctx.integration_target(Self::KIND)?;
+        // When integration_target is None, return true (conservative: assume would add)
+        let Some(base) = ctx.integration_target() else {
+            return Ok(TaskResult::WouldMergeAdd {
+                item_idx: ctx.item_idx,
+                would_merge_add: true,
+            });
+        };
         let repo = &ctx.repo;
         let would_merge_add = repo
             .would_merge_add_to_target(branch, &base)
@@ -535,7 +559,13 @@ impl Task for IsAncestorTask {
     const KIND: TaskKind = TaskKind::IsAncestor;
 
     fn compute(ctx: TaskContext) -> Result<TaskResult, TaskError> {
-        let base = ctx.integration_target(Self::KIND)?;
+        // When integration_target is None, return false (conservative: don't mark as ancestor)
+        let Some(base) = ctx.integration_target() else {
+            return Ok(TaskResult::IsAncestor {
+                item_idx: ctx.item_idx,
+                is_ancestor: false,
+            });
+        };
         let repo = &ctx.repo;
         let is_ancestor = repo
             .is_ancestor(&ctx.branch_ref.commit_sha, &base)
@@ -555,7 +585,13 @@ impl Task for BranchDiffTask {
     const KIND: TaskKind = TaskKind::BranchDiff;
 
     fn compute(ctx: TaskContext) -> Result<TaskResult, TaskError> {
-        let base = ctx.default_branch(Self::KIND)?;
+        // When default_branch is None, return empty diff (cells show empty)
+        let Some(base) = ctx.default_branch() else {
+            return Ok(TaskResult::BranchDiff {
+                item_idx: ctx.item_idx,
+                branch_diff: BranchDiffTotals::default(),
+            });
+        };
         let repo = &ctx.repo;
         let diff = repo
             .branch_diff_stats(&base, &ctx.branch_ref.commit_sha)
@@ -597,7 +633,7 @@ impl Task for WorkingTreeDiffTask {
         };
 
         // Use default_branch (local default branch) for informational display
-        let default_branch = ctx.default_branch(Self::KIND).ok();
+        let default_branch = ctx.default_branch();
         let working_tree_diff_with_main = wt
             .working_tree_diff_with_base(default_branch.as_deref(), is_dirty)
             .map_err(|e| ctx.error(Self::KIND, e))?;
@@ -622,7 +658,13 @@ impl Task for MergeTreeConflictsTask {
     const KIND: TaskKind = TaskKind::MergeTreeConflicts;
 
     fn compute(ctx: TaskContext) -> Result<TaskResult, TaskError> {
-        let base = ctx.default_branch(Self::KIND)?;
+        // When default_branch is None, return false (no conflicts can be detected)
+        let Some(base) = ctx.default_branch() else {
+            return Ok(TaskResult::MergeTreeConflicts {
+                item_idx: ctx.item_idx,
+                has_merge_tree_conflicts: false,
+            });
+        };
         let repo = &ctx.repo;
         let has_merge_tree_conflicts = repo
             .has_merge_conflicts(&base, &ctx.branch_ref.commit_sha)
@@ -645,7 +687,13 @@ impl Task for WorkingTreeConflictsTask {
     const KIND: TaskKind = TaskKind::WorkingTreeConflicts;
 
     fn compute(ctx: TaskContext) -> Result<TaskResult, TaskError> {
-        let base = ctx.default_branch(Self::KIND)?;
+        // When default_branch is None, return None (skip conflict check)
+        let Some(base) = ctx.default_branch() else {
+            return Ok(TaskResult::WorkingTreeConflicts {
+                item_idx: ctx.item_idx,
+                has_working_tree_conflicts: None,
+            });
+        };
         // This task is only spawned for worktree items, so worktree path is always present.
         let wt = ctx
             .branch_ref

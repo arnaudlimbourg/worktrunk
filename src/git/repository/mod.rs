@@ -64,9 +64,9 @@ pub(super) struct RepoCache {
     /// Whether this is a bare repository
     pub(super) is_bare: OnceCell<bool>,
     /// Default branch (main, master, etc.)
-    pub(super) default_branch: OnceCell<String>,
+    pub(super) default_branch: OnceCell<Option<String>>,
     /// Effective integration target (local default branch or upstream if ahead)
-    pub(super) integration_target: OnceCell<String>,
+    pub(super) integration_target: OnceCell<Option<String>>,
     /// Primary remote name (None if no remotes configured)
     pub(super) primary_remote: OnceCell<Option<String>>,
     /// Primary remote URL (None if no remotes configured or no URL)
@@ -145,7 +145,9 @@ fn base_path() -> &'static PathBuf {
 /// let wt = repo.current_worktree();
 ///
 /// // Repo-wide operations
-/// let default = repo.default_branch()?;
+/// if let Some(default) = repo.default_branch() {
+///     println!("Default branch: {}", default);
+/// }
 ///
 /// // Worktree-specific operations
 /// let branch = wt.branch()?;
