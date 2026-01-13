@@ -108,21 +108,25 @@ fn main() {
                 canonicalize(&temp).unwrap()
             };
 
+            // Create repo at base_path (main worktree location)
+            // Worktrees will be siblings: base_path.feature-wt-N
             eprintln!("Creating {} repo...", config);
             create_repo_at(&repo_config, &base_path);
 
-            let repo_path = base_path.join("main");
+            let repo_name = base_path.file_name().unwrap().to_str().unwrap();
+            let parent_dir = base_path.parent().unwrap();
             eprintln!();
             eprintln!("✅ Repository created");
             eprintln!();
-            eprintln!("Main worktree: {}", repo_path.display());
+            eprintln!("Main worktree: {}", base_path.display());
             if repo_config.worktrees > 1 {
                 eprintln!("Worktrees: {} total", repo_config.worktrees);
                 for i in 1..repo_config.worktrees {
+                    let branch = format!("feature-wt-{i}");
                     eprintln!(
-                        "  - wt-{}: {}",
-                        i,
-                        base_path.join(format!("wt-{i}")).display()
+                        "  - {}: {}",
+                        branch,
+                        parent_dir.join(format!("{repo_name}.{branch}")).display()
                     );
                 }
             }
@@ -133,11 +137,11 @@ fn main() {
             eprintln!("To run with tracing:");
             eprintln!(
                 "  RUST_LOG=debug wt -C {} list 2>&1 | grep wt-trace | wt-perf trace > trace.json",
-                repo_path.display()
+                base_path.display()
             );
             eprintln!();
             eprintln!("To invalidate caches (cold run):");
-            eprintln!("  wt-perf invalidate {}", repo_path.display());
+            eprintln!("  wt-perf invalidate {}", base_path.display());
 
             if !persist {
                 eprintln!();

@@ -218,10 +218,12 @@ pub fn create_repo_at(config: &RepoConfig, base_path: &Path) {
         run_git(&repo_path, &["checkout", "main"]);
     }
 
-    // Add worktrees
+    // Add worktrees (siblings with .branch suffix, worktrunk convention)
+    let repo_name = base_path.file_name().unwrap().to_str().unwrap();
+    let parent_dir = base_path.parent().unwrap();
     for wt_num in 1..config.worktrees {
         let branch = format!("feature-wt-{wt_num}");
-        let wt_path = base_path.join(format!("wt-{wt_num}"));
+        let wt_path = parent_dir.join(format!("{repo_name}.{branch}"));
 
         let head_output = Command::new("git")
             .args(["rev-parse", "HEAD"])

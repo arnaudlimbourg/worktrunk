@@ -130,7 +130,7 @@ fn bench_skeleton(c: &mut Criterion) {
         for cold in [false, true] {
             let config = BenchConfig::typical(worktrees, cold);
             let temp = create_repo(&config.repo);
-            let repo_path = temp.path().join("main");
+            let repo_path = temp.path().join("repo");
             setup_fake_remote(&repo_path);
 
             group.bench_with_input(
@@ -161,7 +161,7 @@ fn bench_complete(c: &mut Criterion) {
         for cold in [false, true] {
             let config = BenchConfig::typical(worktrees, cold);
             let temp = create_repo(&config.repo);
-            let repo_path = temp.path().join("main");
+            let repo_path = temp.path().join("repo");
             setup_fake_remote(&repo_path);
 
             group.bench_with_input(
@@ -185,7 +185,7 @@ fn bench_worktree_scaling(c: &mut Criterion) {
         for cold in [false, true] {
             let config = BenchConfig::typical(worktrees, cold);
             let temp = create_repo(&config.repo);
-            let repo_path = temp.path().join("main");
+            let repo_path = temp.path().join("repo");
             run_git(&repo_path, &["status"]);
 
             group.bench_with_input(
@@ -215,7 +215,7 @@ fn bench_real_repo(c: &mut Criterion) {
                 |b, &(worktrees, cold)| {
                     let rust_repo = ensure_rust_repo();
                     let temp = tempfile::tempdir().unwrap();
-                    let workspace_main = temp.path().join("main");
+                    let workspace_main = temp.path().join("repo");
 
                     let clone_output = Command::new("git")
                         .args([
@@ -314,7 +314,7 @@ fn bench_many_branches(c: &mut Criterion) {
     for cold in [false, true] {
         let config = BenchConfig::branches(100, 2, cold);
         let temp = create_repo(&config.repo);
-        let repo_path = temp.path().join("main");
+        let repo_path = temp.path().join("repo");
         run_git(&repo_path, &["status"]);
 
         group.bench_function(config.label(), |b| {
@@ -342,7 +342,7 @@ fn bench_divergent_branches(c: &mut Criterion) {
     for cold in [false, true] {
         let config = BenchConfig::many_divergent_branches(cold);
         let temp = create_repo(&config.repo);
-        let repo_path = temp.path().join("main");
+        let repo_path = temp.path().join("repo");
         run_git(&repo_path, &["status"]);
 
         group.bench_function(config.label(), |b| {
@@ -364,7 +364,7 @@ fn bench_divergent_branches(c: &mut Criterion) {
 /// Returns the workspace path (temp dir must outlive usage).
 fn setup_rust_workspace_with_branches(temp: &tempfile::TempDir, num_branches: usize) -> PathBuf {
     let rust_repo = ensure_rust_repo();
-    let workspace_main = temp.path().join("main");
+    let workspace_main = temp.path().join("repo");
 
     // Clone rust repo locally
     let clone_output = Command::new("git")
