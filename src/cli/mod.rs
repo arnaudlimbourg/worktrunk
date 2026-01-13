@@ -243,9 +243,9 @@ pub(crate) struct Cli {
 #[derive(Subcommand)]
 pub(crate) enum Commands {
     /// Switch to a worktree
-    #[command(
-        after_long_help = r#"Change directory to a worktree, creating one if needed.
-<!-- demo: wt-switch.gif 1600x900 -->
+    ///
+    /// Change directory to a worktree, creating one if needed.
+    #[command(after_long_help = r#"<!-- demo: wt-switch.gif 1600x900 -->
 
 Worktrees are addressed by branch name; paths are computed from a configurable template. Unlike `git switch`, this navigates between worktrees rather than changing branches in place.
 
@@ -308,8 +308,7 @@ To change which branch a worktree is on, use `git switch` inside that worktree.
 - [`wt list`](@/list.md) — View all worktrees
 - [`wt remove`](@/remove.md) — Delete worktrees when done
 - [`wt merge`](@/merge.md) — Integrate changes back to the default branch
-"#
-    )]
+"#)]
     Switch {
         /// Branch name
         ///
@@ -1454,7 +1453,6 @@ fi
 
     /// Manage configuration and shell integration
     #[command(
-        about = "Manage configuration and shell integration",
         after_long_help = r#"Manages configuration, shell integration, and runtime settings.
 
 Worktrunk uses two configuration files:
