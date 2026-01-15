@@ -1,6 +1,7 @@
 //! Git config, hints, marker, and default branch operations for Repository.
 
 use anyhow::Context;
+use color_print::cformat;
 
 use crate::config::ProjectConfig;
 
@@ -229,7 +230,9 @@ impl Repository {
             Some(b) => self.resolve_worktree_name(b),
             None => self.default_branch().ok_or_else(|| {
                 GitError::Other {
-                    message: "Cannot determine default branch. Specify target explicitly or run 'wt config state default-branch set <branch>'.".into(),
+                    message: cformat!(
+                        "Cannot determine default branch. Specify target explicitly or run <bold>wt config state default-branch set BRANCH</>"
+                    ),
                 }
                 .into()
             }),

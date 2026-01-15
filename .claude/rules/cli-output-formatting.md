@@ -112,22 +112,22 @@ Use **sentence case** for help text headings: "Configuration files", "JSON outpu
 
 ## Message Consistency Patterns
 
-Use consistent punctuation and structure for related messages:
+Use consistent punctuation and structure for related messages.
 
-**Semicolon for qualifiers:** Separate the action from a qualifier/reason:
-
-```rust
-// Action; qualifier (flag)
-"Removing feature worktree in background; retaining branch (--no-delete-branch)"
-"Commands approved; not saved (--yes)"
-```
-
-**Ampersand for conjunctions:** Use `&` for combined actions:
+**Ampersand for combined actions:** Use `&` when a single operation does
+multiple things:
 
 ```rust
-// Action & additional action
 "Removing feature worktree & branch in background"
 "Commands approved & saved to config"
+```
+
+**Semicolon for joining clauses:** Use semicolons to connect related information:
+
+```rust
+"Removing feature worktree in background; retaining branch (--no-delete-branch)"
+"Branch unmerged; to delete, run <bright-black>wt remove -D</>"  // hint uses bright-black
+"{tool} not authenticated; run <bold>{tool} auth login</>"       // warning uses bold
 ```
 
 **Explicit flag acknowledgment:** Show flags in parentheses when they change
@@ -341,6 +341,20 @@ clearer:
 
 // VERBOSE - "To proceed" adds nothing
 "To proceed, commit or stash changes first"
+```
+
+**Description + command in single message:** For warnings/errors that include a
+recovery command, join with semicolon. Use `<bold>` for commands in
+warnings/errors (only hints use `<bright-black>`):
+
+```rust
+// Warning with inline recovery command (bold for commands)
+warning_message("Failed to restore stash; run <bold>git stash pop {ref}</> to restore manually")
+warning_message("{tool} not authenticated; run <bold>{tool} auth login</>")
+
+// For longer suggestions, use separate hint message (bright-black for commands)
+warning_message("Failed to restore stash")
+hint_message("To restore manually, run <bright-black>git stash pop {ref}</>")
 ```
 
 **Multiple suggestions in one hint:** When combining suggestions with semicolons,

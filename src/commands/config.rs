@@ -1066,7 +1066,9 @@ pub fn handle_state_get(key: &str, branch: Option<String>) -> anyhow::Result<()>
     match key {
         "default-branch" => {
             let branch_name = repo.default_branch().ok_or_else(|| {
-                anyhow::anyhow!("Cannot determine default branch. Run 'wt config state default-branch set <branch>' to configure.")
+                anyhow::anyhow!(cformat!(
+                    "Cannot determine default branch. To configure, run <bold>wt config state default-branch set BRANCH</>"
+                ))
             })?;
             crate::output::stdout(branch_name)?;
         }
