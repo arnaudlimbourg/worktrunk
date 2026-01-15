@@ -22,16 +22,7 @@ copy = "wt step copy-ignored"
 install = "npm ci"
 ```
 
-All gitignored files are copied by default. To copy only specific patterns, create a `.worktreeinclude` file using gitignore syntax:
-
-```gitignore
-# .worktreeinclude — optional, limits what gets copied
-.env
-node_modules/
-target/
-```
-
-See [`wt step copy-ignored`](https://worktrunk.dev/step/#wt-step-copy-ignored) for details and language-specific notes.
+All gitignored files are copied by default. To limit what gets copied, create `.worktreeinclude` with patterns — files must be both gitignored and listed. See [`wt step copy-ignored`](https://worktrunk.dev/step/#wt-step-copy-ignored) for details.
 
 ## Dev server per worktree
 
