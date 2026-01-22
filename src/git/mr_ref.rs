@@ -11,12 +11,12 @@
 //!
 //! ## API Fields
 //!
-//! We use `glab mr view <number> --output json` which returns:
+//! We use `glab api projects/:id/merge_requests/<number>` which returns:
 //! - `source_branch` — MR branch name
 //! - `source_project_id`, `target_project_id` — for fork detection
-//! - `source_project.ssh_url_to_repo`, `http_url_to_repo` — fork URLs
-//! - `target_project.ssh_url_to_repo`, `http_url_to_repo` — target URLs
 //! - `web_url` — MR web URL
+//!
+//! For fork URLs, we make additional API calls to fetch project details.
 
 use std::io::ErrorKind;
 use std::path::Path;
@@ -84,7 +84,7 @@ impl super::RefContext for MrInfo {
     }
 }
 
-/// Raw JSON response from `glab mr view <number> --output json`.
+/// Raw JSON response from `glab api projects/:id/merge_requests/<number>`.
 #[derive(Debug, Deserialize)]
 struct GlabMrResponse {
     title: String,
@@ -96,14 +96,9 @@ struct GlabMrResponse {
     source_project_id: u64,
     target_project_id: u64,
     web_url: String,
-    /// Source project info (for getting fork URL)
-    #[serde(default)]
-    source_project: Option<GlabProject>,
-    /// Target project info (for finding the correct remote)
-    #[serde(default)]
-    target_project: Option<GlabProject>,
 }
 
+/// Raw JSON response from `glab api projects/<id>`.
 #[derive(Debug, Deserialize)]
 struct GlabAuthor {
     username: String,
@@ -113,6 +108,16 @@ struct GlabAuthor {
 struct GlabProject {
     ssh_url_to_repo: Option<String>,
     http_url_to_repo: Option<String>,
+}
+
+/// Error response from GitLab API (stdout on failure).
+/// Example: `{"message":"404 Not found","error":"404 Not found"}`
+#[derive(Debug, Deserialize)]
+struct GlabApiErrorResponse {
+    #[serde(default)]
+    message: String,
+    #[serde(default)]
+    error: String,
 }
 
 /// Parse a `mr:<number>` reference, returning the MR number if valid.
@@ -125,8 +130,8 @@ pub fn parse_mr_ref(input: &str) -> Option<u32> {
 
 /// Fetch MR information from GitLab using the `glab` CLI.
 ///
-/// Uses `glab mr view` to get MR metadata including source and target
-/// project information.
+/// Uses `glab api` to get MR metadata. For fork MRs, makes additional
+/// API calls to fetch source and target project URLs.
 ///
 /// # Errors
 ///
@@ -135,8 +140,10 @@ pub fn parse_mr_ref(input: &str) -> Option<u32> {
 /// - The MR doesn't exist
 /// - The JSON response is malformed
 pub fn fetch_mr_info(mr_number: u32, repo_root: &std::path::Path) -> anyhow::Result<MrInfo> {
+    let api_path = format!("projects/:id/merge_requests/{}", mr_number);
+
     let output = match Cmd::new("glab")
-        .args(["mr", "view", &mr_number.to_string(), "--output", "json"])
+        .args(["api", &api_path])
         .current_dir(repo_root)
         .env("GLAB_NO_PROMPT", "1")
         .run()
@@ -149,43 +156,44 @@ pub fn fetch_mr_info(mr_number: u32, repo_root: &std::path::Path) -> anyhow::Res
                     "GitLab CLI (glab) not installed; install from https://gitlab.com/gitlab-org/cli#installation"
                 );
             }
-            return Err(anyhow::Error::from(e).context("Failed to run glab mr view"));
+            return Err(anyhow::Error::from(e).context("Failed to run glab api"));
         }
     };
 
     if !output.status.success() {
+        // Parse the JSON error response from stdout for structured error handling.
+        // GitLab API returns JSON with "message" or "error" field containing the error.
+        if let Ok(error_response) = serde_json::from_slice::<GlabApiErrorResponse>(&output.stdout) {
+            let error_text = if !error_response.message.is_empty() {
+                &error_response.message
+            } else {
+                &error_response.error
+            };
+
+            // GitLab includes status code in error message: "404 Not found", "401 Unauthorized"
+            if error_text.starts_with("404") {
+                bail!("MR !{} not found", mr_number);
+            }
+            if error_text.starts_with("401") {
+                bail!("GitLab CLI not authenticated; run glab auth login");
+            }
+            if error_text.starts_with("403") {
+                bail!("GitLab API access forbidden for MR !{}", mr_number);
+            }
+        }
+
+        // Fallback for non-JSON errors (network issues, glab not configured, etc.)
+        // Include stdout if stderr is empty, as some errors are reported there.
         let stderr = String::from_utf8_lossy(&output.stderr);
-        let stderr_lower = stderr.to_lowercase();
-
-        // TODO: Classifying errors by substring matching is brittle across glab versions
-        // and locales. Consider using `glab api` with HTTP status codes for more reliable
-        // error detection, or at minimum test against multiple glab versions.
-
-        // MR not found
-        if stderr_lower.contains("not found")
-            || stderr_lower.contains("404")
-            || stderr_lower.contains("could not find")
-        {
-            bail!("MR !{} not found", mr_number);
-        }
-
-        // Authentication errors
-        if stderr_lower.contains("authentication")
-            || stderr_lower.contains("logged in")
-            || stderr_lower.contains("auth login")
-            || stderr_lower.contains("not logged")
-            || stderr_lower.contains("401")
-            || stderr_lower.contains("unauthorized")
-        {
-            bail!("GitLab CLI not authenticated; run glab auth login");
-        }
-
-        // Unknown error - show full output in gutter for debugging
-        // (Rate limits, network errors, etc. fall through here with helpful stderr)
+        let details = if stderr.trim().is_empty() {
+            String::from_utf8_lossy(&output.stdout).trim().to_string()
+        } else {
+            stderr.trim().to_string()
+        };
         return Err(GitError::CliApiError {
             ref_type: super::RefType::Mr,
-            message: format!("glab mr view failed for MR !{}", mr_number),
-            stderr: stderr.trim().to_string(),
+            message: format!("glab api failed for MR !{}", mr_number),
+            stderr: details,
         }
         .into());
     }
@@ -208,6 +216,32 @@ pub fn fetch_mr_info(mr_number: u32, repo_root: &std::path::Path) -> anyhow::Res
 
     let is_cross_project = response.source_project_id != response.target_project_id;
 
+    // Fetch project URLs for cross-project (fork) MRs.
+    // The GitLab MR API only returns project IDs, so we need separate API calls.
+    // TODO(perf): Defer URL fetching until after branch_tracks_mr check in switch.rs
+    // to avoid unnecessary API calls when branch already exists and tracks this MR.
+    let (source_project_ssh_url, source_project_http_url) = if is_cross_project {
+        fetch_project_urls(response.source_project_id, repo_root).with_context(|| {
+            format!(
+                "Failed to fetch source project {} for MR !{}",
+                response.source_project_id, mr_number
+            )
+        })?
+    } else {
+        (None, None)
+    };
+
+    let (target_project_ssh_url, target_project_http_url) = if is_cross_project {
+        fetch_project_urls(response.target_project_id, repo_root).with_context(|| {
+            format!(
+                "Failed to fetch target project {} for MR !{}",
+                response.target_project_id, mr_number
+            )
+        })?
+    } else {
+        (None, None)
+    };
+
     Ok(MrInfo {
         number: mr_number,
         title: response.title,
@@ -217,25 +251,34 @@ pub fn fetch_mr_info(mr_number: u32, repo_root: &std::path::Path) -> anyhow::Res
         source_branch: response.source_branch,
         source_project_id: response.source_project_id,
         target_project_id: response.target_project_id,
-        source_project_ssh_url: response
-            .source_project
-            .as_ref()
-            .and_then(|p| p.ssh_url_to_repo.clone()),
-        source_project_http_url: response
-            .source_project
-            .as_ref()
-            .and_then(|p| p.http_url_to_repo.clone()),
-        target_project_ssh_url: response
-            .target_project
-            .as_ref()
-            .and_then(|p| p.ssh_url_to_repo.clone()),
-        target_project_http_url: response
-            .target_project
-            .as_ref()
-            .and_then(|p| p.http_url_to_repo.clone()),
+        source_project_ssh_url,
+        source_project_http_url,
+        target_project_ssh_url,
+        target_project_http_url,
         is_cross_project,
         url: response.web_url,
     })
+}
+
+/// Fetch project URLs from GitLab API.
+fn fetch_project_urls(
+    project_id: u64,
+    repo_root: &Path,
+) -> anyhow::Result<(Option<String>, Option<String>)> {
+    let api_path = format!("projects/{}", project_id);
+
+    let output = Cmd::new("glab")
+        .args(["api", &api_path])
+        .current_dir(repo_root)
+        .env("GLAB_NO_PROMPT", "1")
+        .run()?;
+
+    if !output.status.success() {
+        bail!("Failed to fetch project {}", project_id);
+    }
+
+    let response: GlabProject = serde_json::from_slice(&output.stdout)?;
+    Ok((response.ssh_url_to_repo, response.http_url_to_repo))
 }
 
 /// Generate the local branch name for an MR.
