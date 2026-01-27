@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.20.1
+
+### Improved
+
+- **`wt statusline --format=json`**: Output current worktree as JSON (same structure as `wt list --format=json`). Also adds `--format=claude-code` as canonical syntax (the old `--claude-code` flag remains supported). Fixes nested worktree detection that incorrectly identified parent worktrees. ([#875](https://github.com/max-sixty/worktrunk/pull/875))
+
+- **`wt config show` shell status**: Each shell integration line now starts with the shell name (e.g., "bash: Already configured...") for easier scanning. ([#881](https://github.com/max-sixty/worktrunk/pull/881))
+
+- **`wt config show` performance**: 8x faster (~1.2s → ~150ms) by using PATH lookup instead of running `claude --version`. ([#883](https://github.com/max-sixty/worktrunk/pull/883))
+
+### Fixed
+
+- **Config TOML formatting**: Fixed spurious empty `[commit]` header appearing when only `[commit.generation]` is configured. ([#879](https://github.com/max-sixty/worktrunk/pull/879))
+
+- **Documentation URLs**: Fixed broken worktrunk.dev URLs in fish wrapper and config templates. ([#882](https://github.com/max-sixty/worktrunk/pull/882))
+
+### Documentation
+
+- Fixed `worktree-path` example on tips page. ([#876](https://github.com/max-sixty/worktrunk/pull/876), thanks @uriahcarpenter)
+
+- Fixed OSC 8 hyperlink sequences leaking through to web docs as garbage text. ([#870](https://github.com/max-sixty/worktrunk/pull/870))
+
+### Internal
+
+- Demo snapshot mode for regression testing of command output. ([#871](https://github.com/max-sixty/worktrunk/pull/871))
+
+- CI improvements: nextest binary compatibility fix, pinned runner versions, weekly renovation workflow. ([#878](https://github.com/max-sixty/worktrunk/pull/878), [#884](https://github.com/max-sixty/worktrunk/pull/884))
+
 ## 0.20.0
 
 ### Improved
