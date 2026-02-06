@@ -284,6 +284,29 @@ fn print_switch_message_if_changed(
     Ok(())
 }
 
+/// Compute the target directory for `cd` after switching, preserving the user's
+/// subdirectory position when possible.
+///
+/// If the user is in `source_root/apps/gateway/` and `target_root/apps/gateway/`
+/// exists, returns `target_root/apps/gateway/`. Otherwise returns `target_root`.
+fn resolve_subdir_in_target(target_root: &Path, source_root: Option<&Path>, cwd: &Path) -> PathBuf {
+    if let Some(source_root) = source_root {
+        // Canonicalize both paths to handle symlinks (e.g., /var -> /private/var on macOS)
+        let cwd = dunce::canonicalize(cwd).unwrap_or_else(|_| cwd.to_path_buf());
+        let source_root =
+            dunce::canonicalize(source_root).unwrap_or_else(|_| source_root.to_path_buf());
+        if let Ok(relative) = cwd.strip_prefix(&source_root)
+            && !relative.as_os_str().is_empty()
+        {
+            let candidate = target_root.join(relative);
+            if candidate.is_dir() {
+                return candidate;
+            }
+        }
+    }
+    target_root.to_path_buf()
+}
+
 /// Handle output for a switch operation
 ///
 /// # Shell Integration Warnings
@@ -322,10 +345,15 @@ pub fn handle_switch_output(
     result: &SwitchResult,
     branch_info: &SwitchBranchInfo,
     change_dir: bool,
+    source_worktree_root: Option<&Path>,
+    cwd: &Path,
 ) -> anyhow::Result<Option<std::path::PathBuf>> {
-    // Set target directory for command execution
+    // Set target directory for command execution, preserving subdirectory position.
+    // If the user is in apps/gateway/ in the source worktree and that directory exists
+    // in the target, cd to apps/gateway/ in the target instead of the root.
     if change_dir {
-        super::change_directory(result.path())?;
+        let cd_target = resolve_subdir_in_target(result.path(), source_worktree_root, cwd);
+        super::change_directory(&cd_target)?;
     }
 
     let path = result.path();
@@ -1244,6 +1272,51 @@ mod tests {
                 reason
             );
         }
+    }
+
+    #[test]
+    fn test_resolve_subdir_in_target_no_source_root() {
+        let target = PathBuf::from("/target/worktree");
+        let cwd = PathBuf::from("/some/dir");
+        assert_eq!(resolve_subdir_in_target(&target, None, &cwd), target);
+    }
+
+    #[test]
+    fn test_resolve_subdir_in_target_subdir_exists() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("source");
+        let target = dir.path().join("target");
+        std::fs::create_dir_all(source.join("apps/gateway")).unwrap();
+        std::fs::create_dir_all(target.join("apps/gateway")).unwrap();
+
+        let cwd = source.join("apps/gateway");
+        let result = resolve_subdir_in_target(&target, Some(&source), &cwd);
+        assert_eq!(result, target.join("apps/gateway"));
+    }
+
+    #[test]
+    fn test_resolve_subdir_in_target_subdir_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("source");
+        let target = dir.path().join("target");
+        std::fs::create_dir_all(source.join("apps/gateway")).unwrap();
+        std::fs::create_dir_all(&target).unwrap();
+
+        let cwd = source.join("apps/gateway");
+        let result = resolve_subdir_in_target(&target, Some(&source), &cwd);
+        assert_eq!(result, target); // Falls back to root
+    }
+
+    #[test]
+    fn test_resolve_subdir_in_target_at_root() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("source");
+        let target = dir.path().join("target");
+        std::fs::create_dir_all(&source).unwrap();
+        std::fs::create_dir_all(&target).unwrap();
+
+        let result = resolve_subdir_in_target(&target, Some(&source), &source);
+        assert_eq!(result, target);
     }
 
     #[test]
