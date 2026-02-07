@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.23.1
+
+### Improved
+
+- **Interactive picker runs hooks**: `wt switch` without arguments (the interactive picker) now runs post-switch, post-start, and post-create hooks, matching the non-interactive path. ([#942](https://github.com/max-sixty/worktrunk/pull/942))
+
+- **Combined hook output during removal**: Post-remove and post-switch hooks during worktree removal are now shown on a single output line instead of two separate lines. ([#943](https://github.com/max-sixty/worktrunk/pull/943))
+
+### Fixed
+
+- **Shell escape corruption with template filters**: Shell escaping was applied before template rendering, so filters like `sanitize` operated on already-escaped strings, corrupting values with special characters (e.g., apostrophes in branch names). ([#944](https://github.com/max-sixty/worktrunk/pull/944))
+
+- **`wt switch -` history corruption**: `wt switch foo` while already in `foo` would incorrectly record `foo` as the previous branch, breaking `wt switch -` ping-pong. ([#944](https://github.com/max-sixty/worktrunk/pull/944))
+
+- **`--base` without `--create` showed wrong error**: Using `--base` without `--create` could produce misleading errors (e.g., "No previous branch") instead of the expected warning that `--base` requires `--create`. ([#944](https://github.com/max-sixty/worktrunk/pull/944))
+
 ## 0.23.0
 
 ### Improved
