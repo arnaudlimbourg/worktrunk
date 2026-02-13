@@ -737,6 +737,18 @@ fn render_shell_status(out: &mut String) -> anyhow::Result<()> {
                             "To migrate to <bright-black>{canonical_path}</>, run <bright-black>{cmd} config shell install fish</>"
                         ))
                     )?;
+                } else if matches!(shell, Shell::Fish)
+                    && matches!(result.action, ConfigAction::WouldAdd)
+                {
+                    // Fish file exists but has different content (e.g. outdated version)
+                    any_not_configured = true;
+                    let warning = warning_message(cformat!(
+                        "<bold>{shell}</>: Outdated shell extension @ {path}"
+                    ));
+                    let hint = hint_message(cformat!(
+                        "To update, run <bright-black>{cmd} config shell install fish</>"
+                    ));
+                    writeln!(out, "{warning}\n{hint}")?;
                 } else {
                     any_not_configured = true;
                     writeln!(
