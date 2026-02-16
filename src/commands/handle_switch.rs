@@ -225,8 +225,7 @@ pub fn handle_switch(
             .collect();
 
         // Expand template variables in command (shell_escape: true for safety)
-        let expanded_cmd = expand_template(cmd, &vars, true, &repo, "--execute command")
-            .map_err(|e| anyhow::anyhow!("Failed to expand --execute template: {}", e))?;
+        let expanded_cmd = expand_template(cmd, &vars, true, &repo, "--execute command")?;
 
         // Append any trailing args (after --) to the execute command
         // Each arg is also expanded, then shell-escaped
@@ -235,10 +234,7 @@ pub fn handle_switch(
         } else {
             let expanded_args: Result<Vec<_>, _> = execute_args
                 .iter()
-                .map(|arg| {
-                    expand_template(arg, &vars, false, &repo, "--execute argument")
-                        .map_err(|e| anyhow::anyhow!("Failed to expand argument template: {}", e))
-                })
+                .map(|arg| expand_template(arg, &vars, false, &repo, "--execute argument"))
                 .collect();
             let escaped_args: Vec<_> = expanded_args?
                 .iter()
