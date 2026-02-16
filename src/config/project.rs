@@ -124,44 +124,91 @@ impl ProjectConfig {
             .root()
             .map_err(|e| ConfigError::Message(format!("Failed to get worktree root: {}", e)))?;
         let config_path = repo_root.join(".config").join("wt.toml");
+        let local_config_path = repo_root.join(".config").join("wt.local.toml");
 
-        if !config_path.exists() {
+        if !config_path.exists() && !local_config_path.exists() {
             return Ok(None);
         }
 
-        // Load directly with toml crate to preserve insertion order (with preserve_order feature)
-        let contents = std::fs::read_to_string(&config_path)
-            .map_err(|e| ConfigError::Message(format!("Failed to read config file: {}", e)))?;
-
-        // Check for deprecated template variables and create migration file if needed
         // Only write migration file in main worktree, not linked worktrees
-        // Use show_brief_warning=true to emit a brief pointer to `wt config show`
         let is_main_worktree = !repo.current_worktree().is_linked().unwrap_or(true);
         let repo_for_hints = if write_hints { Some(repo) } else { None };
-        let _ = super::deprecation::check_and_migrate(
-            &config_path,
-            &contents,
-            is_main_worktree,
-            "Project config",
-            repo_for_hints,
-            true, // show_brief_warning
-        );
 
-        // Warn about unknown fields (only in main worktree where it's actionable)
-        if is_main_worktree {
-            let unknown_keys: std::collections::HashMap<_, _> = find_unknown_keys(&contents)
-                .into_iter()
-                .filter(|(k, _)| !super::deprecation::DEPRECATED_SECTION_KEYS.contains(&k.as_str()))
-                .collect();
-            super::deprecation::warn_unknown_fields::<ProjectConfig>(
+        // Load base config from .config/wt.toml (if it exists)
+        let mut config = if config_path.exists() {
+            // Load directly with toml crate to preserve insertion order (with preserve_order feature)
+            let contents = std::fs::read_to_string(&config_path)
+                .map_err(|e| ConfigError::Message(format!("Failed to read config file: {}", e)))?;
+
+            // Check for deprecated template variables and create migration file if needed
+            // Use show_brief_warning=true to emit a brief pointer to `wt config show`
+            let _ = super::deprecation::check_and_migrate(
                 &config_path,
-                &unknown_keys,
+                &contents,
+                is_main_worktree,
                 "Project config",
+                repo_for_hints,
+                true, // show_brief_warning
             );
-        }
 
-        let config: ProjectConfig = toml::from_str(&contents)
-            .map_err(|e| ConfigError::Message(format!("Failed to parse TOML: {}", e)))?;
+            // Warn about unknown fields (only in main worktree where it's actionable)
+            if is_main_worktree {
+                let unknown_keys: std::collections::HashMap<_, _> = find_unknown_keys(&contents)
+                    .into_iter()
+                    .filter(|(k, _)| {
+                        !super::deprecation::DEPRECATED_SECTION_KEYS.contains(&k.as_str())
+                    })
+                    .collect();
+                super::deprecation::warn_unknown_fields::<ProjectConfig>(
+                    &config_path,
+                    &unknown_keys,
+                    "Project config",
+                );
+            }
+
+            toml::from_str(&contents)
+                .map_err(|e| ConfigError::Message(format!("Failed to parse TOML: {}", e)))?
+        } else {
+            ProjectConfig::default()
+        };
+
+        // Load local config override (.config/wt.local.toml) if it exists
+        if local_config_path.exists() {
+            let local_contents = std::fs::read_to_string(&local_config_path).map_err(|e| {
+                ConfigError::Message(format!("Failed to read local config file: {}", e))
+            })?;
+
+            // Run deprecation/unknown-key checks on local config independently
+            let _ = super::deprecation::check_and_migrate(
+                &local_config_path,
+                &local_contents,
+                is_main_worktree,
+                "Local project config",
+                repo_for_hints,
+                true,
+            );
+
+            if is_main_worktree {
+                let unknown_keys: std::collections::HashMap<_, _> =
+                    find_unknown_keys(&local_contents)
+                        .into_iter()
+                        .filter(|(k, _)| {
+                            !super::deprecation::DEPRECATED_SECTION_KEYS.contains(&k.as_str())
+                        })
+                        .collect();
+                super::deprecation::warn_unknown_fields::<ProjectConfig>(
+                    &local_config_path,
+                    &unknown_keys,
+                    "Local project config",
+                );
+            }
+
+            let local_config: ProjectConfig = toml::from_str(&local_contents).map_err(|e| {
+                ConfigError::Message(format!("Failed to parse local config TOML: {}", e))
+            })?;
+
+            config = config.merge_with(&local_config);
+        }
 
         Ok(Some(config))
     }
