@@ -89,7 +89,7 @@ pub use expansion::{
 pub use hooks::HooksConfig;
 pub use project::{
     ProjectCiConfig, ProjectConfig, ProjectListConfig,
-    find_unknown_keys as find_unknown_project_keys,
+    find_unknown_keys as find_unknown_project_keys, has_local_config,
 };
 pub use user::{
     CommitConfig, CommitGenerationConfig, ListConfig, MergeConfig, OverridableConfig,

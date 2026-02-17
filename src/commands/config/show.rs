@@ -593,6 +593,19 @@ fn render_project_config(out: &mut String) -> anyhow::Result<()> {
     // Display TOML with syntax highlighting (gutter at column 0)
     writeln!(out, "{}", format_toml(&contents))?;
 
+    // Note when local overrides are active
+    if worktrunk::config::has_local_config(&repo) {
+        let local_path = repo_root.join(".config").join("wt.local.toml");
+        writeln!(
+            out,
+            "{}",
+            info_message(cformat!(
+                "Includes overrides from <bold>{}</>",
+                format_path_for_display(&local_path)
+            ))
+        )?;
+    }
+
     Ok(())
 }
 
