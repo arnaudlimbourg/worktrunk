@@ -34,6 +34,7 @@ wt config show
 |------|----------|----------|--------------------|
 | **User config** | `~/.config/worktrunk/config.toml` | Worktree path template, LLM commit configs, etc | ✗ |
 | **Project config** | `.config/wt.toml` | Project hooks, dev server URL | ✓ |
+| **Local project config** | `.config/wt.local.toml` | Personal project overrides | ✗ |
 
 Organizations can also deploy a system-wide config file for shared defaults — run `wt config show` for the platform-specific location.
 
@@ -281,6 +282,10 @@ Combine these commits into a single commit message.
 
 Project config (`.config/wt.toml`) defines lifecycle hooks and project-specific settings. This file is checked into version control and shared with the team. Create with `wt config create --project`.
 
+## Local Overrides
+
+`.config/wt.local.toml` provides per-developer overrides that are not checked into git. Same format as `wt.toml`. Hooks are appended (both run); other settings (list, ci) are replaced.
+
 See [`wt hook`](https://worktrunk.dev/hook/) for hook types, execution order, template variables, and examples.
 
 ### Non-hook settings
@@ -391,6 +396,8 @@ Show configuration files & locations.
 
 Shows location and contents of user config (`~/.config/worktrunk/config.toml`)
 and project config (`.config/wt.toml`). Also shows system config if present.
+When `.config/wt.local.toml` exists, the displayed project config includes
+merged local overrides.
 
 If a config file doesn't exist, shows defaults that would be used.
 

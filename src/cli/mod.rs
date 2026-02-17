@@ -1158,7 +1158,7 @@ Manage approvals with `wt hook approvals add` and `wt hook approvals clear`.
 
 ## Configuration
 
-Hooks can be defined in two places: project config (`.config/wt.toml`) for repository-specific automation, or user config (`~/.config/worktrunk/config.toml`) for personal automation across all repositories.
+Hooks can be defined in three places: project config (`.config/wt.toml`), local project config (`.config/wt.local.toml`), or user config (`~/.config/worktrunk/config.toml`) for personal automation across all repositories.
 
 ### Project hooks
 
@@ -1486,6 +1486,7 @@ wt config show
 |------|----------|----------|--------------------|
 | **User config** | `~/.config/worktrunk/config.toml` | Worktree path template, LLM commit configs, etc | ✗ |
 | **Project config** | `.config/wt.toml` | Project hooks, dev server URL | ✓ |
+| **Local project config** | `.config/wt.local.toml` | Personal project overrides | ✗ |
 
 Organizations can also deploy a system-wide config file for shared defaults — run `wt config show` for the platform-specific location.
 
@@ -1732,6 +1733,10 @@ Combine these commits into a single commit message.
 # Project Configuration
 
 Project config (`.config/wt.toml`) defines lifecycle hooks and project-specific settings. This file is checked into version control and shared with the team. Create with `wt config create --project`.
+
+## Local Overrides
+
+`.config/wt.local.toml` provides per-developer overrides that are not checked into git. Same format as `wt.toml`. Hooks are appended (both run); other settings (list, ci) are replaced.
 
 See [`wt hook`](@/hook.md) for hook types, execution order, template variables, and examples.
 

@@ -1,15 +1,20 @@
 //! Configuration system for worktrunk
 //!
-//! Three configuration sources, loaded in order (later overrides earlier):
+//! Three configuration sources, loaded in order (later overrides earlier),
+//! plus an optional local project override:
 //!
 //! 1. **System config** (`/etc/xdg/worktrunk/config.toml` or platform equivalent) -
 //!    Organization-wide defaults, optional
 //! 2. **User config** (`~/.config/worktrunk/config.toml`) - Personal preferences
 //! 3. **Project config** (`.config/wt.toml`) - Lifecycle hooks, checked into git
+//! 4. **Local project config** (`.config/wt.local.toml`) - Personal project overrides, gitignored
 //!
 //! System and user configs share the same schema and are merged by the `config`
 //! crate's builder (user values override system values at the key level).
 //! Project config is independent — different schema, different purpose.
+//!
+//! The local project config is deep-merged with the project config (local wins for
+//! list/ci sections, hooks are appended).
 //!
 //! See `wt config --help` for complete documentation.
 
